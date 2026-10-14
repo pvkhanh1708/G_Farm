@@ -195,7 +195,7 @@ export function App() {
           <div className="build-tag">Vertical Slice · đồ họa tạm</div>
         </>
       )}
-      {game && showcase && <div className="showcase-legend">{CROP_ORDER.map((k) => CROPS[k].name).join(' / ')} · giai đoạn 0 → 4</div>}
+      {game && showcase && <div className="showcase-legend">{CROP_ORDER.filter((k) => !location.search.includes('showcase=') || location.search.includes(k)).map((k) => CROPS[k].name).join(' / ')} · giai đoạn 0 → 4</div>}
       <FxLayer />
 
       {popup?.type === 'shop' && (

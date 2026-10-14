@@ -182,15 +182,17 @@ export class Game {
   }
 
   private buildShowcase() {
-    // all crops x all stages side by side, for art review (?showcase)
+    // all crops x all stages side by side, for art review (?showcase, or ?showcase=corn,pumpkin)
     this.world.setParcels(1);
-    CROP_ORDER.forEach((crop, row) => {
+    const pick = new URLSearchParams(location.search).get('showcase')?.split(',') ?? [];
+    const crops = CROP_ORDER.filter((c) => !pick[0] || pick.includes(c));
+    crops.forEach((crop, row) => {
       for (let s = 0; s < STAGE_COUNT; s++) {
-        const v = new TileView(this.tileCtx, 1000 + row * 10 + s, (s - 2) * 1.55, (1 - row) * 1.9);
+        const v = new TileView(this.tileCtx, 1000 + row * 10 + s, (s - 2) * 1.55, ((crops.length - 1) / 2 - row) * 1.75);
         v.forceStage(crop, s);
       }
     });
-    this.rig.focus(new Vector3(0, 0, 0), 12, true);
+    this.rig.focus(new Vector3(0, 0, 0), 7 + crops.length * 1.7, true);
   }
 
   private rebuildShadows(size: number, q: 'low' | 'medium' | 'high') {

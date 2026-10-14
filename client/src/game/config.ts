@@ -1,4 +1,4 @@
-export type CropId = 'carrot' | 'wheat' | 'tomato';
+export type CropId = 'carrot' | 'wheat' | 'tomato' | 'strawberry' | 'cabbage' | 'corn' | 'eggplant' | 'pumpkin' | 'sunflower';
 
 export interface CropDef {
   id: CropId;
@@ -18,9 +18,16 @@ export const CROPS: Record<CropId, CropDef> = {
   carrot: { id: 'carrot', name: 'Cà rốt', seedName: 'Hạt cà rốt', seedPrice: 10, growSeconds: 20, yield: 4, sellPrice: 5 },
   wheat: { id: 'wheat', name: 'Lúa mì', seedName: 'Hạt lúa mì', seedPrice: 18, growSeconds: 30, yield: 5, sellPrice: 6 },
   tomato: { id: 'tomato', name: 'Cà chua', seedName: 'Hạt cà chua', seedPrice: 30, growSeconds: 45, yield: 6, sellPrice: 9 },
+  strawberry: { id: 'strawberry', name: 'Dâu tây', seedName: 'Hạt dâu tây', seedPrice: 40, growSeconds: 60, yield: 5, sellPrice: 14 },
+  cabbage: { id: 'cabbage', name: 'Bắp cải', seedName: 'Hạt bắp cải', seedPrice: 55, growSeconds: 75, yield: 3, sellPrice: 32 },
+  corn: { id: 'corn', name: 'Ngô', seedName: 'Hạt ngô', seedPrice: 70, growSeconds: 90, yield: 4, sellPrice: 30 },
+  eggplant: { id: 'eggplant', name: 'Cà tím', seedName: 'Hạt cà tím', seedPrice: 90, growSeconds: 120, yield: 5, sellPrice: 30 },
+  pumpkin: { id: 'pumpkin', name: 'Bí ngô', seedName: 'Hạt bí ngô', seedPrice: 150, growSeconds: 180, yield: 2, sellPrice: 130 },
+  sunflower: { id: 'sunflower', name: 'Hướng dương', seedName: 'Hạt hướng dương', seedPrice: 200, growSeconds: 240, yield: 3, sellPrice: 120 },
 };
 
-export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato'];
+/** Cheapest/fastest first; later crops earn more per minute but tie up the tile longer. */
+export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato', 'strawberry', 'cabbage', 'corn', 'eggplant', 'pumpkin', 'sunflower'];
 
 /**
  * The farm is a sequence of parcels (floating islands), each a 4x4 grid of

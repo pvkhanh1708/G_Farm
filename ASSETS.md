@@ -26,6 +26,12 @@ Cột “Kích thước”: asset thủ tục không có file. Con số là số
 | crop.carrot.s0–s4 | Cà rốt, 5 giai đoạn (3 củ / ô) | Code (`render/crops.ts`) | Code của dự án | 234 – 2.901 đỉnh / ô | Placeholder |
 | crop.wheat.s0–s4 | Lúa mì, 5 giai đoạn (7 khóm / ô) | Code (`render/crops.ts`) | Code của dự án | 378 – 2.520 đỉnh / ô | Placeholder |
 | crop.tomato.s0–s4 | Cà chua, 5 giai đoạn (1 bụi lớn / ô) | Code (`render/crops.ts`) | Code của dự án | 156 – 2.413 đỉnh / ô | Placeholder |
+| crop.strawberry.s0–s4 | Dâu tây, 5 giai đoạn (3 bụi / ô, hoa trắng, quả có hạt) | Code (`render/crops.ts`) | Code của dự án | 234 – 3.705 đỉnh / ô | Placeholder |
+| crop.cabbage.s0–s4 | Bắp cải, 5 giai đoạn (1 cây cuộn / ô) | Code (`render/crops.ts`) | Code của dự án | 78 – 680 đỉnh / ô | Placeholder |
+| crop.corn.s0–s4 | Ngô, 5 giai đoạn (3 thân / ô, cờ + bắp) | Code (`render/crops.ts`) | Code của dự án | 234 – 1.074 đỉnh / ô | Placeholder |
+| crop.eggplant.s0–s4 | Cà tím, 5 giai đoạn (1 bụi / ô, hoa tím, 4 quả) | Code (`render/crops.ts`) | Code của dự án | 156 – 1.757 đỉnh / ô | Placeholder |
+| crop.pumpkin.s0–s4 | Bí ngô, 5 giai đoạn (dây lá + 1 quả lớn) | Code (`render/crops.ts`) | Code của dự án | 78 – 1.029 đỉnh / ô | Placeholder |
+| crop.sunflower.s0–s4 | Hướng dương, 5 giai đoạn (2 cây / ô, hoa quay về camera) | Code (`render/crops.ts`) | Code của dự án | 156 – 3.578 đỉnh / ô | Placeholder |
 | tile.soil | Ô đất (tấm đất bo tròn) | Code (`render/tiles.ts`) | Code của dự án | ~730 đỉnh | Placeholder |
 | tile.grass | Ô khóa (tấm cỏ, 3 biến thể) | Code (`render/tiles.ts`) | Code của dự án | 861 đỉnh | Placeholder |
 | env.island | Đảo nổi cho mỗi mảnh 4×4 (mặt cỏ + vách đất) | Code (`render/world.ts`) | Code của dự án | 1.369 + 505 đỉnh / đảo | Placeholder |

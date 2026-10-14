@@ -1,4 +1,4 @@
-import { CROPS, CropId, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, TILES_PER_PARCEL, unlockCost } from '../config';
+import { CROP_ORDER, CROPS, CropId, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, TILES_PER_PARCEL, unlockCost } from '../config';
 
 /**
  * Pure game state + rules. No rendering here, so the same rules can later be
@@ -35,8 +35,12 @@ export type ActionResult<T = void> = { ok: true; value: T } | { ok: false; reaso
 
 const SAVE_KEY = 'farm-empire:vs3';
 
+function emptyInventory() {
+  return Object.fromEntries(CROP_ORDER.map((c) => [c, 0])) as Record<CropId, number>;
+}
+
 function initialState(): GameState {
-  return { coins: STARTING_COINS, inventory: { carrot: 0, wheat: 0, tomato: 0 }, unlocked: START_UNLOCKED, plantings: {} };
+  return { coins: STARTING_COINS, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {} };
 }
 
 function load(): GameState {
@@ -44,7 +48,8 @@ function load(): GameState {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       const s = JSON.parse(raw) as GameState;
-      if (typeof s.unlocked === 'number' && s.plantings) return s;
+      // saves from before a crop existed lack its inventory slot
+      if (typeof s.unlocked === 'number' && s.plantings) return { ...s, inventory: { ...emptyInventory(), ...s.inventory } };
     }
   } catch {
     /* corrupted save: start fresh */

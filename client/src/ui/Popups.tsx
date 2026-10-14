@@ -27,7 +27,10 @@ function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title
   );
 }
 
-const CROP_BG: Record<CropId, string> = { carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf' };
+const CROP_BG: Record<CropId, string> = {
+  carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf', strawberry: '#ffd9e0', cabbage: '#dcf5cf',
+  corn: '#fff3b0', eggplant: '#ecdcff', pumpkin: '#ffe0c0', sunflower: '#fff6c2',
+};
 
 export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | null; bulkCount: number; onPick: (c: CropId) => void; onClose: () => void }) {
   const s = useGameState();
