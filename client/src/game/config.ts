@@ -22,24 +22,61 @@ export const CROPS: Record<CropId, CropDef> = {
 
 export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato'];
 
-export const PLOT_SPACING = 2.35;
-export const PLOT_SIZE = 2.0;
-export const SOIL_TOP = 0.2;
+/**
+ * The farm is a sequence of parcels (floating islands), each a 4x4 grid of
+ * square tiles. Tiles are numbered globally (g = parcel * 16 + local) and are
+ * unlocked strictly in that order, so a parcel fills up before the next opens.
+ */
+export const PARCEL_DIM = 4;
+export const TILES_PER_PARCEL = PARCEL_DIM * PARCEL_DIM;
+export const TILE_SIZE = 1.5;
+export const TILE_PITCH = 1.64;
+/** Height of a tile's top surface above the island grass. */
+export const SOIL_TOP = 0.14;
+export const PARCEL_BORDER = 0.8;
+export const ISLAND_SIZE = PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE) + PARCEL_BORDER * 2;
+export const PARCEL_PITCH = ISLAND_SIZE + 1.5;
 
-/** The farm is an unbounded grid of tiles addressed by (col, row); (0,0) is the centre. */
-export const START_TILES: Array<[number, number]> = [[-1, 0], [0, 0], [1, 0]];
+export const START_UNLOCKED = 4;
 export const STARTING_COINS = 50;
 
-export const tileId = (col: number, row: number) => `${col},${row}`;
-
-export function tileWorldPos(col: number, row: number): { x: number; z: number } {
-  return { x: col * PLOT_SPACING, z: row * PLOT_SPACING };
+/** Square spiral around the first parcel: (0,0), (1,0), (1,1), (0,1), (-1,1), ... */
+export function parcelGrid(k: number): { gx: number; gz: number } {
+  let x = 0, z = 0, dx = 1, dz = 0, run = 1, step = 0, turns = 0;
+  for (let i = 0; i < k; i++) {
+    x += dx;
+    z += dz;
+    if (++step === run) {
+      step = 0;
+      [dx, dz] = [-dz, dx];
+      if (++turns % 2 === 0) run++;
+    }
+  }
+  return { gx: x, gz: z };
 }
 
-/** Price of the next plot grows with the number already owned. */
+export function parcelCenter(k: number): { x: number; z: number } {
+  const { gx, gz } = parcelGrid(k);
+  return { x: gx * PARCEL_PITCH, z: gz * PARCEL_PITCH };
+}
+
+/** Local tile order: rows from the far (top-left on screen) edge toward the camera. */
+export function tileLocal(local: number): { c: number; r: number } {
+  return { c: local % PARCEL_DIM, r: PARCEL_DIM - 1 - Math.floor(local / PARCEL_DIM) };
+}
+
+export function tileWorldPos(g: number): { x: number; z: number } {
+  const parcel = Math.floor(g / TILES_PER_PARCEL);
+  const { c, r } = tileLocal(g % TILES_PER_PARCEL);
+  const pc = parcelCenter(parcel);
+  const off = (PARCEL_DIM - 1) / 2;
+  return { x: pc.x + (c - off) * TILE_PITCH, z: pc.z + (r - off) * TILE_PITCH };
+}
+
+/** Price of the next tile grows gently with the number already owned. */
 export function unlockCost(unlockedCount: number): number {
-  const extra = Math.max(0, unlockedCount - START_TILES.length);
-  return Math.round((40 * Math.pow(1.15, extra)) / 10) * 10;
+  const extra = Math.max(0, unlockedCount - START_UNLOCKED);
+  return Math.round((30 * Math.pow(1.09, extra)) / 10) * 10;
 }
 
 export type Quality = 'low' | 'medium' | 'high';

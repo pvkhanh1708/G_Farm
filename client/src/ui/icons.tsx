@@ -237,6 +237,17 @@ export function StarIcon(p: P) {
   );
 }
 
+export function ZoomIcon({ out, ...p }: P & { out: boolean }) {
+  return (
+    <Svg {...p}>
+      <circle cx="27" cy="27" r="16" fill="#e8f6ff" stroke={OUT} strokeWidth="4" />
+      <path d="M39 39l14 14" stroke={OUT} strokeWidth="8" />
+      <path d="M39 39l14 14" stroke="#b77a45" strokeWidth="4" />
+      <path d={out ? 'M19 27h16' : 'M19 27h16M27 19v16'} stroke="#3b7d16" strokeWidth="4.5" />
+    </Svg>
+  );
+}
+
 export function CropIcon({ crop, ...p }: P & { crop: CropId }) {
   if (crop === 'carrot') return <CarrotIcon {...p} />;
   if (crop === 'wheat') return <WheatIcon {...p} />;

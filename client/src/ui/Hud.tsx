@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CROPS, CropId } from '../game/config';
 import type { Game } from '../game/Game';
 import { store } from '../game/state/store';
-import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, SeedBagIcon, SproutIcon } from './icons';
+import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, SeedBagIcon, SickleIcon, SproutIcon, ZoomIcon } from './icons';
 
 export function useGameState() {
   return useSyncExternalStore(store.subscribe, store.getState);
@@ -60,21 +60,47 @@ export function TopBar({ onSettings }: { onSettings: () => void }) {
   );
 }
 
-export function BottomBar({ onShop, onInventory }: { onShop: () => void; onInventory: () => void }) {
+interface BottomBarProps {
+  readyCount: number;
+  emptyCount: number;
+  overview: boolean;
+  onShop: () => void;
+  onInventory: () => void;
+  onHarvestAll: () => void;
+  onPlantAll: () => void;
+  onOverview: () => void;
+}
+
+export function BottomBar(p: BottomBarProps) {
   const s = useGameState();
   const total = Object.values(s.inventory).reduce((a, b) => a + b, 0);
   return (
-    <div className="bottombar">
-      <button className="round-btn big shop" onClick={onShop}>
-        <SeedBagIcon size={50} />
-        <span className="round-btn-label">Hạt giống</span>
+    <>
+      <button className="round-btn small zoom-btn" onClick={p.onOverview} aria-label={p.overview ? 'Về mảnh đất hiện tại' : 'Xem tổng quan'}>
+        <ZoomIcon size={30} out={!p.overview} />
       </button>
-      <button className="round-btn big barn" onClick={onInventory} data-fx-target="inventory">
-        <BarnIcon size={50} />
-        <span className="round-btn-label">Kho</span>
-        {total > 0 && <span className="count-badge">{total}</span>}
-      </button>
-    </div>
+      <div className="bottombar">
+        <button className={`round-btn mid bulk harvest ${p.readyCount ? 'glow' : ''}`} onClick={p.onHarvestAll}>
+          <SickleIcon size={40} />
+          <span className="round-btn-label">Thu tất cả</span>
+          {p.readyCount > 0 && <span className="count-badge">{p.readyCount}</span>}
+        </button>
+        <button className="round-btn mid bulk plant" onClick={p.onPlantAll}>
+          <SproutIcon size={40} />
+          <span className="round-btn-label">Trồng tất cả</span>
+          {p.emptyCount > 0 && <span className="count-badge green">{p.emptyCount}</span>}
+        </button>
+        <button className="round-btn big shop" onClick={p.onShop}>
+          <SeedBagIcon size={50} />
+          <span className="round-btn-label">Hạt giống</span>
+        </button>
+        <button className="round-btn big barn" onClick={p.onInventory} data-fx-target="inventory">
+          <BarnIcon size={50} />
+          <span className="round-btn-label">Kho</span>
+          {total > 0 && <span className="count-badge">{total}</span>}
+        </button>
+      </div>
+    </>
   );
 }
 

@@ -20,10 +20,10 @@ page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && e
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => {
   const now = Date.now();
-  const P = (col, row, crop = null, ago = 0) => ({ id: `${col},${row}`, col, row, unlocked: true, crop, plantedAt: crop ? now - ago : null });
-  const plots = [P(-1, 0, 'carrot', 60000), P(0, 0, 'wheat', 120000), P(1, 0, 'tomato', 30000)];
-  localStorage.removeItem('farm-empire:vs1');
-  localStorage.setItem('farm-empire:vs2', JSON.stringify({ coins: 60, inventory: { carrot: 0, wheat: 0, tomato: 6 }, plots }));
+  localStorage.setItem('farm-empire:vs3', JSON.stringify({
+    coins: 60, inventory: { carrot: 0, wheat: 0, tomato: 6 }, unlocked: 4,
+    plantings: { 0: { crop: 'carrot', plantedAt: now - 60000 }, 1: { crop: 'wheat', plantedAt: now - 120000 }, 2: { crop: 'tomato', plantedAt: now - 30000 } },
+  }));
   localStorage.setItem('farm-empire:prefs', JSON.stringify({ quality: 'high', sound: false, fps: true }));
 });
 await page.reload({ waitUntil: 'networkidle0' });
@@ -34,7 +34,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0;
 const shot = async (name) => page.screenshot({ path: `${outDir}/${String(++n).padStart(2, '0')}-${name}.png` });
 const tapPlot = async (i, hgt = 0.3) => {
-  const p = await page.evaluate((i, hgt) => window.__game.plotAnchor(i, hgt), i, hgt);
+  const p = await page.evaluate((i, hgt) => window.__game.tileAnchor(i, hgt), i, hgt);
   if (mobile) await page.touchscreen.tap(p.x, p.y);
   else await page.mouse.click(p.x, p.y);
 };
@@ -52,15 +52,15 @@ const click = async (sel, text) => {
 };
 
 await shot('start');
-await tapPlot('-1,0'); // ready carrot
+await tapPlot(0); // ready carrot
 await wait(260);
 await shot('harvest-pop');
 await wait(420);
 await shot('harvest-fly');
-await tapPlot('0,0'); // ready wheat
+await tapPlot(1); // ready wheat
 await wait(1600);
 await shot('after-harvest');
-await tapPlot('-1,0'); // now empty -> seed shop
+await tapPlot(0); // now empty -> seed shop
 await wait(500);
 await shot('seed-shop');
 await click('.seed-card .btn', '10');
@@ -76,7 +76,7 @@ await wait(1200);
 await shot('after-sell');
 await click('.panel-close');
 await wait(300);
-await tapPlot('1,1', 0.1); // frontier tile
+await tapPlot(4, 0.1); // next tile with the sign
 await wait(500);
 await shot('unlock-popup');
 await click('.panel .btn-green', 'Mở khóa');
@@ -84,6 +84,27 @@ await wait(420);
 await shot('unlocking');
 await wait(1400);
 await shot('unlocked');
-console.log(JSON.stringify(await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('farm-empire:vs2')), stats: window.__game.stats() }))).slice(0, 600));
+// bulk: plant all, fast-forward, harvest all
+await click('.round-btn.plant');
+await wait(500);
+await shot('plant-all-shop');
+await click('.seed-card .btn', '10');
+await wait(700);
+await shot('planted-all');
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('farm-empire:vs3'));
+  for (const k of Object.keys(s.plantings)) s.plantings[k].plantedAt -= 120000;
+  window.__store.getState().plantings = s.plantings; // shift growth in place for the demo
+});
+await wait(800);
+await shot('all-ready');
+await click('.round-btn.harvest');
+await wait(450);
+await shot('harvest-all');
+await wait(1500);
+await click('.zoom-btn');
+await wait(1600);
+await shot('overview');
+console.log(JSON.stringify(await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('farm-empire:vs3')), stats: window.__game.stats() }))).slice(0, 600));
 console.log('errors:', errors.slice(0, 10));
 await browser.close();

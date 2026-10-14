@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { sfx } from './game/audio/sfx';
 import { CROP_ORDER, CROPS, CropId, Quality } from './game/config';
 import { Game } from './game/Game';
-import { GameState, growthProgress, store } from './game/state/store';
+import { growthProgress, store, TileState } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
 import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './ui/Hud';
 import { SproutIcon } from './ui/icons';
-import { PlotOverlays } from './ui/PlotOverlays';
 import { Inventory, SeedShop, Settings, UnlockPopup } from './ui/Popups';
+import { TileOverlays } from './ui/TileOverlays';
 
-type Popup = { type: 'shop'; plot: string | null } | { type: 'inventory' } | { type: 'unlock'; plot: string } | { type: 'settings' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -22,17 +22,26 @@ function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
   }
 }
 
-function hintFor(s: GameState, tool: CropId | null): string | null {
+function counts(tiles: TileState[]) {
   const now = Date.now();
-  if (s.plots.some((p) => p.crop && growthProgress(p, now) >= 1)) return 'Cây đã chín! Chạm vào cây để thu hoạch.';
+  let ready = 0, empty = 0, growing = 0;
+  for (const t of tiles) {
+    if (!t.unlocked) continue;
+    if (!t.crop) empty++;
+    else if (growthProgress(t, now) >= 1) ready++;
+    else growing++;
+  }
+  return { ready, empty, growing };
+}
+
+function hintFor(tiles: TileState[], coins: number, inv: number, tool: CropId | null): string | null {
+  const c = counts(tiles);
+  if (c.ready) return c.ready > 1 ? `${c.ready} ô đã chín — bấm “Thu tất cả” hoặc chạm từng cây.` : 'Cây đã chín! Chạm vào cây để thu hoạch.';
   if (tool) return null;
-  const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
-  const growing = s.plots.some((p) => p.crop);
-  const emptyPlots = s.plots.some((p) => !p.crop);
-  if (store.frontier().length && s.coins >= store.nextUnlockCost() && !growing) return 'Bạn đủ xu để mở rộng đất — chạm vào ô cỏ bên cạnh nông trại!';
-  if (emptyPlots && s.coins >= CROPS.carrot.seedPrice) return 'Chạm vào ô đất trống để gieo hạt.';
+  if (!c.growing && coins >= store.nextUnlockCost()) return 'Bạn đủ xu để mở ô đất mới — chạm vào ô có biển “Mở khóa”.';
+  if (c.empty && coins >= CROPS.carrot.seedPrice) return c.empty > 1 ? 'Chạm ô đất trống để gieo, hoặc bấm “Trồng tất cả”.' : 'Chạm vào ô đất trống để gieo hạt.';
   if (inv > 0) return 'Mở Kho để bán nông sản lấy xu.';
-  if (growing) return 'Cây đang lớn… chờ một chút nhé!';
+  if (c.growing) return 'Cây đang lớn… chờ một chút nhé!';
   return null;
 }
 
@@ -42,10 +51,12 @@ export function App() {
   const [progress, setProgress] = useState({ k: 0, label: 'Đang tải…' });
   const [popup, setPopup] = useState<Popup>(null);
   const [tool, setTool] = useState<CropId | null>(null);
+  const [overview, setOverview] = useState(false);
   const [prefs, setPrefs] = useState(loadPrefs);
   const toolRef = useRef(tool);
   toolRef.current = tool;
   const s = useGameState();
+  const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
 
   useEffect(() => {
@@ -76,16 +87,27 @@ export function App() {
   }, []);
 
   const plantAt = useCallback(
-    (plot: string, crop: CropId) => {
+    (g: number, crop: CropId) => {
       if (!game) return false;
-      const res = game.plant(plot, crop);
+      const res = game.plant(g, crop);
       if (!res.ok) {
         fxBus.toast(res.reason, 'bad');
         return false;
       }
-      const p = game.plotAnchor(plot, 0.6);
+      const p = game.tileAnchor(g, 0.5);
       fxBus.float(p.x, p.y, `-${CROPS[crop].seedPrice}`, { type: 'coin' });
       return true;
+    },
+    [game],
+  );
+
+  const plantAll = useCallback(
+    (crop: CropId) => {
+      if (!game) return;
+      const res = game.plantAll(crop);
+      if (!res.ok) return fxBus.toast(res.reason, 'bad');
+      const n = res.value.length;
+      fxBus.toast(`Đã gieo ${CROPS[crop].name.toLowerCase()} cho ${n} ô · -${n * CROPS[crop].seedPrice} xu`, 'good');
     },
     [game],
   );
@@ -93,29 +115,29 @@ export function App() {
   useEffect(() => {
     if (!game) return;
     return game.on((e) => {
-      if (e.type === 'plotTap') {
-        if (e.kind === 'locked') {
+      if (e.type === 'tileTap') {
+        if (e.kind === 'next') {
           sfx.open();
-          setPopup({ type: 'unlock', plot: e.id });
+          setPopup({ type: 'unlock' });
+        } else if (e.kind === 'locked') {
+          sfx.error();
+          fxBus.toast('Ô đất mở theo thứ tự — hãy mở ô có biển “Mở khóa” trước', 'info');
         } else if (e.kind === 'empty') {
           const t = toolRef.current;
           if (t) {
-            if (!plantAt(e.id, t) && store.getState().coins < CROPS[t].seedPrice) setTool(null);
+            if (!plantAt(e.g, t) && store.getState().coins < CROPS[t].seedPrice) setTool(null);
           } else {
             sfx.open();
-            setPopup({ type: 'shop', plot: e.id });
+            setPopup({ type: 'shop', tile: e.g });
           }
         } else {
-          const st = store.plot(e.id);
+          const st = store.tile(e.g);
           if (st?.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
         }
-      } else if (e.type === 'barnTap') {
-        sfx.open();
-        setPopup({ type: 'inventory' });
       } else if (e.type === 'harvested') {
         fxBus.float(e.x, e.y - 20, `+${e.amount}`, { type: 'crop', crop: e.crop });
-        fxBus.fly({ type: 'crop', crop: e.crop }, { x: e.x, y: e.y }, 'inventory', Math.min(e.amount, 6), () => {
-          sfx.collect();
+        fxBus.fly({ type: 'crop', crop: e.crop }, { x: e.x, y: e.y }, 'inventory', e.bulk ? 2 : Math.min(e.amount, 6), () => {
+          if (!e.bulk) sfx.collect();
           bump('inventory');
         });
       }
@@ -141,31 +163,50 @@ export function App() {
   };
 
   const loading = progress.k < 1 || !game;
+  const c = counts(tiles);
+  const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
 
   return (
     <div className="app" onPointerDown={() => sfx.resume()}>
       <canvas ref={canvasRef} className="scene" />
       {game && !showcase && (
         <>
-          <PlotOverlays game={game} />
+          <TileOverlays game={game} />
           <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} />
-          <BottomBar onShop={() => (sfx.open(), setPopup({ type: 'shop', plot: null }))} onInventory={() => (sfx.open(), setPopup({ type: 'inventory' }))} />
+          <BottomBar
+            readyCount={c.ready}
+            emptyCount={c.empty}
+            overview={overview}
+            onShop={() => (sfx.open(), setPopup({ type: 'shop', tile: null }))}
+            onInventory={() => (sfx.open(), setPopup({ type: 'inventory' }))}
+            onHarvestAll={() => {
+              if (!game.harvestAll()) fxBus.toast('Chưa có cây nào chín', 'info');
+            }}
+            onPlantAll={() => {
+              if (!c.empty) return fxBus.toast('Không còn ô đất trống', 'info');
+              if (tool) plantAll(tool);
+              else (sfx.open(), setPopup({ type: 'shop', tile: null, bulk: true }));
+            }}
+            onOverview={() => (sfx.tap(), setOverview(game.toggleOverview()))}
+          />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
-          <Hint text={popup ? null : hintFor(s, tool)} />
+          <Hint text={popup ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}
           <div className="build-tag">Vertical Slice · đồ họa tạm</div>
         </>
       )}
-      {game && showcase && <div className="showcase-legend">{CROP_ORDER.map((c) => CROPS[c].name).join(' / ')} · giai đoạn 0 → 4</div>}
+      {game && showcase && <div className="showcase-legend">{CROP_ORDER.map((k) => CROPS[k].name).join(' / ')} · giai đoạn 0 → 4</div>}
       <FxLayer />
 
       {popup?.type === 'shop' && (
         <SeedShop
-          plot={popup.plot}
+          tile={popup.tile}
+          bulkCount={popup.bulk ? c.empty : 0}
           onClose={close}
           onPick={(crop) => {
-            if (popup.plot !== null) {
-              if (plantAt(popup.plot, crop)) setTool(crop);
+            if (popup.bulk) plantAll(crop);
+            else if (popup.tile !== null) {
+              if (plantAt(popup.tile, crop)) setTool(crop);
             } else {
               sfx.tap();
               setTool(crop);
@@ -179,9 +220,9 @@ export function App() {
         <UnlockPopup
           onClose={close}
           onConfirm={() => {
-            const res = game!.unlock(popup.plot);
+            const res = game!.unlockNext();
             if (!res.ok) fxBus.toast(res.reason, 'bad');
-            else fxBus.toast('Đã mở rộng đất mới!', 'good');
+            else fxBus.toast('Đã mở ô đất mới!', 'good');
             setPopup(null);
           }}
         />
@@ -201,6 +242,7 @@ export function App() {
             store.reset();
             setTool(null);
             setPopup(null);
+            game.focusCurrent();
           }}
           onClose={close}
         />

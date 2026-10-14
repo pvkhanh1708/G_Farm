@@ -1,7 +1,7 @@
 import { ArcRotateCamera, Scene, Vector3 } from '@babylonjs/core';
 
 const ELEVATION_DEG = 40;
-const MIN_R = 9;
+const MIN_R = 8;
 
 /**
  * Fixed-angle isometric-style camera: drag to pan, wheel / pinch to zoom.
@@ -33,22 +33,31 @@ export class CameraRig {
     scene.onBeforeRenderObservable.add(() => this.update(scene.getEngine().getDeltaTime() / 1000));
   }
 
-  private maxR = 34;
+  private maxR = 40;
+  private fitWidth = 7;
   private bounds = { minX: -9, maxX: 9, minZ: -9, maxZ: 9 };
 
-  /** Let the camera roam over the whole farm plus a margin of scenery. */
-  setBounds(minX: number, maxX: number, minZ: number, maxZ: number) {
-    const m = 7;
-    this.bounds = { minX: Math.min(-9, minX - m), maxX: Math.max(9, maxX + m), minZ: Math.min(-9, minZ - m), maxZ: Math.max(9, maxZ + m) };
-    this.clampGoal();
+  /** Distance at which a ground span of `width` fills the screen. */
+  fitRadius(width: number) {
+    this.fitWidth = width;
+    const aspect = this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight);
+    // portrait: the island diamond is narrower than its fit width, so allow a tighter frame
+    const w = aspect < 1 ? width * 0.74 : width;
+    const r = w / 2 / (Math.tan(this.camera.fov / 2) * Math.min(aspect, 1.15));
+    return Math.max(MIN_R, Math.min(this.maxR, r));
   }
 
-  /** Pull back on narrow (portrait) screens so the whole fenced farm fits horizontally. */
   adaptToAspect() {
+    this.goalRadius = this.fitRadius(this.fitWidth);
+  }
+
+  /** Let the camera roam over the whole farm (and zoom out far enough to see it all). */
+  setBounds(minX: number, maxX: number, minZ: number, maxZ: number) {
+    this.bounds = { minX: minX - 2, maxX: maxX + 2, minZ: minZ - 2, maxZ: maxZ + 2 };
+    const span = Math.max(maxX - minX, maxZ - minZ);
     const aspect = this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight);
-    const fitWidth = 5.4 / (Math.tan(this.camera.fov / 2) * aspect);
-    this.goalRadius = Math.max(22, Math.min(48, fitWidth));
-    this.maxR = Math.max(34, this.goalRadius + 6);
+    this.maxR = Math.max(30, (span * 1.5) / 2 / (Math.tan(this.camera.fov / 2) * Math.min(aspect, 1.15)) + 4);
+    this.clampGoal();
   }
 
   private bind() {

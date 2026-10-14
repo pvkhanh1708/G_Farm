@@ -29,11 +29,11 @@ function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title
 
 const CROP_BG: Record<CropId, string> = { carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf' };
 
-export function SeedShop({ plot, onPick, onClose }: { plot: string | null; onPick: (c: CropId) => void; onClose: () => void }) {
+export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | null; bulkCount: number; onPick: (c: CropId) => void; onClose: () => void }) {
   const s = useGameState();
   return (
     <Modal title="Cửa hàng hạt giống" icon={<SeedBagIcon size={34} />} onClose={onClose} wide>
-      <p className="panel-sub">{plot !== null ? 'Chọn hạt để gieo vào ô đất này' : 'Chọn hạt rồi chạm vào các ô đất trống để gieo'}</p>
+      <p className="panel-sub">{bulkCount > 0 ? `Trồng tất cả: gieo cho ${bulkCount} ô đất trống (theo số xu bạn có)` : tile !== null ? 'Chọn hạt để gieo vào ô đất này' : 'Chọn hạt rồi chạm vào các ô đất trống để gieo'}</p>
       <div className="seed-grid">
         {CROP_ORDER.map((id) => {
           const c = CROPS[id];
@@ -124,9 +124,9 @@ export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onC
         <div className="unlock-tile soil" />
       </div>
       <p className="panel-sub">
-        Ô đất thứ {s.plots.length + 1}. Dọn cỏ, làm luống mới để trồng thêm cây.
+        Ô đất thứ {s.unlocked + 1}. Dọn cỏ, làm luống mới để trồng thêm cây.
         <br />
-        Mỗi ô mở thêm sẽ đắt hơn một chút — nông trại có thể mở rộng mãi.
+        Mở hết 16 ô của một mảnh thì mảnh đất kế tiếp sẽ xuất hiện.
       </p>
       <div className="row-center">
         <button className="btn btn-ghost" onClick={onClose}>

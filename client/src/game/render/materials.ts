@@ -105,13 +105,11 @@ export function toonMaterial(scene: Scene, name: string, opts: ToonMatOptions = 
 
 /** Shared materials, created once per scene. */
 export interface MaterialLibrary {
-  props: PBRMaterial; // vertex-coloured static props (barn, rocks, fence posts...)
-  wood: PBRMaterial;
+  props: PBRMaterial; // vertex-coloured static props (cliffs, rocks, trunks...)
   soil: PBRMaterial;
   grassGround: PBRMaterial;
-  path: PBRMaterial;
   crops: PBRMaterial; // all crops share this (double sided, wind)
   foliage: PBRMaterial; // tree canopies (gentle wind)
   grass: PBRMaterial; // grass blades / flowers (strong wind)
-  cover: PBRMaterial; // locked-plot overgrowth
+  cover: PBRMaterial; // locked grass tiles
 }

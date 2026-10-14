@@ -14,7 +14,7 @@ Phong cách chỉ dùng làm cảm hứng.
 3. Khi khởi động, `preloadAssets()` nạp GLB. Nếu nạp lỗi thì tự động quay về bản thủ tục.
    Hiện cây trồng (`crop.*`) đã dùng cơ chế này. Môi trường dùng chung cơ chế, chỉ cần nối thêm khi có model.
 
-Quy ước cho model cây trồng: gốc tọa độ ở tâm ô đất, y = 0 tại mặt đất, ô đất 1,8 × 1,8 đơn vị.
+Quy ước cho model cây trồng: gốc tọa độ ở tâm ô đất, y = 0 tại mặt đất, ô đất 1,5 × 1,5 đơn vị.
 Mỗi giai đoạn là một file. Nên dùng vertex color hoặc một atlas texture dùng chung để giữ ít draw call.
 
 ## Danh sách
@@ -23,23 +23,15 @@ Cột “Kích thước”: asset thủ tục không có file. Con số là số
 
 | ID | Asset | Nguồn | Giấy phép | Kích thước | Trạng thái |
 |---|---|---|---|---|---|
-| crop.carrot.s0–s4 | Cà rốt, 5 giai đoạn | Code (`render/crops.ts`) | Code của dự án | 351 – 14.337 đỉnh / ô | Placeholder |
-| crop.wheat.s0–s4 | Lúa mì, 5 giai đoạn | Code (`render/crops.ts`) | Code của dự án | 756 – 20.412 đỉnh / ô | Placeholder |
-| crop.tomato.s0–s4 | Cà chua, 5 giai đoạn | Code (`render/crops.ts`) | Code của dự án | 234 – 8.526 đỉnh / ô | Placeholder |
-| plot.frame | Khung gỗ ô đất | Code (`render/plots.ts`) | Code của dự án | 192 đỉnh | Placeholder |
-| plot.soil | Đất có luống / rãnh | Code (`render/plots.ts`) | Code của dự án | 1.705 đỉnh | Placeholder |
-| plot.cover | Cỏ / bụi phủ ô khóa (3 biến thể) | Code (`render/plots.ts`) | Code của dự án | ~1.660 đỉnh | Placeholder |
-| env.tree.* | Cây tròn, cây có quả, cây hoa hồng, cây thông | Code (`render/environment.ts`) | Code của dự án | 123–252 đỉnh tán (thin instances) | Placeholder |
-| env.bush | Bụi cây (4 biến thể) | Code | Code của dự án | ~168 đỉnh | Placeholder |
-| env.rock | Đá | Code | Code của dự án | 54 đỉnh | Placeholder |
-| env.flowers | Cụm hoa (5 màu) | Code | Code của dự án | 288 đỉnh | Placeholder |
-| env.grass | Bụi cỏ | Code | Code của dự án | 135 đỉnh × 700–3.600 instance | Placeholder |
-| env.barn | Nhà kho | Code | Code của dự án | 629 đỉnh | Placeholder |
-| env.windmill | Cối xay gió (cánh quay) | Code | Code của dự án | 752 đỉnh | Placeholder |
-| env.pond | Hồ nước, lá súng, sậy | Code (`render/terrain.ts`) | Code của dự án | ~2.200 đỉnh | Placeholder |
-| env.props | Rơm, thùng gỗ, biển, máng nước | Code | Code của dự án | 402 đỉnh | Placeholder |
+| crop.carrot.s0–s4 | Cà rốt, 5 giai đoạn (3 củ / ô) | Code (`render/crops.ts`) | Code của dự án | 234 – 2.901 đỉnh / ô | Placeholder |
+| crop.wheat.s0–s4 | Lúa mì, 5 giai đoạn (7 khóm / ô) | Code (`render/crops.ts`) | Code của dự án | 378 – 2.520 đỉnh / ô | Placeholder |
+| crop.tomato.s0–s4 | Cà chua, 5 giai đoạn (1 bụi lớn / ô) | Code (`render/crops.ts`) | Code của dự án | 156 – 2.413 đỉnh / ô | Placeholder |
+| tile.soil | Ô đất (tấm đất bo tròn) | Code (`render/tiles.ts`) | Code của dự án | ~730 đỉnh | Placeholder |
+| tile.grass | Ô khóa (tấm cỏ, 3 biến thể) | Code (`render/tiles.ts`) | Code của dự án | 861 đỉnh | Placeholder |
+| env.island | Đảo nổi cho mỗi mảnh 4×4 (mặt cỏ + vách đất) | Code (`render/world.ts`) | Code của dự án | 1.369 + 505 đỉnh / đảo | Placeholder |
+| env.bush / rock / flowers / grass | Bụi, đá, hoa, cỏ viền đảo (thin instances) | Code (`render/kits.ts`) | Code của dự án | 54–288 đỉnh mỗi mẫu | Placeholder |
+| env.clouds | Mây trôi + đảo nhỏ có cây ở xa | Code (`render/world.ts`) | Code của dự án | vài nghìn đỉnh | Placeholder |
 | env.butterfly | Bươm bướm | Code | Code của dự án | 4 đỉnh / cánh | Placeholder |
-| terrain | Địa hình đồi | Code | Code của dự án | 22.801 đỉnh | Placeholder |
 | tex.* | Texture cỏ, đất, gỗ, đường, nước, hạt sáng | Vẽ bằng Canvas lúc chạy (`render/textures.ts`) | Code của dự án | 64–512 px, không có file | Placeholder |
 | ui.icons | Icon nông sản, xu, túi hạt, kho… | SVG viết tay (`src/ui/icons.tsx`) | Code của dự án | Nằm trong JS bundle | Bản demo dùng được |
 | audio.sfx | Âm thanh thu hoạch, tiền xu, mở khóa, chim hót | Tổng hợp bằng WebAudio (`game/audio/sfx.ts`) | Code của dự án | Không có file | Placeholder |
@@ -52,7 +44,7 @@ Nguồn nên cân nhắc (cần kiểm tra lại giấy phép từng gói trư�
 Quaternius và Kenney (CC0), Synty POLYGON Farm (giấy phép thương mại trả phí), hoặc thuê họa sĩ 3D làm riêng (khuyến nghị để có bộ nhận diện riêng).
 
 - 3 loại cây × 5 giai đoạn (15 model), có hand-painted texture hoặc gradient atlas.
-- Ô đất: khung, đất, hiệu ứng mở khóa.
-- Bộ môi trường: 4–6 loại cây, bụi, đá, hoa, hàng rào, nhà kho, cối xay.
+- Ô đất, ô cỏ khóa, đảo nổi, biển “Mở khóa”.
+- Bộ trang trí: bụi, đá, hoa, mây, đảo nhỏ phía xa.
 - Âm thanh thu, bán, mở khóa, nhạc nền. Nguồn: thu âm riêng, hoặc thư viện có giấy phép thương mại.
 - Icon UI do họa sĩ vẽ lại theo bộ nhận diện chính thức.

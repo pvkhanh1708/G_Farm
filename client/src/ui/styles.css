@@ -85,9 +85,22 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 @keyframes bumpBar { 40% { transform: scale(1.08); } }
 @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
+/* bulk actions + overview */
+.round-btn.mid { width: 72px; height: 72px; }
+.round-btn.mid svg { margin-top: -8px; }
+.round-btn.bulk { align-self: flex-end; }
+.round-btn.bulk .round-btn-label { font-size: 13px; padding: 0 7px; }
+.round-btn.harvest { background: radial-gradient(circle at 50% 30%, #fffbe6, #ffd977); border-color: #a86d0c; box-shadow: inset 0 -5px 0 rgba(160, 100, 10, .25), 0 5px 0 #6e4606, 0 10px 20px rgba(0,0,0,.28); }
+.round-btn.harvest .round-btn-label { background: #f2a516; border-color: #a86d0c; }
+.round-btn.harvest.glow { animation: glow 1.2s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: inset 0 -5px 0 rgba(160, 100, 10, .25), 0 5px 0 #6e4606, 0 0 0 8px rgba(255, 220, 90, .55), 0 10px 20px rgba(0,0,0,.28); } }
+.round-btn.plant { background: radial-gradient(circle at 50% 30%, #f3ffe2, #b9eb7c); border-color: var(--green-dark); box-shadow: inset 0 -5px 0 rgba(40, 110, 10, .25), 0 5px 0 #1f4f0c, 0 10px 20px rgba(0,0,0,.28); }
+.count-badge.green { background: linear-gradient(#8fe05a, #4c9f22); }
+.zoom-btn { position: absolute; right: 14px; top: calc(74px + var(--safe-top)); }
+
 /* ------------------------------------------------------------ hint & tool banner */
 .hint {
-  position: absolute; left: 14px; bottom: calc(26px + var(--safe-bottom)); max-width: min(360px, calc(100vw - 250px));
+  position: absolute; left: 14px; bottom: calc(26px + var(--safe-bottom)); max-width: min(340px, calc(100vw - 440px));
   display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 24px;
   background: rgba(255, 250, 235, .95); border: 3px solid var(--wood); box-shadow: 0 4px 0 var(--wood-dark), 0 8px 18px rgba(0,0,0,.2);
   font-weight: 700; font-size: 16px; line-height: 1.2; animation: slideUp .35s cubic-bezier(.2, 1.4, .4, 1); pointer-events: none;
@@ -143,6 +156,23 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .plot-overlays.dense .plot-anchor > * { scale: .78; }
 .plot-overlays.dense .tag-grow small { display: none; }
 .plot-overlays.dense .bar { width: 40px; }
+
+/* wooden sign on the next tile to buy (like a field marker) */
+.sign {
+  display: flex; flex-direction: column; align-items: center; padding: 3px 12px 4px; border-radius: 10px; position: relative;
+  background: linear-gradient(#d9a066, #b57a42); border: 2.5px solid #6e4220; color: #fff;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 3px 0 #4e2d12, 0 6px 12px rgba(0,0,0,.25);
+  text-shadow: 0 1.5px 0 rgba(60, 30, 10, .6); white-space: nowrap; line-height: 1.1;
+}
+.sign::after { content: ''; position: absolute; left: 50%; bottom: -16px; width: 7px; height: 14px; margin-left: -3.5px; background: #7a4a24; border-radius: 0 0 3px 3px; z-index: -1; }
+.sign-title { display: flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 800; }
+.sign-price { display: flex; align-items: center; gap: 3px; font-size: 16px; font-weight: 800; color: #fff3b0; }
+.sign.affordable { background: linear-gradient(#8fe05a, #4c9f22); border-color: var(--green-dark); animation: nudge 1.6s ease-in-out infinite; }
+.tag-mini { display: flex; align-items: center; gap: 3px; padding: 2px 6px 2px 3px; border-radius: 12px; background: rgba(255, 252, 240, .92); border: 2px solid var(--wood); box-shadow: 0 2px 0 var(--wood-dark); }
+.tag-mini .bar { width: 38px; height: 8px; }
+.parcel-tag { display: flex; flex-direction: column; align-items: center; padding: 6px 16px; border-radius: 16px; background: rgba(60, 40, 20, .78); color: #fff; border: 2.5px solid rgba(255,255,255,.7); white-space: nowrap; }
+.parcel-tag b { font-size: 18px; }
+.parcel-tag small { font-size: 12px; font-weight: 600; opacity: .9; }
 
 /* ------------------------------------------------------------ fx layer */
 .fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
@@ -260,7 +290,7 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 
 /* ------------------------------------------------------------ misc */
 .fps { position: absolute; left: 14px; top: calc(80px + var(--safe-top)); padding: 2px 10px; border-radius: 10px; background: rgba(0,0,0,.55); color: #b9ff8a; font: 700 13px/1.4 ui-monospace, monospace; }
-.build-tag { position: absolute; right: 14px; top: calc(66px + var(--safe-top)); font-size: 11px; font-weight: 700; color: rgba(40, 60, 20, .65); background: rgba(255,255,255,.45); padding: 0 8px; border-radius: 8px; pointer-events: none; }
+.build-tag { position: absolute; right: 74px; top: calc(80px + var(--safe-top)); font-size: 11px; font-weight: 700; color: rgba(40, 60, 20, .65); background: rgba(255,255,255,.45); padding: 0 8px; border-radius: 8px; pointer-events: none; }
 .showcase-legend { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); padding: 6px 16px; border-radius: 16px; background: rgba(255, 250, 235, .95); border: 3px solid var(--wood); font-weight: 800; }
 
 .loading {
@@ -298,8 +328,11 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .round-btn.big { width: 74px; height: 74px; }
   .round-btn.big svg { width: 42px; height: 42px; }
   .round-btn-label { font-size: 14px; }
-  .bottombar { right: 12px; gap: 12px; }
-  .hint { left: 10px; right: 190px; max-width: none; font-size: 13px; padding: 6px 10px 6px 6px; bottom: calc(110px + var(--safe-bottom)); right: 10px; }
+  .bottombar { right: 8px; gap: 8px; }
+  .round-btn.mid { width: 58px; height: 58px; }
+  .round-btn.mid svg { width: 32px; height: 32px; }
+  .round-btn.bulk .round-btn-label { font-size: 11px; }
+  .hint { left: 10px; max-width: none; font-size: 13px; padding: 6px 10px 6px 6px; bottom: calc(110px + var(--safe-bottom)); right: 10px; }
   .hint-avatar { width: 34px; height: 34px; }
   .seed-grid { gap: 6px; }
   .seed-art { width: 70px; height: 70px; }

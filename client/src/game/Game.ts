@@ -7,7 +7,6 @@ import {
   HemisphericLight,
   ImageProcessingConfiguration,
   Matrix,
-  PBRMaterial,
   Scene,
   SceneInstrumentation,
   ShadowGenerator,
@@ -16,26 +15,24 @@ import {
 } from '@babylonjs/core';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, PLOT_SIZE, PLOT_SPACING, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, tileId, tileWorldPos } from './config';
+import { CROP_ORDER, CropId, ISLAND_SIZE, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { CropLibrary } from './render/crops';
-import { buildEnvironment, Environment } from './render/environment';
 import { Fx } from './render/fx';
 import { hex } from './render/geometry';
 import { MaterialLibrary, toonMaterial, WindPlugin } from './render/materials';
-import { buildPlotTemplates, PlotTemplates, PlotView } from './render/plots';
-import { buildPaths, buildPond, buildTerrain, Pond, tileBlocked } from './render/terrain';
-import { grainTexture, grassTexture, pathTexture, soilTexture, woodTexture } from './render/textures';
+import { buildTileTemplates, TileContext, TileTemplates, TileView } from './render/tiles';
+import { grainTexture, grassTexture, soilTexture } from './render/textures';
 import { Tweens } from './render/tween';
+import { World } from './render/world';
 import { growthProgress, store } from './state/store';
 
-export type PlotKind = 'locked' | 'empty' | 'growing';
+export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
 
 export type GameEvent =
-  | { type: 'plotTap'; id: string; kind: PlotKind }
-  | { type: 'barnTap' }
-  | { type: 'harvested'; id: string; crop: CropId; amount: number; x: number; y: number }
-  | { type: 'ready'; id: string };
+  | { type: 'tileTap'; g: number; kind: TileKind }
+  | { type: 'harvested'; g: number; crop: CropId; amount: number; x: number; y: number; bulk: boolean }
+  | { type: 'ready'; g: number };
 
 export interface ScreenPoint {
   x: number;
@@ -55,19 +52,19 @@ export class Game {
   private fx!: Fx;
   private tweens!: Tweens;
   private crops!: CropLibrary;
-  private templates!: PlotTemplates;
-  private env!: Environment;
-  private pond!: Pond;
-  private plots = new Map<string, PlotView>();
-  private plotCtx!: ConstructorParameters<typeof PlotView>[0];
-  private farmKey = '';
+  private templates!: TileTemplates;
+  private world!: World;
+  private tiles = new Map<number, TileView>();
+  private tileCtx!: TileContext;
+  private parcels = 0;
   private listeners = new Set<(e: GameEvent) => void>();
   private frameListeners = new Set<() => void>();
   private unsubStore: (() => void) | null = null;
   private time = 0;
   private syncTimer = 0;
-  private readySet = new Set<string>();
-  private hovered: string | null = null;
+  private readySet = new Set<number>();
+  private hovered: number | null = null;
+  private overview = false;
   quality: Quality;
 
   private constructor(private canvas: HTMLCanvasElement, quality: Quality, private showcase: boolean) {
@@ -90,41 +87,39 @@ export class Game {
     const scene = this.scene;
     const preset = QUALITY_PRESETS[this.quality];
     progress(0.05, 'Chuẩn bị ánh sáng…');
-    scene.clearColor = Color4.FromHexString('#cdebc9ff');
+    const sky = '#a9daf3';
+    scene.clearColor = Color4.FromHexString(`${sky}ff`);
     scene.fogMode = Scene.FOGMODE_LINEAR;
-    scene.fogStart = 42;
-    scene.fogEnd = 95;
-    scene.fogColor = hex('#cdebc9');
+    scene.fogColor = hex(sky);
     scene.skipPointerMovePicking = true;
-    scene.skipFrustumClipping = false;
 
     const ip = scene.imageProcessingConfiguration;
     ip.toneMappingEnabled = false;
-    ip.contrast = 1.18;
-    ip.exposure = 0.95;
+    ip.contrast = 1.15;
+    ip.exposure = 1.0;
     ip.colorCurvesEnabled = true;
     ip.colorCurves = new ColorCurves();
-    ip.colorCurves.globalSaturation = 6;
+    ip.colorCurves.globalSaturation = 8;
     ip.vignetteEnabled = true;
-    ip.vignetteWeight = 1.3;
-    ip.vignetteStretch = 0.4;
-    ip.vignetteColor = new Color4(0.22, 0.3, 0.12, 0);
+    ip.vignetteWeight = 0.9;
+    ip.vignetteStretch = 0.5;
+    ip.vignetteColor = new Color4(0.2, 0.32, 0.45, 0);
     ip.vignetteBlendMode = ImageProcessingConfiguration.VIGNETTEMODE_MULTIPLY;
 
     const hemi = new HemisphericLight('hemi', new Vector3(0.15, 1, -0.1), scene);
-    hemi.intensity = 0.62;
-    hemi.diffuse = hex('#e4f1ff');
-    hemi.groundColor = hex('#8fae6a');
+    hemi.intensity = 0.7;
+    hemi.diffuse = hex('#e8f4ff');
+    hemi.groundColor = hex('#a8c48c');
     hemi.specular = Color3.Black();
 
     this.sun = new DirectionalLight('sun', new Vector3(-0.62, -1, 0.42).normalize(), scene);
-    this.sun.intensity = 2.25;
+    this.sun.intensity = 2.2;
     this.sun.diffuse = hex('#fff0d2');
     this.sun.specular = hex('#fff6e0');
     this.sun.autoUpdateExtends = false;
     this.sun.shadowFrustumSize = 40;
     this.sun.shadowMinZ = 1;
-    this.sun.shadowMaxZ = 90;
+    this.sun.shadowMaxZ = 120;
 
     this.rig = new CameraRig(scene, this.canvas);
     this.rig.onTap = (x, y) => this.handleTap(x, y);
@@ -137,20 +132,16 @@ export class Game {
     progress(0.15, 'Vẽ chất liệu…');
     const grain = grainTexture(scene);
     const grassTex = grassTexture(scene);
+    grassTex.uScale = grassTex.vScale = 3;
     const soilTex = soilTexture(scene);
-    soilTex.uScale = soilTex.vScale = 1.6;
-    const pathTex = pathTexture(scene);
-    const path = toonMaterial(scene, 'path', { texture: pathTex, roughness: 0.95 });
-    path.useAlphaFromAlbedoTexture = true;
-    path.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
-    path.zOffset = -2;
+    soilTex.uScale = soilTex.vScale = 1.2;
+    const crops = toonMaterial(scene, 'crops', { doubleSided: true, wind: 0.16, roughness: 0.5 });
+    crops.specularIntensity = 0.45;
     this.mats = {
       props: toonMaterial(scene, 'props', { texture: grain }),
-      wood: toonMaterial(scene, 'wood', { texture: woodTexture(scene) }),
       soil: toonMaterial(scene, 'soil', { texture: soilTex, roughness: 0.95 }),
       grassGround: toonMaterial(scene, 'ground', { texture: grassTex, roughness: 0.95 }),
-      path,
-      crops: toonMaterial(scene, 'crops', { doubleSided: true, wind: 0.16, roughness: 0.7 }),
+      crops,
       foliage: toonMaterial(scene, 'foliage', { wind: 0.0045, roughness: 0.85 }),
       grass: toonMaterial(scene, 'grass', { doubleSided: true, wind: 0.5, roughness: 0.85 }),
       cover: toonMaterial(scene, 'cover', { doubleSided: true, wind: 0.25, texture: grain }),
@@ -160,31 +151,25 @@ export class Game {
     progress(0.25, 'Nạp mô hình…');
     await preloadAssets(scene);
 
-    progress(0.35, 'Tạo địa hình…');
-    buildTerrain(scene, this.mats);
-    buildPaths(scene, this.mats);
-    this.pond = buildPond(scene, this.mats);
+    progress(0.4, 'Dựng đảo nông trại…');
+    this.world = new World(scene, this.mats, preset);
     await tick();
 
-    progress(0.5, 'Trồng cây xanh…');
-    this.env = buildEnvironment(scene, this.mats, preset);
-    await tick();
-
-    progress(0.7, 'Ươm cây trồng…');
+    progress(0.65, 'Ươm cây trồng…');
     this.crops = new CropLibrary(scene, this.mats.crops);
     this.crops.warm();
-    this.templates = buildPlotTemplates(scene, this.mats);
+    this.templates = buildTileTemplates(scene, this.mats);
     this.templates.ring.setEnabled(false);
     await tick();
 
     progress(0.85, 'Dọn ô đất…');
     this.rebuildShadows(preset.shadowMapSize, preset.shadowPcfQuality);
-    this.plotCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
+    this.tileCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
     if (this.showcase) this.buildShowcase();
     else {
-      store.setBlocker(tileBlocked);
-      this.syncPlots(false);
-      this.unsubStore = store.subscribe(() => this.syncPlots(true));
+      this.syncTiles(false);
+      this.focusCurrent(true);
+      this.unsubStore = store.subscribe(() => this.syncTiles(true));
       this.fx.ambientMotes(new Vector3(0, 0, 0));
     }
 
@@ -198,13 +183,14 @@ export class Game {
 
   private buildShowcase() {
     // all crops x all stages side by side, for art review (?showcase)
+    this.world.setParcels(1);
     CROP_ORDER.forEach((crop, row) => {
       for (let s = 0; s < STAGE_COUNT; s++) {
-        const v = new PlotView(this.plotCtx, `show-${crop}-${s}`, (s - 2) * PLOT_SPACING, (1 - row) * PLOT_SPACING);
+        const v = new TileView(this.tileCtx, 1000 + row * 10 + s, (s - 2) * 1.55, (1 - row) * 1.9);
         v.forceStage(crop, s);
       }
     });
-    this.rig.focus(new Vector3(0, 0, 0), 14, true);
+    this.rig.focus(new Vector3(0, 0, 0), 12, true);
   }
 
   private rebuildShadows(size: number, q: 'low' | 'medium' | 'high') {
@@ -214,10 +200,10 @@ export class Game {
     sg.filteringQuality = q === 'high' ? ShadowGenerator.QUALITY_HIGH : q === 'medium' ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
     sg.bias = 0.0015;
     sg.normalBias = 0.015;
-    sg.setDarkness(0.1);
+    sg.setDarkness(0.15);
     this.shadowGen = sg;
-    this.env?.attachShadows(sg);
-    this.plots.forEach((p) => p.reattachShadows(sg));
+    this.world?.attachShadows(sg);
+    this.tiles.forEach((t) => t.reattachShadows(sg));
   }
 
   // ---------------------------------------------------------------- loop
@@ -226,60 +212,88 @@ export class Game {
     const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.1);
     this.time += dt;
     WindPlugin.time = this.time;
-    this.env.update(this.time, dt);
-    this.pond.update(this.time);
-    // shadow frustum follows the camera target
-    const t = this.rig.target;
-    this.sun.position.copyFrom(t.subtract(this.sun.direction.scale(40)));
-    // keep the haze beyond the farm whatever the zoom level
+    const target = this.rig.target;
     const r = this.rig.camera.radius;
-    this.scene.fogStart = r + 18;
-    this.scene.fogEnd = r + 70;
+    this.world.setFocus(target);
+    this.world.update(this.time, dt);
+    // shadows and haze follow the camera so zooming out to the overview still works
+    this.sun.position.copyFrom(target.subtract(this.sun.direction.scale(50)));
+    const frustum = Math.round(Math.max(26, Math.min(90, r * 1.5)) / 4) * 4;
+    if (this.sun.shadowFrustumSize !== frustum) this.sun.shadowFrustumSize = frustum;
+    this.scene.fogStart = r + 20;
+    this.scene.fogEnd = r + 110;
     this.syncTimer += dt;
     if (this.syncTimer > 0.2 && !this.showcase) {
       this.syncTimer = 0;
-      this.syncPlots(true);
+      this.syncTiles(true);
     }
     const ring = this.templates.ring;
-    if (ring.isEnabled()) {
-      (ring.material as StandardMaterial).alpha = 0.55 + Math.sin(this.time * 6) * 0.3;
+    if (ring.isEnabled()) (ring.material as StandardMaterial).alpha = 0.55 + Math.sin(this.time * 6) * 0.3;
+  }
+
+  private syncTiles(animate: boolean) {
+    const tiles = store.tiles();
+    const parcels = store.parcelCount();
+    if (parcels !== this.parcels) {
+      this.parcels = parcels;
+      this.world.setParcels(parcels);
+      this.updateBounds();
+    }
+    // drop views beyond the current tile set (e.g. after a reset)
+    for (const [g, v] of this.tiles)
+      if (g >= tiles.length) {
+        v.dispose();
+        this.tiles.delete(g);
+      }
+    const now = Date.now();
+    for (const t of tiles) {
+      let v = this.tiles.get(t.g);
+      if (!v) {
+        const { x, z } = tileWorldPos(t.g);
+        v = new TileView(this.tileCtx, t.g, x, z);
+        this.tiles.set(t.g, v);
+      }
+      v.sync(t, now, animate);
+      const ready = !!t.crop && growthProgress(t, now) >= 1;
+      if (ready && !this.readySet.has(t.g)) {
+        this.readySet.add(t.g);
+        if (animate) {
+          sfx.grow();
+          this.emit({ type: 'ready', g: t.g });
+        }
+      } else if (!ready) this.readySet.delete(t.g);
     }
   }
 
-  private syncPlots(animate: boolean) {
-    const tiles = store.tiles();
-    const now = Date.now();
-    const key = tiles.map((t) => t.id).sort().join('|');
-    if (key !== this.farmKey) {
-      // farm shape changed: add/remove tile views, clear props, widen camera bounds
-      this.farmKey = key;
-      const live = new Set(tiles.map((t) => t.id));
-      for (const [id, v] of this.plots)
-        if (!live.has(id)) {
-          v.dispose();
-          this.plots.delete(id);
-        }
-      for (const t of tiles) {
-        if (this.plots.has(t.id)) continue;
-        const { x, z } = tileWorldPos(t.col, t.row);
-        this.plots.set(t.id, new PlotView(this.plotCtx, t.id, x, z));
-      }
-      this.env.applyClearing(tiles);
-      const xs = tiles.map((t) => t.col * PLOT_SPACING);
-      const zs = tiles.map((t) => t.row * PLOT_SPACING);
-      this.rig.setBounds(Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs));
-    }
-    for (const p of tiles) {
-      this.plots.get(p.id)?.sync(p, now, animate);
-      const ready = !!p.crop && growthProgress(p, now) >= 1;
-      if (ready && !this.readySet.has(p.id)) {
-        this.readySet.add(p.id);
-        if (animate) {
-          sfx.grow();
-          this.emit({ type: 'ready', id: p.id });
-        }
-      } else if (!ready) this.readySet.delete(p.id);
-    }
+  private updateBounds() {
+    const centers = Array.from({ length: this.parcels + 1 }, (_, k) => parcelCenter(k));
+    const xs = centers.map((c) => c.x), zs = centers.map((c) => c.z);
+    const h = ISLAND_SIZE / 2;
+    this.rig.setBounds(Math.min(...xs) - h, Math.max(...xs) + h, Math.min(...zs) - h, Math.max(...zs) + h);
+  }
+
+  /** Centre on the parcel being filled. */
+  focusCurrent(immediate = false) {
+    const k = Math.min(this.parcels - 1, Math.floor(store.getState().unlocked / TILES_PER_PARCEL));
+    const c = parcelCenter(Math.max(0, k));
+    this.overview = false;
+    this.rig.focus(new Vector3(c.x, 0, c.z - 0.6), this.rig.fitRadius(ISLAND_SIZE * 1.45), immediate);
+  }
+
+  /** Zoom out to see every parcel at once. */
+  focusOverview() {
+    const centers = Array.from({ length: this.parcels + 1 }, (_, k) => parcelCenter(k));
+    const xs = centers.map((c) => c.x), zs = centers.map((c) => c.z);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+    const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) + ISLAND_SIZE;
+    this.overview = true;
+    this.rig.focus(new Vector3(cx, 0, cz), this.rig.fitRadius(span * 1.45), false);
+  }
+
+  toggleOverview() {
+    if (this.overview) this.focusCurrent();
+    else this.focusOverview();
+    return this.overview;
   }
 
   private onResize = () => {
@@ -289,93 +303,96 @@ export class Game {
 
   // ---------------------------------------------------------------- input
 
-  private rayToGround(x: number, y: number) {
+  tileAt(x: number, y: number): number | null {
     const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.rig.camera);
-    if (Math.abs(ray.direction.y) < 1e-4) return { ray, point: null };
-    const t = (SOIL_TOP - ray.origin.y) / ray.direction.y;
-    return { ray, point: ray.origin.add(ray.direction.scale(t)) };
-  }
-
-  plotAt(x: number, y: number): string | null {
-    const { point } = this.rayToGround(x, y);
-    if (!point) return null;
-    const col = Math.round(point.x / PLOT_SPACING);
-    const row = Math.round(point.z / PLOT_SPACING);
-    const { x: cx, z: cz } = tileWorldPos(col, row);
-    if (Math.abs(point.x - cx) > PLOT_SIZE / 2 + 0.08 || Math.abs(point.z - cz) > PLOT_SIZE / 2 + 0.08) return null;
-    const id = tileId(col, row);
-    return this.plots.has(id) ? id : null;
+    if (Math.abs(ray.direction.y) < 1e-4) return null;
+    const t = (SOIL_TOP * 0.5 - ray.origin.y) / ray.direction.y;
+    const p = ray.origin.add(ray.direction.scale(t));
+    const h = TILE_SIZE / 2 + 0.04;
+    for (const [g, v] of this.tiles) if (Math.abs(p.x - v.center.x) <= h && Math.abs(p.z - v.center.z) <= h) return g;
+    return null;
   }
 
   private handleHover(x: number, y: number) {
-    const idx = this.showcase ? null : this.plotAt(x, y);
-    if (idx === this.hovered) return;
-    this.hovered = idx;
-    this.canvas.style.cursor = idx !== null ? 'pointer' : 'grab';
-    this.showRing(idx);
+    const g = this.showcase ? null : this.tileAt(x, y);
+    if (g === this.hovered) return;
+    this.hovered = g;
+    this.canvas.style.cursor = g !== null ? 'pointer' : 'grab';
+    this.showRing(g);
   }
 
-  private showRing(id: string | null) {
+  private showRing(g: number | null) {
     const ring = this.templates.ring;
-    const v = id === null ? undefined : this.plots.get(id);
+    const v = g === null ? undefined : this.tiles.get(g);
     if (!v) return ring.setEnabled(false);
-    const c = v.center;
-    ring.position.set(c.x, c.y + 0.12, c.z);
+    ring.position.set(v.center.x, v.center.y + 0.04, v.center.z);
     ring.setEnabled(true);
   }
 
   private handleTap(x: number, y: number) {
     sfx.resume();
     if (this.showcase) return;
-    const idx = this.plotAt(x, y);
-    if (idx === null) {
-      const { ray } = this.rayToGround(x, y);
-      const hit = this.scene.pickWithRay(ray, (m) => m === this.env.barn);
-      if (hit?.hit) {
-        sfx.tap();
-        this.emit({ type: 'barnTap' });
-      }
-      return;
-    }
-    const view = this.plots.get(idx)!;
-    const st = store.plot(idx);
+    const g = this.tileAt(x, y);
+    if (g === null) return;
+    const view = this.tiles.get(g)!;
+    const st = store.tile(g);
     if (view.isBusy || !st) return;
-    this.showRing(idx);
+    this.showRing(g);
     if (this.hovered === null) this.tweens.wait(0.6, () => this.hovered === null && this.showRing(null));
-    if (!st.unlocked) this.emit({ type: 'plotTap', id: idx, kind: 'locked' });
-    else if (!st.crop) this.emit({ type: 'plotTap', id: idx, kind: 'empty' });
-    else if (growthProgress(st) >= 1) this.harvest(idx);
+    if (!st.unlocked) this.emit({ type: 'tileTap', g, kind: st.next ? 'next' : 'locked' });
+    else if (!st.crop) this.emit({ type: 'tileTap', g, kind: 'empty' });
+    else if (growthProgress(st) >= 1) this.harvest(g);
     else {
       view.wiggle();
       sfx.tap();
-      this.emit({ type: 'plotTap', id: idx, kind: 'growing' });
+      this.emit({ type: 'tileTap', g, kind: 'growing' });
     }
   }
 
   // ---------------------------------------------------------------- actions
 
-  plant(id: string, crop: CropId) {
-    const res = store.plant(id, crop);
+  plant(g: number, crop: CropId) {
+    const res = store.plant(g, crop);
     if (res.ok) sfx.plant();
     else sfx.error();
     return res;
   }
 
-  harvest(id: string) {
-    const view = this.plots.get(id);
-    const st = store.plot(id);
-    if (!view || view.isBusy || !st?.crop || growthProgress(st) < 1) return;
-    sfx.harvest();
-    view.playHarvest(() => {
-      const res = store.harvest(id);
-      if (!res.ok) return;
-      const p = this.project(view.center.add(new Vector3(0, 0.8, 0)));
-      this.emit({ type: 'harvested', id, crop: res.value.crop, amount: res.value.amount, x: p.x, y: p.y });
-    });
+  /** Sow one crop on every empty tile the player can afford. */
+  plantAll(crop: CropId) {
+    const res = store.plantAll(crop);
+    if (res.ok) sfx.plant();
+    else sfx.error();
+    return res;
   }
 
-  unlock(id: string) {
-    const res = store.unlock(id);
+  harvest(g: number, bulk = false) {
+    const view = this.tiles.get(g);
+    const st = store.tile(g);
+    if (!view || view.isBusy || !st?.crop || growthProgress(st) < 1) return false;
+    if (!bulk) sfx.harvest();
+    view.playHarvest(() => {
+      const res = store.harvest(g);
+      if (!res.ok) return;
+      if (bulk) sfx.collect();
+      const p = this.project(view.center.add(new Vector3(0, 0.8, 0)));
+      this.emit({ type: 'harvested', g, crop: res.value.crop, amount: res.value.amount, x: p.x, y: p.y, bulk });
+    });
+    return true;
+  }
+
+  /** Harvest every ripe tile in a quick ripple. Returns how many were started. */
+  harvestAll() {
+    const now = Date.now();
+    const ready = store.tiles().filter((t) => t.crop && growthProgress(t, now) >= 1).map((t) => t.g);
+    if (!ready.length) return 0;
+    sfx.harvest();
+    ready.forEach((g, i) => this.tweens.wait(i * 0.07, () => this.harvest(g, true)));
+    return ready.length;
+  }
+
+  unlockNext() {
+    const res = store.unlockNext();
     if (res.ok) sfx.unlock();
     else sfx.error();
     return res;
@@ -404,10 +421,19 @@ export class Game {
     return { x: p.x, y: p.y, visible: p.z > 0 && p.z < 1 };
   }
 
-  plotAnchor(id: string, height = 1.05): ScreenPoint {
-    const v = this.plots.get(id);
+  tileAnchor(g: number, height = 1.05): ScreenPoint {
+    const v = this.tiles.get(g);
     if (!v) return { x: 0, y: 0, visible: false };
     return this.project(v.center.add(new Vector3(0, height, 0)));
+  }
+
+  parcelAnchor(k: number, height = 0.6): ScreenPoint {
+    const c = parcelCenter(k);
+    return this.project(new Vector3(c.x, height, c.z));
+  }
+
+  get cameraRadius() {
+    return this.rig.camera.radius;
   }
 
   get fps() {
@@ -419,7 +445,7 @@ export class Game {
     this.quality = q;
     this.engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, p.maxPixelRatio));
     this.fx.scale = p.particleScale;
-    this.env.applyQuality(p);
+    this.world.applyQuality(p);
     this.rebuildShadows(p.shadowMapSize, p.shadowPcfQuality);
   }
 
