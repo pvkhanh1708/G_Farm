@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { sfx } from './game/audio/sfx';
-import { CROP_ORDER, CROPS, CropId, Quality, UNLOCK_COSTS } from './game/config';
+import { CROP_ORDER, CROPS, CropId, Quality } from './game/config';
 import { Game } from './game/Game';
 import { GameState, growthProgress, store } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
@@ -9,7 +9,7 @@ import { SproutIcon } from './ui/icons';
 import { PlotOverlays } from './ui/PlotOverlays';
 import { Inventory, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 
-type Popup = { type: 'shop'; plot: number | null } | { type: 'inventory' } | { type: 'unlock'; plot: number } | { type: 'settings' } | null;
+type Popup = { type: 'shop'; plot: string | null } | { type: 'inventory' } | { type: 'unlock'; plot: string } | { type: 'settings' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -28,9 +28,8 @@ function hintFor(s: GameState, tool: CropId | null): string | null {
   if (tool) return null;
   const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
   const growing = s.plots.some((p) => p.crop);
-  const emptyPlots = s.plots.some((p) => p.unlocked && !p.crop);
-  const locked = s.plots.filter((p) => !p.unlocked).map((p) => UNLOCK_COSTS[p.index]);
-  if (locked.length && s.coins >= Math.min(...locked) && !growing) return 'Bạn đủ xu để mở rộng đất — chạm vào ô cỏ có ổ khóa!';
+  const emptyPlots = s.plots.some((p) => !p.crop);
+  if (store.frontier().length && s.coins >= store.nextUnlockCost() && !growing) return 'Bạn đủ xu để mở rộng đất — chạm vào ô cỏ bên cạnh nông trại!';
   if (emptyPlots && s.coins >= CROPS.carrot.seedPrice) return 'Chạm vào ô đất trống để gieo hạt.';
   if (inv > 0) return 'Mở Kho để bán nông sản lấy xu.';
   if (growing) return 'Cây đang lớn… chờ một chút nhé!';
@@ -64,7 +63,8 @@ export function App() {
     Game.create(canvasRef.current!, prefs.quality, (k, label) => setProgress({ k, label }), { showcase }).then((created) => {
       if (cancelled) return created.dispose();
       g = created;
-      (window as unknown as { __game: Game }).__game = created;
+      // debug handles for the screenshot/flow scripts
+      Object.assign(window, import.meta.env.DEV ? { __game: created, __store: store } : { __game: created });
       setGame(created);
     });
     return () => {
@@ -76,7 +76,7 @@ export function App() {
   }, []);
 
   const plantAt = useCallback(
-    (plot: number, crop: CropId) => {
+    (plot: string, crop: CropId) => {
       if (!game) return false;
       const res = game.plant(plot, crop);
       if (!res.ok) {
@@ -96,18 +96,18 @@ export function App() {
       if (e.type === 'plotTap') {
         if (e.kind === 'locked') {
           sfx.open();
-          setPopup({ type: 'unlock', plot: e.index });
+          setPopup({ type: 'unlock', plot: e.id });
         } else if (e.kind === 'empty') {
           const t = toolRef.current;
           if (t) {
-            if (!plantAt(e.index, t) && store.getState().coins < CROPS[t].seedPrice) setTool(null);
+            if (!plantAt(e.id, t) && store.getState().coins < CROPS[t].seedPrice) setTool(null);
           } else {
             sfx.open();
-            setPopup({ type: 'shop', plot: e.index });
+            setPopup({ type: 'shop', plot: e.id });
           }
         } else {
-          const st = store.getState().plots[e.index];
-          if (st.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
+          const st = store.plot(e.id);
+          if (st?.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
         }
       } else if (e.type === 'barnTap') {
         sfx.open();
@@ -177,7 +177,6 @@ export function App() {
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
       {popup?.type === 'unlock' && (
         <UnlockPopup
-          plot={popup.plot}
           onClose={close}
           onConfirm={() => {
             const res = game!.unlock(popup.plot);

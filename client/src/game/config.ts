@@ -22,20 +22,24 @@ export const CROPS: Record<CropId, CropDef> = {
 
 export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato'];
 
-export const GRID_SIZE = 3;
 export const PLOT_SPACING = 2.35;
 export const PLOT_SIZE = 2.0;
 export const SOIL_TOP = 0.2;
 
-/** Unlock price per plot index (row-major, 3x3). 0 = unlocked at start. */
-export const UNLOCK_COSTS = [60, 40, 90, 0, 0, 0, 140, 100, 200];
+/** The farm is an unbounded grid of tiles addressed by (col, row); (0,0) is the centre. */
+export const START_TILES: Array<[number, number]> = [[-1, 0], [0, 0], [1, 0]];
 export const STARTING_COINS = 50;
 
-export function plotWorldPos(index: number): { x: number; z: number } {
-  const col = index % GRID_SIZE;
-  const row = Math.floor(index / GRID_SIZE);
-  const off = (GRID_SIZE - 1) / 2;
-  return { x: (col - off) * PLOT_SPACING, z: (row - off) * PLOT_SPACING };
+export const tileId = (col: number, row: number) => `${col},${row}`;
+
+export function tileWorldPos(col: number, row: number): { x: number; z: number } {
+  return { x: col * PLOT_SPACING, z: row * PLOT_SPACING };
+}
+
+/** Price of the next plot grows with the number already owned. */
+export function unlockCost(unlockedCount: number): number {
+  const extra = Math.max(0, unlockedCount - START_TILES.length);
+  return Math.round((40 * Math.pow(1.15, extra)) / 10) * 10;
 }
 
 export type Quality = 'low' | 'medium' | 'high';

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { CROPS, UNLOCK_COSTS } from '../game/config';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CROPS } from '../game/config';
 import type { Game } from '../game/Game';
-import { growthProgress, PlotState, secondsLeft } from '../game/state/store';
+import { growthProgress, PlotState, secondsLeft, store } from '../game/state/store';
 import { useGameState } from './Hud';
 import { CoinIcon, CropIcon, LockIcon, SickleIcon } from './icons';
 
@@ -14,12 +14,17 @@ function useNow(ms: number) {
   return now;
 }
 
-function Bubble({ plot, now, coins, cheapestLocked }: { plot: PlotState; now: number; coins: number; cheapestLocked: number }) {
+function Bubble({ plot, now, coins, cost }: { plot: PlotState; now: number; coins: number; cost: number }) {
   if (!plot.unlocked) {
-    const cost = UNLOCK_COSTS[plot.index];
-    const affordable = coins >= cost;
+    // every frontier tile costs the same; show the price only once it is affordable
+    if (coins < cost)
+      return (
+        <div className="tag-lock minor">
+          <LockIcon size={20} />
+        </div>
+      );
     return (
-      <div className={`tag-lock ${affordable ? 'affordable' : ''} ${cost === cheapestLocked ? 'next' : 'minor'}`}>
+      <div className="tag-lock affordable">
         <LockIcon size={22} />
         <CoinIcon size={18} />
         <b>{cost}</b>
@@ -54,25 +59,35 @@ function Bubble({ plot, now, coins, cheapestLocked }: { plot: PlotState; now: nu
 export function PlotOverlays({ game }: { game: Game }) {
   const s = useGameState();
   const now = useNow(250);
-  const refs = useRef<Array<HTMLDivElement | null>>([]);
+  const refs = useRef(new Map<string, HTMLDivElement>());
+  // s changes whenever the store does, so the derived tile list stays current
+  const tiles = useMemo(() => store.tiles(), [s]);
   useEffect(() => {
+    const byId = new Map(tiles.map((t) => [t.id, t]));
     return game.onFrame(() => {
-      refs.current.forEach((el, i) => {
-        if (!el) return;
-        const st = s.plots[i];
-        const p = game.plotAnchor(i, st.unlocked ? (st.crop ? 1.25 : 0.6) : 0.75);
+      refs.current.forEach((el, id) => {
+        const st = byId.get(id);
+        if (!st) return;
+        const p = game.plotAnchor(id, st.unlocked ? (st.crop ? 1.25 : 0.6) : 0.45);
         el.style.transform = `translate(${p.x}px, ${p.y}px)`;
         el.style.visibility = p.visible ? 'visible' : 'hidden';
       });
     });
-  }, [game, s.plots]);
-  const lockedCosts = s.plots.filter((p) => !p.unlocked).map((p) => UNLOCK_COSTS[p.index]);
-  const cheapest = lockedCosts.length ? Math.min(...lockedCosts) : -1;
+  }, [game, tiles]);
+  const cost = store.nextUnlockCost();
   return (
-    <div className="plot-overlays">
-      {s.plots.map((p, i) => (
-        <div key={i} className="plot-anchor" ref={(el) => (refs.current[i] = el)}>
-          <Bubble plot={p} now={now} coins={s.coins} cheapestLocked={cheapest} />
+    // big farms: compact tags so the crops stay visible
+    <div className={`plot-overlays ${s.plots.length > 12 ? 'dense' : ''}`}>
+      {tiles.map((p) => (
+        <div
+          key={p.id}
+          className="plot-anchor"
+          ref={(el) => {
+            if (el) refs.current.set(p.id, el);
+            else refs.current.delete(p.id);
+          }}
+        >
+          <Bubble plot={p} now={now} coins={s.coins} cost={cost} />
         </div>
       ))}
     </div>

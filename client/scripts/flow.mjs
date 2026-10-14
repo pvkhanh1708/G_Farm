@@ -20,11 +20,10 @@ page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && e
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => {
   const now = Date.now();
-  const plots = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ index: i, unlocked: [1, 3, 4, 5].includes(i), crop: null, plantedAt: null }));
-  plots[3] = { ...plots[3], crop: 'carrot', plantedAt: now - 60000 };
-  plots[4] = { ...plots[4], crop: 'wheat', plantedAt: now - 120000 };
-  plots[5] = { ...plots[5], crop: 'tomato', plantedAt: now - 30000 };
-  localStorage.setItem('farm-empire:vs1', JSON.stringify({ coins: 60, inventory: { carrot: 0, wheat: 0, tomato: 6 }, plots }));
+  const P = (col, row, crop = null, ago = 0) => ({ id: `${col},${row}`, col, row, unlocked: true, crop, plantedAt: crop ? now - ago : null });
+  const plots = [P(-1, 0, 'carrot', 60000), P(0, 0, 'wheat', 120000), P(1, 0, 'tomato', 30000)];
+  localStorage.removeItem('farm-empire:vs1');
+  localStorage.setItem('farm-empire:vs2', JSON.stringify({ coins: 60, inventory: { carrot: 0, wheat: 0, tomato: 6 }, plots }));
   localStorage.setItem('farm-empire:prefs', JSON.stringify({ quality: 'high', sound: false, fps: true }));
 });
 await page.reload({ waitUntil: 'networkidle0' });
@@ -53,15 +52,15 @@ const click = async (sel, text) => {
 };
 
 await shot('start');
-await tapPlot(3); // ready carrot
+await tapPlot('-1,0'); // ready carrot
 await wait(260);
 await shot('harvest-pop');
 await wait(420);
 await shot('harvest-fly');
-await tapPlot(4); // ready wheat
+await tapPlot('0,0'); // ready wheat
 await wait(1600);
 await shot('after-harvest');
-await tapPlot(3); // now empty -> seed shop
+await tapPlot('-1,0'); // now empty -> seed shop
 await wait(500);
 await shot('seed-shop');
 await click('.seed-card .btn', '10');
@@ -77,7 +76,7 @@ await wait(1200);
 await shot('after-sell');
 await click('.panel-close');
 await wait(300);
-await tapPlot(0, 0.1); // locked, cost 60
+await tapPlot('1,1', 0.1); // frontier tile
 await wait(500);
 await shot('unlock-popup');
 await click('.panel .btn-green', 'Mở khóa');
@@ -85,6 +84,6 @@ await wait(420);
 await shot('unlocking');
 await wait(1400);
 await shot('unlocked');
-console.log(JSON.stringify(await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('farm-empire:vs1')), stats: window.__game.stats() }))).slice(0, 600));
+console.log(JSON.stringify(await page.evaluate(() => ({ state: JSON.parse(localStorage.getItem('farm-empire:vs2')), stats: window.__game.stats() }))).slice(0, 600));
 console.log('errors:', errors.slice(0, 10));
 await browser.close();

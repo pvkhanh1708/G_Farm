@@ -34,7 +34,6 @@ Cột “Kích thước”: asset thủ tục không có file. Con số là số
 | env.rock | Đá | Code | Code của dự án | 54 đỉnh | Placeholder |
 | env.flowers | Cụm hoa (5 màu) | Code | Code của dự án | 288 đỉnh | Placeholder |
 | env.grass | Bụi cỏ | Code | Code của dự án | 135 đỉnh × 700–3.600 instance | Placeholder |
-| env.fence | Hàng rào gỗ | Code | Code của dự án | 2.232 đỉnh | Placeholder |
 | env.barn | Nhà kho | Code | Code của dự án | 629 đỉnh | Placeholder |
 | env.windmill | Cối xay gió (cánh quay) | Code | Code của dự án | 752 đỉnh | Placeholder |
 | env.pond | Hồ nước, lá súng, sậy | Code (`render/terrain.ts`) | Code của dự án | ~2.200 đỉnh | Placeholder |

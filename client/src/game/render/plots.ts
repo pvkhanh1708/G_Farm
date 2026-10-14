@@ -12,12 +12,13 @@ import {
   Vector3,
   VertexData,
 } from '@babylonjs/core';
-import { CropId, PLOT_SIZE, SOIL_TOP, plotWorldPos } from '../config';
+import { CropId, PLOT_SIZE, SOIL_TOP } from '../config';
 import { PlotState, growthStage } from '../state/store';
 import { CropLibrary, ridgeY } from './crops';
 import { Fx } from './fx';
 import { blade, blob, GeoBuilder, hex, jitter, mix, mulberry, noise3, tf } from './geometry';
 import { MaterialLibrary } from './materials';
+import { terrainHeight } from './terrain';
 import { ease, Tweens } from './tween';
 
 const FRAME_H = 0.3;
@@ -41,8 +42,8 @@ function buildFrame(scene: Scene, mats: MaterialLibrary) {
     [half - t / 2, 0, t, PLOT_SIZE - 0.04],
   ];
   for (const [x, z, w, d] of planks) {
-    const vd = CreateBoxVertexData({ width: w, height: FRAME_H, depth: d });
-    g.add(vd, tf([x, FRAME_H / 2, z], (r() - 0.5) * 0.02, 1, 0, (r() - 0.5) * 0.02), (l) =>
+    const vd = CreateBoxVertexData({ width: w, height: FRAME_H + 0.15, depth: d });
+    g.add(vd, tf([x, (FRAME_H - 0.15) / 2, z], (r() - 0.5) * 0.02, 1, 0, (r() - 0.5) * 0.02), (l) =>
       mix(jitter(wood, 0.06, r), hex('#d39a63'), l.y > FRAME_H / 2 - 0.01 ? 0.6 : 0),
     );
   }
@@ -233,22 +234,26 @@ export class PlotView {
   private busy = false;
   private time = Math.random() * 10;
   private hold = 0;
+  private idleObs: ReturnType<Scene['onBeforeRenderObservable']['add']>;
 
-  constructor(private ctx: PlotContext, readonly index: number, at?: { x: number; z: number }) {
-    const { x, z } = at ?? plotWorldPos(index);
-    this.center = new Vector3(x, SOIL_TOP, z);
-    this.root = new TransformNode(`plot-${index}`, ctx.scene);
-    this.root.position.set(x, 0, z);
-    this.bed = new TransformNode(`plot-bed-${index}`, ctx.scene);
+  private readonly variant: number;
+
+  constructor(private ctx: PlotContext, readonly id: string, x: number, z: number) {
+    const y = terrainHeight(x, z);
+    this.center = new Vector3(x, y + SOIL_TOP, z);
+    this.variant = Math.abs(Math.round(x * 7 + z * 13)) % 3;
+    this.root = new TransformNode(`plot-${id}`, ctx.scene);
+    this.root.position.set(x, y, z);
+    this.bed = new TransformNode(`plot-bed-${id}`, ctx.scene);
     this.bed.parent = this.root;
-    this.cropRoot = new TransformNode(`plot-crop-${index}`, ctx.scene);
+    this.cropRoot = new TransformNode(`plot-crop-${id}`, ctx.scene);
     this.cropRoot.parent = this.root;
     this.cropRoot.position.y = CROP_BASE;
-    ctx.scene.onBeforeRenderObservable.add(() => this.idle());
+    this.idleObs = ctx.scene.onBeforeRenderObservable.add(() => this.idle());
   }
 
   private instance(src: Mesh, parent: TransformNode, castShadow = true) {
-    const inst = src.createInstance(`${src.name}-${this.index}`);
+    const inst = src.createInstance(`${src.name}-${this.id}`);
     inst.parent = parent;
     inst.isPickable = false;
     if (castShadow) this.ctx.shadows()?.addShadowCaster(inst, false);
@@ -259,6 +264,13 @@ export class PlotView {
     if (!inst) return;
     this.ctx.shadows()?.removeShadowCaster(inst, false);
     inst.dispose();
+  }
+
+  dispose() {
+    this.ctx.scene.onBeforeRenderObservable.remove(this.idleObs);
+    for (const m of [this.frame, this.soil, this.cover, this.crop]) this.drop(m);
+    this.ready?.dispose();
+    this.root.dispose();
   }
 
   /** Re-register shadow casters after the shadow generator is rebuilt. */
@@ -308,7 +320,7 @@ export class PlotView {
       this.drop(this.frame);
       this.drop(this.soil);
       this.frame = this.soil = null;
-      this.cover ??= this.instance(t.covers[this.index % t.covers.length], this.bed);
+      this.cover ??= this.instance(t.covers[this.variant % t.covers.length], this.bed);
     }
   }
 

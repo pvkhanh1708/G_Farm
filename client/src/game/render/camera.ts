@@ -1,7 +1,6 @@
 import { ArcRotateCamera, Scene, Vector3 } from '@babylonjs/core';
 
 const ELEVATION_DEG = 40;
-const BOUNDS = 9;
 const MIN_R = 9;
 
 /**
@@ -35,6 +34,14 @@ export class CameraRig {
   }
 
   private maxR = 34;
+  private bounds = { minX: -9, maxX: 9, minZ: -9, maxZ: 9 };
+
+  /** Let the camera roam over the whole farm plus a margin of scenery. */
+  setBounds(minX: number, maxX: number, minZ: number, maxZ: number) {
+    const m = 7;
+    this.bounds = { minX: Math.min(-9, minX - m), maxX: Math.max(9, maxX + m), minZ: Math.min(-9, minZ - m), maxZ: Math.max(9, maxZ + m) };
+    this.clampGoal();
+  }
 
   /** Pull back on narrow (portrait) screens so the whole fenced farm fits horizontally. */
   adaptToAspect() {
@@ -143,8 +150,9 @@ export class CameraRig {
   }
 
   private clampGoal() {
-    this.goalTarget.x = Math.max(-BOUNDS, Math.min(BOUNDS, this.goalTarget.x));
-    this.goalTarget.z = Math.max(-BOUNDS, Math.min(BOUNDS, this.goalTarget.z));
+    const b = this.bounds;
+    this.goalTarget.x = Math.max(b.minX, Math.min(b.maxX, this.goalTarget.x));
+    this.goalTarget.z = Math.max(b.minZ, Math.min(b.maxZ, this.goalTarget.z));
   }
 
   private update(dt: number) {

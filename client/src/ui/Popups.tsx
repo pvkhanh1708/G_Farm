@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { CROP_ORDER, CROPS, CropId, Quality, UNLOCK_COSTS } from '../game/config';
+import { CROP_ORDER, CROPS, CropId, Quality } from '../game/config';
+import { store } from '../game/state/store';
 import { assetSummary } from '../game/assets/registry';
 import { useGameState } from './Hud';
 import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon } from './icons';
@@ -28,7 +29,7 @@ function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title
 
 const CROP_BG: Record<CropId, string> = { carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf' };
 
-export function SeedShop({ plot, onPick, onClose }: { plot: number | null; onPick: (c: CropId) => void; onClose: () => void }) {
+export function SeedShop({ plot, onPick, onClose }: { plot: string | null; onPick: (c: CropId) => void; onClose: () => void }) {
   const s = useGameState();
   return (
     <Modal title="Cửa hàng hạt giống" icon={<SeedBagIcon size={34} />} onClose={onClose} wide>
@@ -111,9 +112,9 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
   );
 }
 
-export function UnlockPopup({ plot, onConfirm, onClose }: { plot: number; onConfirm: () => void; onClose: () => void }) {
+export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onClose: () => void }) {
   const s = useGameState();
-  const cost = UNLOCK_COSTS[plot];
+  const cost = store.nextUnlockCost();
   const can = s.coins >= cost;
   return (
     <Modal title="Mở rộng đất" icon={<LockIcon size={32} />} tone="blue" onClose={onClose}>
@@ -122,7 +123,11 @@ export function UnlockPopup({ plot, onConfirm, onClose }: { plot: number; onConf
         <span className="unlock-arrow">➜</span>
         <div className="unlock-tile soil" />
       </div>
-      <p className="panel-sub">Dọn cỏ và làm luống mới để trồng thêm cây.</p>
+      <p className="panel-sub">
+        Ô đất thứ {s.plots.length + 1}. Dọn cỏ, làm luống mới để trồng thêm cây.
+        <br />
+        Mỗi ô mở thêm sẽ đắt hơn một chút — nông trại có thể mở rộng mãi.
+      </p>
       <div className="row-center">
         <button className="btn btn-ghost" onClick={onClose}>
           Để sau

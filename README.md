@@ -1,8 +1,13 @@
 # Farm Empire – Vertical Slice (Bước 1: đồ họa 3D)
 
 Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước khi làm gameplay đầy đủ.
-Phạm vi: 1 bản đồ nông trại 3D nhỏ, 9 ô đất, 3 loại cây × 5 giai đoạn, và chu trình
+Phạm vi: 1 bản đồ nông trại 3D, 3 loại cây × 5 giai đoạn, và chu trình
 trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp trên trình duyệt.
+
+Nông trại không có hàng rào và mở rộng không giới hạn: bắt đầu với 3 ô, luôn có một vòng ô cỏ khóa
+bao quanh các ô đã mở. Mỗi ô mở thêm đắt hơn ô trước 15%. Ô đất tự né nhà kho, cối xay, hồ và đường mòn;
+cây cối, bụi, hoa nằm trên đường lan của nông trại sẽ tự được dọn.
+Vùng đồng cỏ phẳng có bán kính khoảng 30 đơn vị (~12 ô mỗi hướng). Xa hơn là đồi, chưa hỗ trợ đặt ô.
 
 > Đồ họa **chưa hoàn thiện**: mọi model 3D đều là placeholder thủ tục. Xem [ASSETS.md](ASSETS.md).
 > Ảnh chụp màn hình nằm trong [docs/screenshots/](docs/screenshots/).
@@ -40,8 +45,8 @@ client/src/
     render/
       crops.ts           model cây thủ tục theo giai đoạn (instanced)
       plots.ts           ô đất + animation trồng / thu hoạch / mở khóa
-      environment.ts     cây, bụi, đá, hoa, cỏ (thin instances), hàng rào, nhà kho, cối xay, bướm
-      terrain.ts         địa hình, đường mòn, hồ nước
+      environment.ts     cây, bụi, đá, hoa, cỏ (thin instances, tự dọn khi nông trại lan tới), nhà kho, cối xay, bướm
+      terrain.ts         địa hình, đường mòn, hồ nước, quy tắc ô bị chặn
       materials.ts       PBR stylized + plugin shader gió (lá / cỏ rung)
       fx.ts              hạt lấp lánh, lá bay, bụi
       camera.ts          camera isometric cố định góc 40°, kéo / zoom / pinch
@@ -64,5 +69,6 @@ scripts/shot.mjs, flow.mjs   chụp ảnh và chạy tự động cả chu trìn
 1. Thay placeholder bằng model GLB chính thức (xem ASSETS.md).
 2. Chuyển sang deep import của Babylon để tree-shake. Bundle hiện nặng 1,33 MB gzip.
 3. Nén texture (KTX2 / Basis) khi có texture thật, và nạp asset theo nhu cầu.
-4. Đo FPS trên điện thoại tầm trung (Android / iOS) rồi tinh chỉnh preset.
+4. Đo FPS trên điện thoại tầm trung (Android / iOS) rồi tinh chỉnh preset. Với nông trại lớn cần thêm LOD
+   cho cây trồng (lúa mì chín ~20 nghìn đỉnh/ô; 40 ô ≈ 540 nghìn đỉnh).
 5. Backend Laravel: API trồng / thu / bán / mở đất, Sanctum auth, MySQL.

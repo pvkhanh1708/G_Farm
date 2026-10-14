@@ -7,13 +7,13 @@ import {
   Vector3,
   VertexData,
 } from '@babylonjs/core';
+import { PLOT_SIZE, PLOT_SPACING } from '../config';
 import { blade, blob, GeoBuilder, fbm2, hex, mix, mulberry, noise3, tf } from './geometry';
 import { MaterialLibrary, toonMaterial } from './materials';
 import { waterTexture } from './textures';
 
 // ------------------------------------------------------------------ layout
 
-export const FENCE_HALF = 4.7;
 export const BARN_POS = new Vector3(1.2, 0, 11.4);
 export const WINDMILL_POS = new Vector3(11.5, 0, 5.2);
 export const POND_POS = new Vector3(-9.5, 0, 6.5);
@@ -21,8 +21,8 @@ export const WATER_Y = -0.14;
 
 /** Path centre-lines (smoothed later). */
 export const PATHS: Vector3[][] = [
-  [new Vector3(-30, 0, -9), new Vector3(-18, 0, -6), new Vector3(-10, 0, -1.2), new Vector3(-6.4, 0, 0), new Vector3(-4.7, 0, 0)],
-  [new Vector3(0, 0, 4.7), new Vector3(0.2, 0, 6.8), new Vector3(1.0, 0, 8.6), new Vector3(1.2, 0, 9.6)],
+  [new Vector3(-30, 0, -9), new Vector3(-18, 0, -6), new Vector3(-10, 0, -1.2), new Vector3(-6.4, 0, 0), new Vector3(-4.2, 0, 0)],
+  [new Vector3(0, 0, 4.2), new Vector3(0.2, 0, 6.8), new Vector3(1.0, 0, 8.6), new Vector3(1.2, 0, 9.6)],
   [new Vector3(0.6, 0, 7.8), new Vector3(4.5, 0, 8.6), new Vector3(8.5, 0, 7.2), new Vector3(10.4, 0, 5.8)],
 ];
 
@@ -37,6 +37,30 @@ export function pondNorm(x: number, z: number) {
   const a = Math.atan2(dz, dx);
   const R = 3.1 + 0.5 * Math.sin(3 * a + 1) + 0.25 * Math.sin(5 * a + 2);
   return Math.hypot(dx, dz) / R;
+}
+
+/** Props that farm tiles must grow around (centre x/z, radius). */
+export const BLOCKERS: Array<[number, number, number]> = [
+  [BARN_POS.x, BARN_POS.z, 3.0],
+  [BARN_POS.x + 3.1, BARN_POS.z - 0.6, 1.1], // hay bales
+  [BARN_POS.x - 2.5, BARN_POS.z - 1.7, 0.7], // crates
+  [WINDMILL_POS.x, WINDMILL_POS.z, 1.9],
+  [-6.4, -1.4, 0.5], // signpost
+  [6.2, -2.0, 0.9], // trough
+];
+
+/** True when a farm tile at (col,row) would overlap a building, the pond or a path. */
+export function tileBlocked(col: number, row: number) {
+  const cx = col * PLOT_SPACING, cz = row * PLOT_SPACING;
+  const h = PLOT_SIZE / 2;
+  const pts = [[0, 0], [-h, -h], [h, -h], [-h, h], [h, h], [0, -h], [0, h], [-h, 0], [h, 0]];
+  for (const [dx, dz] of pts) {
+    const x = cx + dx, z = cz + dz;
+    if (pondNorm(x, z) < 1.08) return true;
+    if (pathDist(x, z) < 0.7) return true;
+    for (const [bx, bz, br] of BLOCKERS) if (Math.hypot(x - bx, z - bz) < br) return true;
+  }
+  return Math.hypot(cx, cz) > MEADOW_RADIUS;
 }
 
 let pathSamples: Vector3[] | null = null;
@@ -64,12 +88,14 @@ export function pathDist(x: number, z: number) {
   return Math.sqrt(best);
 }
 
+/** Radius of the flat meadow the farm can expand into; hills start beyond it. */
+export const MEADOW_RADIUS = 30;
+
 export function terrainHeight(x: number, z: number) {
-  const d = Math.max(Math.abs(x), Math.abs(z));
   const rd = Math.hypot(x, z);
-  let h = (fbm2(x * 0.05 + 3, z * 0.05 + 7) - 0.45) * 3.4 * smoothstep(9, 20, rd);
-  h += (noise3(x * 0.45, 7, z * 0.45) - 0.5) * 0.14 * smoothstep(FENCE_HALF, FENCE_HALF + 1.5, d);
-  h += smoothstep(24, 48, rd) * 3.5;
+  let h = (fbm2(x * 0.05 + 3, z * 0.05 + 7) - 0.45) * 3.4 * smoothstep(MEADOW_RADIUS, MEADOW_RADIUS + 12, rd);
+  h += (noise3(x * 0.45, 7, z * 0.45) - 0.5) * 0.08;
+  h += smoothstep(MEADOW_RADIUS + 10, MEADOW_RADIUS + 40, rd) * 3.5;
   // keep building pads flat
   for (const [p, r] of [[BARN_POS, 4.2], [WINDMILL_POS, 2.6]] as const) {
     const k = smoothstep(r + 2, r, Math.hypot(x - p.x, z - p.z));
@@ -87,14 +113,13 @@ const mix1 = (a: number, b: number, t: number) => a + (b - a) * t;
 // ------------------------------------------------------------------ ground
 
 export function buildTerrain(scene: Scene, mats: MaterialLibrary) {
-  const SIZE = 150;
+  const SIZE = 180;
   const vd = CreateGroundVertexData({ width: SIZE, height: SIZE, subdivisions: 150 });
   const p = vd.positions as number[];
   const colors: number[] = [];
   const base = hex('#ffffff');
   const warm = hex('#fff2c2');
   const cool = hex('#c4dcc0');
-  const worn = hex('#f2e2b0');
   const bank = hex('#c9b48a');
   for (let i = 0; i < p.length; i += 3) {
     const x = p[i], z = p[i + 2];
@@ -102,8 +127,6 @@ export function buildTerrain(scene: Scene, mats: MaterialLibrary) {
     p[i + 1] = h;
     const n = fbm2(x * 0.09, z * 0.09, 3);
     let c = n > 0.5 ? mix(base, warm, (n - 0.5) * 2.2) : mix(cool, base, n * 2);
-    const d = Math.max(Math.abs(x), Math.abs(z));
-    if (d < FENCE_HALF + 0.3) c = mix(c, worn, 0.35);
     const pn = pondNorm(x, z);
     if (pn < 1.25) c = mix(bank, c, smoothstep(1.0, 1.25, pn));
     c = c.toLinearSpace();

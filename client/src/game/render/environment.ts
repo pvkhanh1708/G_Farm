@@ -12,19 +12,16 @@ import {
   Vector3,
   VertexData,
 } from '@babylonjs/core';
-import { GRID_SIZE, PLOT_SPACING, PLOT_SIZE, QualityPreset } from '../config';
+import { PLOT_SPACING, PLOT_SIZE, QualityPreset, tileId } from '../config';
 import { blade, blob, chain, GeoBuilder, hex, jitter, lathe, mix, mulberry, tf } from './geometry';
 import { MaterialLibrary } from './materials';
-import { BARN_POS, FENCE_HALF, pathDist, pondNorm, terrainHeight, WINDMILL_POS } from './terrain';
+import { BARN_POS, pathDist, pondNorm, terrainHeight, WINDMILL_POS } from './terrain';
 import { butterflyWingTexture } from './textures';
-
-const PLOT_EXTENT = ((GRID_SIZE - 1) / 2) * PLOT_SPACING + PLOT_SIZE / 2;
 
 type Placement = { x: number; z: number; s: number; yaw: number };
 
+/** Static obstacles only; farm tiles clear props dynamically (see applyClearing). */
 function isFree(x: number, z: number, margin: number) {
-  const d = Math.max(Math.abs(x), Math.abs(z));
-  if (d < FENCE_HALF + 0.6 + margin) return false;
   if (pathDist(x, z) < 1.0 + margin) return false;
   if (pondNorm(x, z) < 1.12 + margin * 0.3) return false;
   if (Math.hypot(x - BARN_POS.x, z - BARN_POS.z) < 4.2 + margin) return false;
@@ -169,62 +166,6 @@ function rockKit(seed: number) {
   g.add(blob(0.5, 0.38, seed, 2, true), tf([0, 0.12, 0], 0, [1.2, 0.75, 1]), (l) => (l.y > 0.32 ? mix(light, moss, 0.55) : mix(grey, light, l.y + 0.4)));
   g.add(blob(0.25, 0.35, seed + 1, 1, true), tf([0.55, 0.05, 0.2], r() * 6, [1, 0.7, 1]), (l) => mix(grey, light, l.y * 2 + 0.5));
   return g;
-}
-
-// ------------------------------------------------------------------ fence
-
-function buildFence(scene: Scene, mats: MaterialLibrary) {
-  const g = new GeoBuilder();
-  const r = mulberry(11);
-  const wood = hex('#b07848'), woodLight = hex('#d8a26a');
-  const H = FENCE_HALF;
-  const gate = 0.9;
-  const sides: Array<{ from: Vector3; to: Vector3; gap: boolean }> = [
-    { from: new Vector3(-H, 0, -H), to: new Vector3(H, 0, -H), gap: false },
-    { from: new Vector3(H, 0, -H), to: new Vector3(H, 0, H), gap: false },
-    { from: new Vector3(H, 0, H), to: new Vector3(-H, 0, H), gap: true },
-    { from: new Vector3(-H, 0, H), to: new Vector3(-H, 0, -H), gap: true },
-  ];
-  const post = lathe([[0.085, 0], [0.085, 0.72], [0.0, 0.86]], 4, false);
-  for (const { from, to, gap } of sides) {
-    const len = Vector3.Distance(from, to);
-    const n = Math.round(len / 1.05);
-    const dir = to.subtract(from).normalize();
-    const posts: Vector3[] = [];
-    for (let i = 0; i <= n; i++) {
-      const p = Vector3.Lerp(from, to, i / n);
-      const mid = Vector3.Lerp(from, to, 0.5);
-      if (gap && Vector3.Distance(p, mid) < gate * 0.6) continue;
-      posts.push(p);
-    }
-    if (gap) {
-      const mid = Vector3.Lerp(from, to, 0.5);
-      for (const s of [-1, 1]) posts.push(mid.add(dir.scale(s * gate)));
-      posts.sort((a, b) => Vector3.Dot(a.subtract(from), dir) - Vector3.Dot(b.subtract(from), dir));
-    }
-    const yaw = Math.atan2(dir.x, dir.z);
-    posts.forEach((p, i) => {
-      const isGate = gap && Math.abs(Vector3.Distance(p, Vector3.Lerp(from, to, 0.5)) - gate) < 0.01;
-      g.add(post, tf([p.x, -0.05, p.z], Math.PI / 4 + yaw, isGate ? [1.35, 1.25, 1.35] : 1, (r() - 0.5) * 0.06, (r() - 0.5) * 0.06), (l) =>
-        mix(wood, woodLight, l.y / 0.9),
-      );
-      if (i === 0) return;
-      const q = posts[i - 1];
-      if (Vector3.Distance(p, q) > 1.4) return; // gate opening
-      const mid = Vector3.Lerp(p, q, 0.5);
-      const L = Vector3.Distance(p, q);
-      for (const y of [0.32, 0.58]) {
-        g.add(CreateBoxVertexData({ width: 0.06, height: 0.1, depth: L + 0.12 }), tf([mid.x, y + (r() - 0.5) * 0.04, mid.z], yaw, 1, (r() - 0.5) * 0.04, 0), (l) =>
-          l.y > 0 ? woodLight : jitter(wood, 0.06, r),
-        );
-      }
-    });
-  }
-  const m = g.build('fence', scene, mats.wood);
-  m.receiveShadows = true;
-  m.isPickable = false;
-  m.freezeWorldMatrix();
-  return m;
 }
 
 // ------------------------------------------------------------------ buildings
@@ -426,6 +367,8 @@ export interface Environment {
   applyQuality(q: QualityPreset): void;
   shadowCasters: Mesh[];
   attachShadows(sg: ShadowGenerator): void;
+  /** Hide scattered props that overlap (or would block the view of) these farm tiles. */
+  applyClearing(tiles: Array<{ col: number; row: number }>): void;
 }
 
 export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: QualityPreset): Environment {
@@ -445,14 +388,14 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
   const placed: Placement[] = [];
   while (placed.length < 95 && tries++ < 4000) {
     const a = r() * Math.PI * 2;
-    const d = 11 + Math.pow(r(), 0.7) * 30;
+    const d = 7 + Math.pow(r(), 0.7) * 34;
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     // keep the camera-facing foreground light so trees never hide the farm
     const toward = -(x + z) / Math.SQRT2;
     if (toward > 6 && d < 22 && r() < 0.8) continue;
     if (!isFree(x, z, 1.2)) continue;
     if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2.3 * Math.max(p.s, 1))) continue;
-    const s = 0.8 + r() * 0.55 + Math.min(0.5, (d - 11) / 40);
+    const s = 0.8 + r() * 0.55 + Math.min(0.5, (d - 7) / 40);
     const it = { x, z, s, yaw: r() * 6.28 };
     placed.push(it);
     let pick = r() * totalW;
@@ -473,16 +416,14 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
   // bushes ------------------------------------------------------------
   const bushKits = [bushKit(10), bushKit(11, hex('#ffffff')), bushKit(12, hex('#ffd23f')), bushKit(13, hex('#ff7fa8'))];
   const bushSpots: Placement[][] = bushKits.map(() => []);
-  for (let i = 0, n = 0; i < 2000 && n < 70; i++) {
+  for (let i = 0, n = 0; i < 3000 && n < 90; i++) {
     const a = r() * Math.PI * 2;
-    const d = 6.2 + r() * 22;
+    const d = 4 + r() * 26;
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     if (!isFree(x, z, 0.1)) continue;
     bushSpots[n % bushKits.length].push({ x, z, s: 0.75 + r() * 0.6, yaw: r() * 6.28 });
     n++;
   }
-  // a hedge line hugging the fence corners
-  for (const [x, z] of [[-5.6, -5.4], [5.7, -5.5], [5.6, 5.8], [-5.8, 5.6], [-3.2, -5.6], [5.8, -2.4]]) bushSpots[0].push({ x, z, s: 0.9 + r() * 0.3, yaw: r() * 6 });
   bushKits.forEach((kit, i) => {
     if (bushSpots[i].length) casters.push(thin(kit.canopy.build(`bush-${i}`, scene, mats.foliage), bushSpots[i]));
   });
@@ -492,7 +433,7 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
   const rockSpots: Placement[] = [];
   for (let i = 0, n = 0; i < 1500 && n < 34; i++) {
     const a = r() * Math.PI * 2;
-    const d = 6 + r() * 26;
+    const d = 4 + r() * 28;
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     if (!isFree(x, z, 0) && !(pondNorm(x, z) > 1.0 && pondNorm(x, z) < 1.25)) continue;
     rockSpots.push({ x, z, s: 0.35 + r() * 0.7, yaw: r() * 6.28 });
@@ -504,10 +445,10 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
   const flowerColours: Array<[string, string]> = [['#ff6fa3', '#ffe27a'], ['#ffd84a', '#e08a1e'], ['#ffffff', '#ffd23f'], ['#b98cff', '#fff3a0'], ['#ff7a45', '#7a3d1a']];
   const flowerMeshes = flowerColours.map(([p, c], i) => flowerKit(60 + i, hex(p), hex(c)).build(`flowers-${i}`, scene, mats.grass));
   const flowerSpots: Placement[][] = flowerMeshes.map(() => []);
-  const maxFlowers = 300;
+  const maxFlowers = 360;
   for (let i = 0, n = 0; i < 9000 && n < maxFlowers; i++) {
     // clustered: pick a cluster centre then scatter around it
-    const ca = r() * Math.PI * 2, cd = 5.4 + Math.pow(r(), 1.4) * 20;
+    const ca = r() * Math.PI * 2, cd = 3.5 + Math.pow(r(), 1.2) * 24;
     const cx = Math.cos(ca) * cd, cz = Math.sin(ca) * cd;
     const kind = Math.floor(r() * flowerMeshes.length);
     for (let k = 0; k < 6 && n < maxFlowers; k++) {
@@ -521,23 +462,16 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
 
   const grassMeshes = [grassKit(80), grassKit(81)].map((g, i) => g.build(`grass-${i}`, scene, mats.grass));
   const grassSpots: Placement[][] = [[], []];
-  const maxGrass = 4000;
+  const maxGrass = 5000;
   for (let i = 0, n = 0; i < 40000 && n < maxGrass; i++) {
-    const x = (r() - 0.5) * 56, z = (r() - 0.5) * 56;
-    const d = Math.max(Math.abs(x), Math.abs(z));
-    const inFarm = d < FENCE_HALF - 0.25;
-    if (inFarm) {
-      if (d < PLOT_EXTENT + 0.25) continue;
-    } else if (!isFree(x, z, -0.5) && !(d < FENCE_HALF + 0.3)) continue;
-    if (Math.abs(d - FENCE_HALF) < 0.12) continue;
+    const x = (r() - 0.5) * 60, z = (r() - 0.5) * 60;
+    if (!isFree(x, z, -0.5)) continue;
     grassSpots[n % 2].push({ x, z, s: 0.8 + r() * 0.7, yaw: r() * 6.28 });
     n++;
   }
   grassMeshes.forEach((m, i) => thin(m, grassSpots[i]));
 
   // structures -----------------------------------------------------------
-  const fence = buildFence(scene, mats);
-  casters.push(fence);
   const barn = buildBarn(scene, mats);
   casters.push(barn);
   const mill = buildWindmill(scene, mats);
@@ -546,6 +480,45 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
 
   const flies = buildButterflies(scene, 5);
 
+  // props hidden under / in front of farm tiles; rebuilt whenever the farm grows
+  type Kind = 'tree' | 'bush' | 'small';
+  const sets: Array<{ mesh: Mesh; all: Placement[]; kind: Kind; y: number; limit: () => number }> = [];
+  let quality = q;
+  const meshFor = (name: string) => scene.getMeshByName(name) as Mesh;
+  kits.forEach((_, i) => {
+    if (!treeSpots[i].length) return;
+    const trunk = scene.getMeshByName(`tree-trunk-${i}`) as Mesh | null;
+    if (trunk) sets.push({ mesh: trunk, all: treeSpots[i], kind: 'tree', y: 0, limit: () => Infinity });
+    sets.push({ mesh: meshFor(`tree-canopy-${i}`), all: treeSpots[i], kind: 'tree', y: 0, limit: () => Infinity });
+  });
+  bushKits.forEach((_, i) => bushSpots[i].length && sets.push({ mesh: meshFor(`bush-${i}`), all: bushSpots[i], kind: 'bush', y: 0, limit: () => Infinity }));
+  sets.push({ mesh: rockMesh, all: rockSpots, kind: 'bush', y: -0.05, limit: () => Infinity });
+  flowerMeshes.forEach((m, i) => sets.push({ mesh: m, all: flowerSpots[i], kind: 'small', y: 0, limit: () => Math.floor(quality.flowerCount / flowerMeshes.length) }));
+  grassMeshes.forEach((m, i) => sets.push({ mesh: m, all: grassSpots[i], kind: 'small', y: 0, limit: () => Math.floor(quality.grassCount / 2) }));
+  let farm = new Set<string>();
+  const S = PLOT_SPACING;
+  const onFarm = (x: number, z: number, r: number) => {
+    const reach = PLOT_SIZE / 2 + r;
+    for (let c = Math.ceil((x - reach) / S); c <= Math.floor((x + reach) / S); c++)
+      for (let w = Math.ceil((z - reach) / S); w <= Math.floor((z + reach) / S); w++) if (farm.has(tileId(c, w))) return true;
+    return false;
+  };
+  const hidden = (it: Placement, kind: Kind) => {
+    if (kind === 'small') return onFarm(it.x, it.z, 0.2);
+    if (kind === 'bush') return onFarm(it.x, it.z, 0.55 * it.s);
+    // a tall tree also hides tiles behind it (the camera looks toward +x/+z)
+    if (onFarm(it.x, it.z, 1.4 * it.s)) return true;
+    for (const d of [1.6, 3.2, 4.8]) if (onFarm(it.x + d * Math.SQRT1_2, it.z + d * Math.SQRT1_2, 0.4)) return true;
+    return false;
+  };
+  const rebuild = () => {
+    for (const set of sets) {
+      const kept = set.all.filter((it) => !hidden(it, set.kind));
+      thin(set.mesh, kept.length ? kept : [{ x: 0, z: -400, s: 0.001, yaw: 0 }], set.y);
+      set.mesh.thinInstanceCount = Math.max(1, Math.min(kept.length, set.limit()));
+    }
+  };
+
   const env: Environment = {
     barn,
     shadowCasters: casters,
@@ -553,10 +526,13 @@ export function buildEnvironment(scene: Scene, mats: MaterialLibrary, q: Quality
       for (const c of casters) sg.addShadowCaster(c, false);
     },
     applyQuality(p) {
-      grassMeshes.forEach((m, i) => (m.thinInstanceCount = Math.min(grassSpots[i].length, Math.floor(p.grassCount / 2))));
-      const perKind = Math.floor(p.flowerCount / flowerMeshes.length);
-      flowerMeshes.forEach((m, i) => (m.thinInstanceCount = Math.max(1, Math.min(flowerSpots[i].length, perKind))));
+      quality = p;
+      rebuild();
       flies.forEach((b, i) => b.root.setEnabled(i < p.butterflies));
+    },
+    applyClearing(tiles) {
+      farm = new Set(tiles.map((t) => tileId(t.col, t.row)));
+      rebuild();
     },
     update(t, dt) {
       mill.hub.rotation.z += dt * 0.7;

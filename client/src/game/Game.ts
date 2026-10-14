@@ -16,7 +16,7 @@ import {
 } from '@babylonjs/core';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, GRID_SIZE, PLOT_SIZE, PLOT_SPACING, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, UNLOCK_COSTS } from './config';
+import { CROP_ORDER, CropId, PLOT_SIZE, PLOT_SPACING, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, tileId, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { CropLibrary } from './render/crops';
 import { buildEnvironment, Environment } from './render/environment';
@@ -24,7 +24,7 @@ import { Fx } from './render/fx';
 import { hex } from './render/geometry';
 import { MaterialLibrary, toonMaterial, WindPlugin } from './render/materials';
 import { buildPlotTemplates, PlotTemplates, PlotView } from './render/plots';
-import { buildPaths, buildPond, buildTerrain, Pond } from './render/terrain';
+import { buildPaths, buildPond, buildTerrain, Pond, tileBlocked } from './render/terrain';
 import { grainTexture, grassTexture, pathTexture, soilTexture, woodTexture } from './render/textures';
 import { Tweens } from './render/tween';
 import { growthProgress, store } from './state/store';
@@ -32,10 +32,10 @@ import { growthProgress, store } from './state/store';
 export type PlotKind = 'locked' | 'empty' | 'growing';
 
 export type GameEvent =
-  | { type: 'plotTap'; index: number; kind: PlotKind }
+  | { type: 'plotTap'; id: string; kind: PlotKind }
   | { type: 'barnTap' }
-  | { type: 'harvested'; index: number; crop: CropId; amount: number; x: number; y: number }
-  | { type: 'ready'; index: number };
+  | { type: 'harvested'; id: string; crop: CropId; amount: number; x: number; y: number }
+  | { type: 'ready'; id: string };
 
 export interface ScreenPoint {
   x: number;
@@ -58,14 +58,16 @@ export class Game {
   private templates!: PlotTemplates;
   private env!: Environment;
   private pond!: Pond;
-  private plots: PlotView[] = [];
+  private plots = new Map<string, PlotView>();
+  private plotCtx!: ConstructorParameters<typeof PlotView>[0];
+  private farmKey = '';
   private listeners = new Set<(e: GameEvent) => void>();
   private frameListeners = new Set<() => void>();
   private unsubStore: (() => void) | null = null;
   private time = 0;
   private syncTimer = 0;
-  private readySet = new Set<number>();
-  private hovered: number | null = null;
+  private readySet = new Set<string>();
+  private hovered: string | null = null;
   quality: Quality;
 
   private constructor(private canvas: HTMLCanvasElement, quality: Quality, private showcase: boolean) {
@@ -177,10 +179,10 @@ export class Game {
 
     progress(0.85, 'Dọn ô đất…');
     this.rebuildShadows(preset.shadowMapSize, preset.shadowPcfQuality);
-    const ctx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
+    this.plotCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
     if (this.showcase) this.buildShowcase();
     else {
-      this.plots = UNLOCK_COSTS.map((_, i) => new PlotView(ctx, i));
+      store.setBlocker(tileBlocked);
       this.syncPlots(false);
       this.unsubStore = store.subscribe(() => this.syncPlots(true));
       this.fx.ambientMotes(new Vector3(0, 0, 0));
@@ -196,10 +198,9 @@ export class Game {
 
   private buildShowcase() {
     // all crops x all stages side by side, for art review (?showcase)
-    const ctx = { scene: this.scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
     CROP_ORDER.forEach((crop, row) => {
       for (let s = 0; s < STAGE_COUNT; s++) {
-        const v = new PlotView(ctx, 0, { x: (s - 2) * PLOT_SPACING, z: (1 - row) * PLOT_SPACING });
+        const v = new PlotView(this.plotCtx, `show-${crop}-${s}`, (s - 2) * PLOT_SPACING, (1 - row) * PLOT_SPACING);
         v.forceStage(crop, s);
       }
     });
@@ -246,19 +247,39 @@ export class Game {
   }
 
   private syncPlots(animate: boolean) {
-    const s = store.getState();
+    const tiles = store.tiles();
     const now = Date.now();
-    s.plots.forEach((p, i) => {
-      this.plots[i]?.sync(p, now, animate);
+    const key = tiles.map((t) => t.id).sort().join('|');
+    if (key !== this.farmKey) {
+      // farm shape changed: add/remove tile views, clear props, widen camera bounds
+      this.farmKey = key;
+      const live = new Set(tiles.map((t) => t.id));
+      for (const [id, v] of this.plots)
+        if (!live.has(id)) {
+          v.dispose();
+          this.plots.delete(id);
+        }
+      for (const t of tiles) {
+        if (this.plots.has(t.id)) continue;
+        const { x, z } = tileWorldPos(t.col, t.row);
+        this.plots.set(t.id, new PlotView(this.plotCtx, t.id, x, z));
+      }
+      this.env.applyClearing(tiles);
+      const xs = tiles.map((t) => t.col * PLOT_SPACING);
+      const zs = tiles.map((t) => t.row * PLOT_SPACING);
+      this.rig.setBounds(Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs));
+    }
+    for (const p of tiles) {
+      this.plots.get(p.id)?.sync(p, now, animate);
       const ready = !!p.crop && growthProgress(p, now) >= 1;
-      if (ready && !this.readySet.has(i)) {
-        this.readySet.add(i);
+      if (ready && !this.readySet.has(p.id)) {
+        this.readySet.add(p.id);
         if (animate) {
           sfx.grow();
-          this.emit({ type: 'ready', index: i });
+          this.emit({ type: 'ready', id: p.id });
         }
-      } else if (!ready) this.readySet.delete(i);
-    });
+      } else if (!ready) this.readySet.delete(p.id);
+    }
   }
 
   private onResize = () => {
@@ -275,16 +296,15 @@ export class Game {
     return { ray, point: ray.origin.add(ray.direction.scale(t)) };
   }
 
-  plotAt(x: number, y: number): number | null {
+  plotAt(x: number, y: number): string | null {
     const { point } = this.rayToGround(x, y);
     if (!point) return null;
-    const off = (GRID_SIZE - 1) / 2;
-    const col = Math.round(point.x / PLOT_SPACING + off);
-    const row = Math.round(point.z / PLOT_SPACING + off);
-    if (col < 0 || row < 0 || col >= GRID_SIZE || row >= GRID_SIZE) return null;
-    const cx = (col - off) * PLOT_SPACING, cz = (row - off) * PLOT_SPACING;
+    const col = Math.round(point.x / PLOT_SPACING);
+    const row = Math.round(point.z / PLOT_SPACING);
+    const { x: cx, z: cz } = tileWorldPos(col, row);
     if (Math.abs(point.x - cx) > PLOT_SIZE / 2 + 0.08 || Math.abs(point.z - cz) > PLOT_SIZE / 2 + 0.08) return null;
-    return row * GRID_SIZE + col;
+    const id = tileId(col, row);
+    return this.plots.has(id) ? id : null;
   }
 
   private handleHover(x: number, y: number) {
@@ -295,11 +315,12 @@ export class Game {
     this.showRing(idx);
   }
 
-  private showRing(idx: number | null) {
+  private showRing(id: string | null) {
     const ring = this.templates.ring;
-    if (idx === null) return ring.setEnabled(false);
-    const c = this.plots[idx].center;
-    ring.position.set(c.x, 0.32, c.z);
+    const v = id === null ? undefined : this.plots.get(id);
+    if (!v) return ring.setEnabled(false);
+    const c = v.center;
+    ring.position.set(c.x, c.y + 0.12, c.z);
     ring.setEnabled(true);
   }
 
@@ -316,46 +337,45 @@ export class Game {
       }
       return;
     }
-    const view = this.plots[idx];
-    if (view.isBusy) return;
+    const view = this.plots.get(idx)!;
+    const st = store.plot(idx);
+    if (view.isBusy || !st) return;
     this.showRing(idx);
     if (this.hovered === null) this.tweens.wait(0.6, () => this.hovered === null && this.showRing(null));
-    const st = store.getState().plots[idx];
-    if (!st.unlocked) this.emit({ type: 'plotTap', index: idx, kind: 'locked' });
-    else if (!st.crop) this.emit({ type: 'plotTap', index: idx, kind: 'empty' });
+    if (!st.unlocked) this.emit({ type: 'plotTap', id: idx, kind: 'locked' });
+    else if (!st.crop) this.emit({ type: 'plotTap', id: idx, kind: 'empty' });
     else if (growthProgress(st) >= 1) this.harvest(idx);
     else {
       view.wiggle();
       sfx.tap();
-      this.emit({ type: 'plotTap', index: idx, kind: 'growing' });
+      this.emit({ type: 'plotTap', id: idx, kind: 'growing' });
     }
   }
 
   // ---------------------------------------------------------------- actions
 
-  plant(index: number, crop: CropId) {
-    const res = store.plant(index, crop);
+  plant(id: string, crop: CropId) {
+    const res = store.plant(id, crop);
     if (res.ok) sfx.plant();
     else sfx.error();
     return res;
   }
 
-  harvest(index: number) {
-    const view = this.plots[index];
-    if (view.isBusy) return;
-    const st = store.getState().plots[index];
-    if (!st.crop || growthProgress(st) < 1) return;
+  harvest(id: string) {
+    const view = this.plots.get(id);
+    const st = store.plot(id);
+    if (!view || view.isBusy || !st?.crop || growthProgress(st) < 1) return;
     sfx.harvest();
     view.playHarvest(() => {
-      const res = store.harvest(index);
+      const res = store.harvest(id);
       if (!res.ok) return;
       const p = this.project(view.center.add(new Vector3(0, 0.8, 0)));
-      this.emit({ type: 'harvested', index, crop: res.value.crop, amount: res.value.amount, x: p.x, y: p.y });
+      this.emit({ type: 'harvested', id, crop: res.value.crop, amount: res.value.amount, x: p.x, y: p.y });
     });
   }
 
-  unlock(index: number) {
-    const res = store.unlock(index);
+  unlock(id: string) {
+    const res = store.unlock(id);
     if (res.ok) sfx.unlock();
     else sfx.error();
     return res;
@@ -384,8 +404,9 @@ export class Game {
     return { x: p.x, y: p.y, visible: p.z > 0 && p.z < 1 };
   }
 
-  plotAnchor(index: number, height = 1.05) {
-    const v = this.plots[index];
+  plotAnchor(id: string, height = 1.05): ScreenPoint {
+    const v = this.plots.get(id);
+    if (!v) return { x: 0, y: 0, visible: false };
     return this.project(v.center.add(new Vector3(0, height, 0)));
   }
 
