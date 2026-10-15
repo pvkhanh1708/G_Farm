@@ -1,4 +1,4 @@
-import{p as r}from"./babylon-v1Wk6wip.js";const e="screenSpaceCurvaturePixelShader",t=`varying vUV: vec2f;var textureSamplerSampler: sampler;var textureSampler: texture_2d<f32>;var normalSampler: texture_2d<f32>;uniform curvature_ridge: f32;uniform curvature_valley: f32;
+import{p as r}from"./babylon-p5lyDL7S.js";const e="screenSpaceCurvaturePixelShader",t=`varying vUV: vec2f;var textureSamplerSampler: sampler;var textureSampler: texture_2d<f32>;var normalSampler: texture_2d<f32>;uniform curvature_ridge: f32;uniform curvature_valley: f32;
 #ifndef CURVATURE_OFFSET
 #define CURVATURE_OFFSET 1
 #endif

@@ -140,12 +140,10 @@ export function App() {
     if (!game) return;
     return game.on((e) => {
       if (e.type === 'tileTap') {
-        if (e.kind === 'next') {
+        // any wild tile buys the next one in order (tiles open strictly in sequence)
+        if (e.kind === 'next' || e.kind === 'locked') {
           sfx.open();
           setPopup({ type: 'unlock' });
-        } else if (e.kind === 'locked') {
-          sfx.error();
-          fxBus.toast('Ô đất mở theo thứ tự — hãy mở ô có biển “Mở khóa” trước', 'info');
         } else if (e.kind === 'empty') {
           const t = toolRef.current;
           if (t) {
@@ -158,6 +156,8 @@ export function App() {
           const st = store.tile(e.g);
           if (st?.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
         }
+      } else if (e.type === 'view') {
+        setOverview(e.overview);
       } else if (e.type === 'harvested') {
         fxBus.float(e.x, e.y - 20, `+${formatNum(e.amount)}`, { type: 'crop', crop: e.crop });
         fxBus.float(e.x + 46, e.y + 14, `+${formatNum(e.xp)} XP`, { type: 'xp' });
@@ -197,7 +197,7 @@ export function App() {
       <canvas ref={canvasRef} className="scene" />
       {game && !showcase && (
         <>
-          <TileOverlays game={game} />
+          <TileOverlays game={game} onUnlock={() => (sfx.open(), setPopup({ type: 'unlock' }))} />
           <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} onLevel={() => (sfx.open(), setPopup({ type: 'levels' }))} />
           <BottomBar
             readyCount={c.ready}

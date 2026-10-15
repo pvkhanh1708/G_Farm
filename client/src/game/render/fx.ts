@@ -110,26 +110,9 @@ export class Fx {
   }
 
   /** Subtle twinkles over a harvestable plot; caller starts/stops it. */
-  readyEmitter(pos: Vector3) {
-    const ps = new ParticleSystem('ready', Math.max(3, Math.round(10 * this.scale)), this.scene);
-    ps.particleTexture = this.sparkle;
-    ps.emitter = pos.clone();
-    ps.createBoxEmitter(new Vector3(0, 0.25, 0), new Vector3(0, 0.45, 0), new Vector3(-0.8, 0, -0.8), new Vector3(0.8, 0.5, 0.8));
-    ps.blendMode = ParticleSystem.BLENDMODE_ADD;
-    ps.emitRate = 4 * Math.max(0.5, this.scale);
-    ps.addColorGradient(0, new Color4(1, 0.96, 0.7, 0));
-    ps.addColorGradient(0.4, new Color4(1, 1, 0.9, 1));
-    ps.addColorGradient(1, new Color4(1, 0.9, 0.5, 0));
-    ps.minLifeTime = 0.8;
-    ps.maxLifeTime = 1.4;
-    ps.minEmitPower = 0.2;
-    ps.maxEmitPower = 0.4;
-    ps.addSizeGradient(0, 0.02);
-    ps.addSizeGradient(0.4, 0.14, 0.22);
-    ps.addSizeGradient(1, 0.02);
-    ps.minAngularSpeed = -1.5;
-    ps.maxAngularSpeed = 1.5;
-    return ps;
+  /** One shared sparkle emitter for every ripe tile (see SparkleField). */
+  sparkleField() {
+    return new SparkleField(this.scene, this.sparkle, this.scale);
   }
 
   /** Slow drifting pollen motes around the farm. */
@@ -152,5 +135,60 @@ export class Fx {
     ps.addColorGradient(1, new Color4(1, 1, 0.8, 0));
     ps.start();
     return ps;
+  }
+}
+
+/**
+ * Gentle sparkles over ripe crops. A single particle system serves every ripe
+ * tile: each particle spawns over a random ripe tile near the camera, and the
+ * emit rate scales with how many are in view (one system per tile used to cost
+ * hundreds of draw calls on a big farm).
+ */
+export class SparkleField {
+  private ps: ParticleSystem;
+  private points = new Map<number, Vector3>();
+  private near: Vector3[] = [];
+  private maxRate: number;
+
+  constructor(scene: Scene, texture: Texture, private scale: number) {
+    this.maxRate = 60 * Math.max(0.3, scale);
+    const ps = new ParticleSystem('ready-sparkles', Math.round(160 * Math.max(0.3, scale)), scene);
+    ps.particleTexture = texture;
+    ps.emitter = Vector3.Zero();
+    ps.createBoxEmitter(new Vector3(0, 0.25, 0), new Vector3(0, 0.45, 0), Vector3.Zero(), Vector3.Zero());
+    ps.startPositionFunction = (_world, pos) => {
+      const p = this.near[(Math.random() * this.near.length) | 0];
+      if (!p) return pos.set(0, -50, 0);
+      pos.set(p.x + (Math.random() - 0.5) * 1.6, p.y + Math.random() * 0.5, p.z + (Math.random() - 0.5) * 1.6);
+    };
+    ps.blendMode = ParticleSystem.BLENDMODE_ADD;
+    ps.addColorGradient(0, new Color4(1, 0.96, 0.7, 0));
+    ps.addColorGradient(0.4, new Color4(1, 1, 0.9, 1));
+    ps.addColorGradient(1, new Color4(1, 0.9, 0.5, 0));
+    ps.minLifeTime = 0.8;
+    ps.maxLifeTime = 1.4;
+    ps.minEmitPower = 0.2;
+    ps.maxEmitPower = 0.4;
+    ps.addSizeGradient(0, 0.02);
+    ps.addSizeGradient(0.4, 0.14, 0.22);
+    ps.addSizeGradient(1, 0.02);
+    ps.minAngularSpeed = -1.5;
+    ps.maxAngularSpeed = 1.5;
+    ps.emitRate = 0;
+    ps.start();
+    this.ps = ps;
+  }
+
+  set(g: number, pos: Vector3 | null) {
+    if (pos) this.points.set(g, pos);
+    else this.points.delete(g);
+  }
+
+  /** Keep only ripe tiles within `radius` of the view centre; call a few times per second. */
+  focus(center: Vector3, radius: number) {
+    const r2 = radius * radius;
+    this.near.length = 0;
+    for (const p of this.points.values()) if ((p.x - center.x) ** 2 + (p.z - center.z) ** 2 < r2) this.near.push(p);
+    this.ps.emitRate = Math.min(this.maxRate, this.near.length * 4 * Math.max(0.5, this.scale));
   }
 }

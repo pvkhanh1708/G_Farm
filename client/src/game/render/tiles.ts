@@ -1,20 +1,9 @@
-import {
-  Color3,
-  CreateGroundVertexData,
-  InstancedMesh,
-  Mesh,
-  ParticleSystem,
-  Scene,
-  ShadowGenerator,
-  StandardMaterial,
-  TransformNode,
-  Vector3,
-  VertexData,
-} from '@babylonjs/core';
+import { Color3, CreateGroundVertexData, Matrix, Mesh, Quaternion, Scene, StandardMaterial, Vector3, VertexData } from '@babylonjs/core';
 import { CropId, SOIL_TOP, TILE_SIZE } from '../config';
 import { TileState, growthStage } from '../state/store';
 import { CropLibrary } from './crops';
-import { Fx } from './fx';
+import { Handle, ThinBatch, TileBatches } from './batch';
+import { Fx, SparkleField } from './fx';
 import { blade, blob, GeoBuilder, hex, mix, mulberry, noise3, tf } from './geometry';
 import { MaterialLibrary } from './materials';
 import { ease, Tweens } from './tween';
@@ -156,62 +145,62 @@ export interface TileContext {
   crops: CropLibrary;
   fx: Fx;
   tweens: Tweens;
-  shadows: () => ShadowGenerator | null;
+  batches: TileBatches;
+  sparkles: SparkleField;
+  /** Ripe tiles that bob gently; ticked by the Game while zoomed in. */
+  bobbing: Set<TileView>;
 }
 
-/** Visual state of one tile; diffed against TileState every tick. */
+const NO_ROTATION = Quaternion.Identity();
+const tmpMatrix = new Matrix();
+const tmpPos = new Vector3();
+
+/**
+ * Visual state of one tile; diffed against TileState every tick. Owns no scene
+ * nodes: its bed (soil or grass) and crop are slots in per-parcel thin-instance
+ * batches, re-composed from a few animatable numbers whenever they change.
+ */
 export class TileView {
-  readonly root: TransformNode;
   readonly center: Vector3;
-  private bed: TransformNode;
-  private soil: InstancedMesh | null = null;
-  private grass: InstancedMesh | null = null;
-  private cropRoot: TransformNode;
-  private crop: InstancedMesh | null = null;
+  private bedBatch: ThinBatch | null = null;
+  private cropBatch: ThinBatch | null = null;
+  private readonly bedHandle: Handle;
+  private readonly cropHandle: Handle;
+  // animatable transform parts (the tile sits at x/z on the island)
+  private bedY = 0;
+  private bedScale = new Vector3(1, 1, 1);
+  private cropY = SOIL_TOP;
+  private cropScale = new Vector3(1, 1, 1);
   private cropKey: string | null = null;
   private unlocked: boolean | null = null;
-  private ready: ParticleSystem | null = null;
   private busy = false;
   private time = Math.random() * 10;
   private hold = 0;
-  private idleObs: ReturnType<Scene['onBeforeRenderObservable']['add']>;
 
-  constructor(private ctx: TileContext, readonly g: number, x: number, z: number) {
+  constructor(private ctx: TileContext, readonly g: number, private x: number, private z: number) {
     this.center = new Vector3(x, SOIL_TOP, z);
-    this.root = new TransformNode(`tile-${g}`, ctx.scene);
-    this.root.position.set(x, 0, z);
-    this.bed = new TransformNode(`tile-bed-${g}`, ctx.scene);
-    this.bed.parent = this.root;
-    this.cropRoot = new TransformNode(`tile-crop-${g}`, ctx.scene);
-    this.cropRoot.parent = this.root;
-    this.cropRoot.position.y = SOIL_TOP;
-    this.idleObs = ctx.scene.onBeforeRenderObservable.add(() => this.idle());
+    this.bedHandle = ctx.batches.handle();
+    this.cropHandle = ctx.batches.handle();
   }
 
-  private instance(src: Mesh, parent: TransformNode, castShadow = true) {
-    const inst = src.createInstance(`${src.name}-${this.g}`);
-    inst.parent = parent;
-    inst.isPickable = false;
-    if (castShadow) this.ctx.shadows()?.addShadowCaster(inst, false);
-    return inst;
+  private compose(scale: Vector3, y: number) {
+    tmpPos.set(this.x, y, this.z);
+    return Matrix.ComposeToRef(scale, NO_ROTATION, tmpPos, tmpMatrix);
   }
 
-  private drop(inst: InstancedMesh | null) {
-    if (!inst) return;
-    this.ctx.shadows()?.removeShadowCaster(inst, false);
-    inst.dispose();
+  private applyBed() {
+    this.bedBatch?.set(this.bedHandle, this.compose(this.bedScale, this.bedY));
+  }
+
+  private applyCrop() {
+    this.cropBatch?.set(this.cropHandle, this.compose(this.cropScale, this.cropY));
   }
 
   dispose() {
-    this.ctx.scene.onBeforeRenderObservable.remove(this.idleObs);
-    for (const m of [this.soil, this.grass, this.crop]) this.drop(m);
-    this.ready?.dispose();
-    this.root.dispose();
-  }
-
-  /** Re-register shadow casters after the shadow generator is rebuilt. */
-  reattachShadows(sg: ShadowGenerator) {
-    for (const m of [this.soil, this.grass, this.crop]) if (m) sg.addShadowCaster(m, false);
+    this.bedBatch?.remove(this.bedHandle);
+    this.cropBatch?.remove(this.cropHandle);
+    this.ctx.sparkles.set(this.g, null);
+    this.ctx.bobbing.delete(this);
   }
 
   /** Show a fixed crop/stage regardless of game state (art review). */
@@ -242,42 +231,43 @@ export class TileView {
   private setUnlocked(unlocked: boolean) {
     this.unlocked = unlocked;
     const t = this.ctx.templates;
-    if (unlocked) {
-      this.drop(this.grass);
-      this.grass = null;
-      this.soil ??= this.instance(t.soil, this.bed);
-    } else {
-      this.drop(this.soil);
-      this.soil = null;
-      this.grass ??= this.instance(t.grass[this.g % t.grass.length], this.bed, false);
-    }
+    this.bedBatch?.remove(this.bedHandle);
+    const variant = this.g % t.grass.length;
+    this.bedBatch = unlocked
+      ? this.ctx.batches.get('soil', this.x, this.z, () => ({ detailed: t.soil, simple: t.soil }), true)
+      : this.ctx.batches.get(`grass${variant}`, this.x, this.z, () => ({ detailed: t.grass[variant], simple: t.grass[variant] }), false);
+    this.bedScale.setAll(1);
+    this.bedY = 0;
+    this.bedBatch.add(this.bedHandle, this.compose(this.bedScale, this.bedY));
   }
 
   private setCrop(crop: CropId | null, stage: number) {
-    this.drop(this.crop);
-    this.crop = null;
+    this.cropBatch?.remove(this.cropHandle);
+    this.cropBatch = null;
     this.cropKey = crop ? `${crop}:${stage}` : null;
-    if (crop) this.crop = this.instance(this.ctx.crops.template(crop, stage), this.cropRoot);
-    this.cropRoot.scaling.setAll(1);
-    this.cropRoot.position.set(0, SOIL_TOP, 0);
-    const isReady = stage === 4 && crop !== null;
-    if (isReady && !this.ready) {
-      this.ready = this.ctx.fx.readyEmitter(this.center);
-      this.ready.start();
-    } else if (!isReady && this.ready) {
-      this.ready.stop();
-      const ps = this.ready;
-      this.ctx.tweens.wait(1.5, () => ps.dispose());
-      this.ready = null;
+    this.cropScale.setAll(1);
+    this.cropY = SOIL_TOP;
+    if (crop) {
+      const lib = this.ctx.crops;
+      this.cropBatch = this.ctx.batches.get(`crop:${crop}:${stage}`, this.x, this.z, () => ({ detailed: lib.template(crop, stage, 0), simple: lib.template(crop, stage, 1) }), true);
+      this.cropBatch.add(this.cropHandle, this.compose(this.cropScale, this.cropY));
     }
+    const ripe = stage === 4 && crop !== null;
+    this.ctx.sparkles.set(this.g, ripe ? this.center : null);
+    if (ripe) this.ctx.bobbing.add(this);
+    else this.ctx.bobbing.delete(this);
   }
 
   private popIn(fresh: boolean) {
     const tw = this.ctx.tweens;
     const fx = this.ctx.fx;
     this.hold = 0.6;
-    this.cropRoot.scaling.set(0.4, 0.2, 0.4);
-    tw.add(0.55, (k) => this.cropRoot.scaling.set(0.4 + 0.6 * k, 0.2 + 0.8 * k, 0.4 + 0.6 * k), { ease: ease.outBack });
+    this.cropScale.set(0.4, 0.2, 0.4);
+    this.applyCrop();
+    tw.add(0.55, (k) => {
+      this.cropScale.set(0.4 + 0.6 * k, 0.2 + 0.8 * k, 0.4 + 0.6 * k);
+      this.applyCrop();
+    }, { ease: ease.outBack });
     const p = this.center.add(new Vector3(0, 0.12, 0));
     if (fresh) fx.dustPuff(p, 10);
     else fx.leafBurst(p, 6);
@@ -286,14 +276,14 @@ export class TileView {
 
   /** Jump, squash and vanish, then settle the soil. */
   playHarvest(onPeak: () => void) {
-    if (!this.crop) return;
+    if (!this.cropBatch) return;
     this.busy = true;
     const tw = this.ctx.tweens;
     const fx = this.ctx.fx;
-    const cr = this.cropRoot;
     tw.add(0.16, (k) => {
-      cr.position.y = SOIL_TOP + 0.4 * k;
-      cr.scaling.set(1 + 0.18 * k, 1 + 0.25 * k, 1 + 0.18 * k);
+      this.cropY = SOIL_TOP + 0.4 * k;
+      this.cropScale.set(1 + 0.18 * k, 1 + 0.25 * k, 1 + 0.18 * k);
+      this.applyCrop();
     }, {
       ease: ease.outCubic,
       done: () => {
@@ -303,9 +293,10 @@ export class TileView {
       },
     });
     tw.add(0.3, (k) => {
-      cr.position.y = SOIL_TOP + 0.4 + 0.15 * k;
+      this.cropY = SOIL_TOP + 0.4 + 0.15 * k;
       const s = 1.18 * (1 - k);
-      cr.scaling.set(s, 1.25 * (1 - k), s);
+      this.cropScale.set(s, 1.25 * (1 - k), s);
+      this.applyCrop();
     }, {
       delay: 0.16,
       ease: ease.inBack,
@@ -314,7 +305,10 @@ export class TileView {
         this.busy = false;
       },
     });
-    tw.add(0.4, (k) => (this.bed.scaling.y = 1 - 0.15 * Math.sin(k * Math.PI)), { delay: 0.35, ease: ease.linear });
+    tw.add(0.4, (k) => {
+      this.bedScale.y = 1 - 0.15 * Math.sin(k * Math.PI);
+      this.applyBed();
+    }, { delay: 0.35, ease: ease.linear });
     tw.wait(0.4, () => fx.dustPuff(this.center.add(new Vector3(0, 0.05, 0)), 8));
   }
 
@@ -322,16 +316,17 @@ export class TileView {
     this.busy = true;
     const tw = this.ctx.tweens;
     const fx = this.ctx.fx;
-    const grass = this.grass;
     fx.leafBurst(this.center.add(new Vector3(0, 0.25, 0)), 16);
-    if (grass) tw.add(0.3, (k) => grass.scaling.set(1 - 0.3 * k, 1 - k, 1 - 0.3 * k), { ease: ease.inBack });
+    tw.add(0.3, (k) => {
+      this.bedScale.set(1 - 0.3 * k, 1 - k, 1 - 0.3 * k);
+      this.applyBed();
+    }, { ease: ease.inBack });
     tw.wait(0.32, () => {
       this.setUnlocked(true);
-      this.bed.position.y = -0.2;
-      this.bed.scaling.set(0.7, 0.4, 0.7);
       tw.add(0.7, (k) => {
-        this.bed.position.y = -0.2 * (1 - k);
-        this.bed.scaling.set(0.7 + 0.3 * k, 0.4 + 0.6 * k, 0.7 + 0.3 * k);
+        this.bedY = -0.2 * (1 - k);
+        this.bedScale.set(0.7 + 0.3 * k, 0.4 + 0.6 * k, 0.7 + 0.3 * k);
+        this.applyBed();
       }, { ease: ease.outElastic, done: () => (this.busy = false) });
       fx.sparkleRing(this.center.add(new Vector3(0, 0.05, 0)), 0.8);
       fx.dustPuff(this.center.add(new Vector3(0, 0.1, 0)), 14);
@@ -340,22 +335,24 @@ export class TileView {
 
   /** Tap feedback on a growing plant. */
   wiggle() {
-    if (this.busy || !this.crop) return;
+    if (this.busy || !this.cropBatch) return;
     this.ctx.tweens.add(0.5, (k) => {
       const s = Math.sin(k * Math.PI * 4) * (1 - k) * 0.12;
-      this.cropRoot.scaling.set(1 - s * 0.5, 1 + s, 1 - s * 0.5);
+      this.cropScale.set(1 - s * 0.5, 1 + s, 1 - s * 0.5);
+      this.applyCrop();
     }, { ease: ease.linear });
   }
 
-  private idle() {
-    const dt = this.ctx.scene.getEngine().getDeltaTime() / 1000;
+  /** Ripe crops breathe a little; the Game calls this only while zoomed in. */
+  bob(dt: number) {
     if (this.hold > 0) {
       this.hold -= dt;
       return;
     }
-    if (this.busy || !this.cropKey?.endsWith(':4')) return;
+    if (this.busy) return;
     this.time += dt;
     const s = 1 + Math.sin(this.time * 3.2) * 0.025;
-    this.cropRoot.scaling.set(1 + (1 - s) * 0.5, s, 1 + (1 - s) * 0.5);
+    this.cropScale.set(1 + (1 - s) * 0.5, s, 1 + (1 - s) * 0.5);
+    this.applyCrop();
   }
 }

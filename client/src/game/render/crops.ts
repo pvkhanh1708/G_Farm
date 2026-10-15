@@ -1,7 +1,7 @@
 import { Color3, CreateIcoSphereVertexData, Material, Matrix, Mesh, Scene, Vector3, VertexData } from '@babylonjs/core';
 import { CROP_ORDER, CropId, STAGE_COUNT } from '../config';
 import { loadedAsset } from '../assets/registry';
-import { blade, blob, chain, GeoBuilder, hex, jitter, lathe, mix, mulberry, tf, weld } from './geometry';
+import { blade, blob as blobFull, chain, GeoBuilder, hex, jitter, lathe as latheFull, mix, mulberry, tf, weld } from './geometry';
 
 /**
  * Procedural stand-in crop models (see ASSETS.md: crop.*), chunky cartoon
@@ -40,7 +40,15 @@ const SEED_COLOR: Record<CropId, Color3> = {
   potato: hex('#c9915a'), chili: hex('#fff0c0'), watermelon: hex('#3a2a1a'), pineapple: hex('#8a6a3a'), cotton: hex('#5a4a3a'), lavender: hex('#3a3040'),
 };
 
-const ico = (sub: number) => weld(CreateIcoSphereVertexData({ radius: 1, subdivisions: sub }));
+/**
+ * Level of detail used while a template is being built: 1 = simplified (fewer sphere
+ * subdivisions and lathe sides), for the zoomed-out view of a big farm.
+ */
+let LOD = 0;
+const ico = (sub: number) => weld(CreateIcoSphereVertexData({ radius: 1, subdivisions: Math.max(1, sub - LOD) }));
+const blob = (radius: number, lumpiness: number, seed: number, sub = 2, flatBottom = false) => blobFull(radius, lumpiness, seed, Math.max(1, sub - LOD), flatBottom);
+const lathe = (profile: Array<[number, number]>, segments = 12, capTop = true, capBottom = false) =>
+  latheFull(profile, LOD ? Math.max(4, Math.ceil(segments / 2)) : segments, capTop, capBottom);
 
 // ------------------------------------------------------------------ primitives
 
@@ -811,16 +819,21 @@ export class CropLibrary {
 
   constructor(private scene: Scene, private material: Material) {}
 
-  /** Hidden source mesh for (crop, stage); tiles create instances from it. */
-  template(crop: CropId, stage: number): Mesh {
-    const key = `${crop}:${stage}`;
+  /** Hidden source mesh for (crop, stage) at a level of detail; tiles draw it as thin instances. */
+  template(crop: CropId, stage: number, lod = 0): Mesh {
+    const key = `${crop}:${stage}:${lod}`;
     let mesh = this.cache.get(key);
     if (!mesh) {
       const replacement = loadedAsset(`crop.${crop}.s${stage}`);
       if (replacement) mesh = replacement;
       else {
         const g = new GeoBuilder();
-        BUILDERS[crop](g, Math.max(0, Math.min(STAGE_COUNT - 1, stage)));
+        LOD = lod;
+        try {
+          BUILDERS[crop](g, Math.max(0, Math.min(STAGE_COUNT - 1, stage)));
+        } finally {
+          LOD = 0;
+        }
         mesh = g.build(`crop-${key}`, this.scene, this.material);
         const k = stage <= 1 ? 1.25 : CROP_SCALE[crop];
         mesh.bakeTransformIntoVertices(Matrix.Scaling(k, k, k));
@@ -835,7 +848,7 @@ export class CropLibrary {
 
   /** Pre-build every template up front to avoid hitches mid-game. */
   warm() {
-    for (const crop of CROP_ORDER) for (let s = 0; s < STAGE_COUNT; s++) this.template(crop, s);
+    for (const crop of CROP_ORDER) for (let s = 0; s < STAGE_COUNT; s++) for (const lod of [0, 1]) this.template(crop, s, lod);
   }
 
   stats() {

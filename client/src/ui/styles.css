@@ -470,3 +470,7 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .seed-name { font-size: 13px; }
   .seed-price { min-width: 0; width: 100%; font-size: 15px; height: 28px; }
 }
+
+/* the unlock sign is tappable (the 3D tile under it is too) */
+.plot-anchor > .sign.clickable { pointer-events: auto; cursor: pointer; }
+.plot-anchor > .sign.clickable:active { scale: .94; }

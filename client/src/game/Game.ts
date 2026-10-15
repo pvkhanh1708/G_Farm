@@ -26,6 +26,8 @@ import { grainTexture, grassTexture, soilTexture } from './render/textures';
 import { Tweens } from './render/tween';
 import { World } from './render/world';
 import { serverNow } from './net/clock';
+import { TileBatches } from './render/batch';
+import type { SparkleField } from './render/fx';
 import { growthProgress, store } from './state/store';
 
 export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
@@ -33,7 +35,9 @@ export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
 export type GameEvent =
   | { type: 'tileTap'; g: number; kind: TileKind }
   | { type: 'harvested'; g: number; crop: CropId; amount: number; xp: number; x: number; y: number; bulk: boolean }
-  | { type: 'ready'; g: number };
+  | { type: 'ready'; g: number }
+  /** The camera crossed between the close farm view and the zoomed-out overview. */
+  | { type: 'view'; overview: boolean };
 
 export interface ScreenPoint {
   x: number;
@@ -66,6 +70,12 @@ export class Game {
   private readySet = new Set<number>();
   private hovered: number | null = null;
   private overview = false;
+  private batches!: TileBatches;
+  private sparkles!: SparkleField;
+  private bobbing = new Set<TileView>();
+  /** Zoomed out past one parcel: overview look (simple crops, no shadows), taps pick a parcel. */
+  private far = false;
+  private sparkleTimer = 0;
   quality: Quality;
 
   private constructor(private canvas: HTMLCanvasElement, quality: Quality, private showcase: boolean) {
@@ -161,11 +171,13 @@ export class Game {
     this.crops.warm();
     this.templates = buildTileTemplates(scene, this.mats);
     this.templates.ring.setEnabled(false);
+    this.batches = new TileBatches(scene);
+    this.sparkles = this.fx.sparkleField();
     await tick();
 
     progress(0.85, 'Dọn ô đất…');
     this.rebuildShadows(preset.shadowMapSize, preset.shadowPcfQuality);
-    this.tileCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, shadows: () => this.shadowGen };
+    this.tileCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, batches: this.batches, sparkles: this.sparkles, bobbing: this.bobbing };
     if (this.showcase) this.buildShowcase();
     else {
       this.syncTiles(false);
@@ -206,7 +218,7 @@ export class Game {
     sg.setDarkness(0.15);
     this.shadowGen = sg;
     this.world?.attachShadows(sg);
-    this.tiles.forEach((t) => t.reattachShadows(sg));
+    this.batches?.attachShadows(sg);
   }
 
   // ---------------------------------------------------------------- loop
@@ -226,6 +238,14 @@ export class Game {
     // fog is measured from the (orthographic) camera, which always sits a fixed distance away
     this.scene.fogStart = this.rig.camera.radius + r * 0.6 + 14;
     this.scene.fogEnd = this.rig.camera.radius + r * 0.6 + 100;
+    this.updateFar();
+    if (!this.far) for (const v of this.bobbing) v.bob(dt);
+    this.sparkleTimer += dt;
+    if (this.sparkleTimer > 0.25) {
+      this.sparkleTimer = 0;
+      // sparkles only around what is on screen, and none in the far overview
+      this.sparkles.focus(target, this.far ? 0 : r * 0.75);
+    }
     this.syncTimer += dt;
     if (this.syncTimer > 0.2 && !this.showcase) {
       this.syncTimer = 0;
@@ -233,6 +253,43 @@ export class Game {
     }
     const ring = this.templates.ring;
     if (ring.isEnabled()) (ring.material as StandardMaterial).alpha = 0.55 + Math.sin(this.time * 6) * 0.3;
+  }
+
+  /** Camera distance that frames one whole parcel. */
+  private get parcelRadius() {
+    return this.rig.fitRadius(ISLAND_SIZE * 1.45);
+  }
+
+  private updateFar() {
+    const far = this.rig.radius > this.parcelRadius * 1.6;
+    if (far === this.far) return;
+    this.far = far;
+    this.batches.setFar(far);
+    // shadows cost a second pass over every tile; the overview is too small to need them
+    this.sun.shadowEnabled = !far;
+    if (!far) for (const v of this.bobbing) v.bob(0);
+    this.overview = far;
+    this.emit({ type: 'view', overview: far });
+  }
+
+  /** Frame one parcel (from the overview, tapping a parcel zooms into it). */
+  focusParcel(k: number) {
+    const c = parcelCenter(k);
+    this.overview = false;
+    this.rig.focus(new Vector3(c.x, 0, c.z - 0.6), this.parcelRadius, false);
+  }
+
+  /** Parcel under a screen point, if any (only those with tiles, plus the wild one to come). */
+  private parcelAt(x: number, y: number): number | null {
+    const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.rig.camera);
+    if (Math.abs(ray.direction.y) < 1e-4) return null;
+    const p = ray.origin.add(ray.direction.scale(-ray.origin.y / ray.direction.y));
+    const half = ISLAND_SIZE / 2 + 0.3;
+    for (let k = 0; k <= this.parcels; k++) {
+      const c = parcelCenter(k);
+      if (Math.abs(p.x - c.x) <= half && Math.abs(p.z - c.z) <= half) return k;
+    }
+    return null;
   }
 
   private syncTiles(animate: boolean) {
@@ -318,6 +375,10 @@ export class Game {
   }
 
   private handleHover(x: number, y: number) {
+    if (this.far) {
+      this.canvas.style.cursor = this.parcelAt(x, y) !== null ? 'zoom-in' : 'grab';
+      return this.showRing(null);
+    }
     const g = this.showcase ? null : this.tileAt(x, y);
     if (g === this.hovered) return;
     this.hovered = g;
@@ -336,6 +397,14 @@ export class Game {
   private handleTap(x: number, y: number) {
     sfx.resume();
     if (this.showcase) return;
+    if (this.far) {
+      const k = this.parcelAt(x, y);
+      if (k !== null) {
+        sfx.tap();
+        this.focusParcel(k);
+      }
+      return;
+    }
     const g = this.tileAt(x, y);
     if (g === null) return;
     const view = this.tiles.get(g)!;
@@ -440,6 +509,16 @@ export class Game {
     return this.rig.radius;
   }
 
+  /** Zoomed out to the overview (taps pick a parcel, tile labels hidden). */
+  get isFar() {
+    return this.far;
+  }
+
+  /** Ground point at the centre of the view. */
+  get viewTarget() {
+    return this.rig.target;
+  }
+
   get fps() {
     return this.engine.getFps();
   }
@@ -463,7 +542,27 @@ export class Game {
       activeMeshes: this.scene.getActiveMeshes().length,
       vertices: this.scene.getTotalVertices(),
       crops: this.crops.stats(),
+      ...this.batches.stats(),
     };
+  }
+
+  /** Average per-frame timings (ms) over `ms`, for the benchmark script. */
+  async profile(ms = 3000) {
+    const si = new SceneInstrumentation(this.scene);
+    si.captureFrameTime = si.captureRenderTime = si.captureActiveMeshesEvaluationTime = true;
+    si.captureParticlesRenderTime = si.captureRenderTargetsRenderTime = si.captureInterFrameTime = true;
+    await new Promise((r) => setTimeout(r, ms));
+    const f = (c: { average: number }) => Math.round(c.average * 10) / 10;
+    const out = {
+      frame: f(si.frameTimeCounter),
+      activeMeshes: f(si.activeMeshesEvaluationTimeCounter),
+      render: f(si.renderTimeCounter),
+      particles: f(si.particlesRenderTimeCounter),
+      shadowMap: f(si.renderTargetsRenderTimeCounter),
+      outsideBabylon: f(si.interFrameTimeCounter),
+    };
+    si.dispose();
+    return out;
   }
 
   dispose() {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TILES_PER_PARCEL } from '../game/config';
+import { TILES_PER_PARCEL, tileWorldPos } from '../game/config';
 import type { Game } from '../game/Game';
 import { serverNow } from '../game/net/clock';
 import { growthProgress, store, TileState } from '../game/state/store';
@@ -16,13 +16,10 @@ function useNow(ms: number) {
   return now;
 }
 
-/** Progress bars only make sense when zoomed in; hide them in the overview. */
-const CLOSE_RADIUS = 20;
-
-function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; now: number; coins: number; cost: number; close: boolean; needLevel: number | null }) {
+function Tag({ tile, now, coins, cost, needLevel, onUnlock }: { tile: TileState; now: number; coins: number; cost: number; needLevel: number | null; onUnlock: () => void }) {
   if (tile.next && needLevel) {
     return (
-      <div className="sign level">
+      <div className="sign level clickable" onClick={onUnlock}>
         <span className="sign-title">
           <LockIcon size={16} /> Cần cấp
         </span>
@@ -34,7 +31,7 @@ function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; no
   }
   if (tile.next) {
     return (
-      <div className={`sign ${coins >= cost ? 'affordable' : ''}`}>
+      <div className={`sign clickable ${coins >= cost ? 'affordable' : ''}`} onClick={onUnlock}>
         <span className="sign-title">
           <LockIcon size={16} /> Mở khóa
         </span>
@@ -44,7 +41,7 @@ function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; no
       </div>
     );
   }
-  if (!close || !tile.crop) return null;
+  if (!tile.crop) return null;
   const p = growthProgress(tile, now);
   if (p >= 1) return null;
   return (
@@ -57,17 +54,30 @@ function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; no
   );
 }
 
-export function TileOverlays({ game }: { game: Game }) {
+/**
+ * DOM labels pinned to the 3D farm. Only tiles that need one get an element: the
+ * next tile's sign, plus progress bars for growing crops near the middle of the
+ * view while zoomed in. A big farm would otherwise project hundreds of labels
+ * every frame.
+ */
+export function TileOverlays({ game, onUnlock }: { game: Game; onUnlock: () => void }) {
   const s = useGameState();
   const now = useNow(250);
-  const [close, setClose] = useState(true);
   const refs = useRef(new Map<string, HTMLDivElement>());
-  const tiles = useMemo(() => store.tiles(), [s]);
+  const allTiles = useMemo(() => store.tiles(), [s]);
   const preview = store.parcelCount();
+  // re-picked on every 250 ms tick, so the set follows the camera
+  const far = game.isFar;
+  const center = game.viewTarget;
+  const reach = game.cameraRadius * 0.75;
+  const tiles = allTiles.filter((t) => {
+    if (t.next) return true;
+    if (far || !t.crop || growthProgress(t, now) >= 1) return false;
+    const p = tileWorldPos(t.g);
+    return Math.abs(p.x - center.x) < reach && Math.abs(p.z - center.z) < reach;
+  });
   useEffect(() => {
     return game.onFrame(() => {
-      const isClose = game.cameraRadius < CLOSE_RADIUS;
-      setClose((c) => (c === isClose ? c : isClose));
       refs.current.forEach((el, key) => {
         const p = key === 'parcel' ? game.parcelAnchor(preview) : game.tileAnchor(Number(key), key === String(s.unlocked) ? 0.35 : 0.75);
         el.style.transform = `translate(${p.x}px, ${p.y}px)`;
@@ -86,7 +96,7 @@ export function TileOverlays({ game }: { game: Game }) {
     <div className="plot-overlays">
       {tiles.map((t) => (
         <div key={t.g} className="plot-anchor" ref={bind(String(t.g))}>
-          <Tag tile={t} now={now} coins={s.coins} cost={cost} close={close} needLevel={needLevel} />
+          <Tag tile={t} now={now} coins={s.coins} cost={cost} needLevel={needLevel} onUnlock={onUnlock} />
         </div>
       ))}
       <div className="plot-anchor" ref={bind('parcel')}>
