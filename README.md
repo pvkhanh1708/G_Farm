@@ -9,11 +9,11 @@ Bố cục theo kiểu đảo nổi: mỗi **mảnh đất** là một đảo c�
 mảnh đầu tiên, số mảnh không giới hạn. Có nút “Trồng tất cả”, “Thu tất cả”,
 và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
 
-**Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Lên cấp được thưởng `20 × cấp` xu,
-được sở hữu thêm 4 ô đất (`6 + 4 × (cấp − 1)` ô) và mở khóa hạt giống mới. XP cần để lên cấp kế tiếp:
-`10 × cấp^2.35`. Giá ô đất thứ n: `40 + 6 × (n − 4)^2.15` xu. Toàn bộ số liệu nằm trong
+**Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
+(tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
+`5 × cấp^2.1`. Giá ô đất thứ n: `40 + 20 × (n − 4)^2.4` xu. Toàn bộ số liệu nằm trong
 `client/src/game/config.ts`; nhịp độ được cân bằng bằng mô phỏng người chơi tích cực
-(cấp 10 ≈ 1 giờ, cấp 20 ≈ 4 giờ, cấp 30 ≈ 8 giờ).
+(cấp 10 ≈ 45 phút, cấp 20 ≈ 3 giờ, cấp 30 ≈ 6 giờ).
 
 | Cây | Cấp mở | Hạt | Thời gian | Thu | Giá bán | XP | Lãi/ô |
 |---|---|---|---|---|---|---|---|

@@ -69,17 +69,17 @@ export const STARTING_COINS = 50;
 
 /** XP needed to go from `level` to `level + 1`. No level cap. */
 export function xpToNext(level: number): number {
-  return Math.round(10 * Math.pow(level, 2.35));
+  return Math.round(5 * Math.pow(level, 2.1));
 }
 
-/** Tiles a player of this level may own: land opens up 4 tiles per level, forever. */
+/** Tiles a player of this level may own: each level (from level 1) allows one more tile, forever. */
 export function tileCap(level: number): number {
-  return 6 + 4 * (level - 1);
+  return START_UNLOCKED + level;
 }
 
 /** Lowest level that allows owning `count` tiles. */
 export function levelForTiles(count: number): number {
-  return Math.max(1, Math.ceil((count - 6) / 4) + 1);
+  return Math.max(1, count - START_UNLOCKED);
 }
 
 /** Coins granted on reaching `level`. */
@@ -124,10 +124,13 @@ export function tileWorldPos(g: number): { x: number; z: number } {
   return { x: pc.x + (c - off) * TILE_PITCH, z: pc.z + (r - off) * TILE_PITCH };
 }
 
-/** Price of the next tile: polynomial in tiles owned, so it keeps pace with income from bigger farms. */
+/**
+ * Price of the next tile. Land opens one tile per level, so each tile is
+ * priced at roughly the coins a player earns during that level.
+ */
 export function unlockCost(unlockedCount: number): number {
   const extra = Math.max(0, unlockedCount - START_UNLOCKED);
-  return Math.round((40 + 6 * Math.pow(extra, 2.15)) / 10) * 10;
+  return Math.round((40 + 20 * Math.pow(extra, 2.4)) / 10) * 10;
 }
 
 export type Quality = 'low' | 'medium' | 'high';
