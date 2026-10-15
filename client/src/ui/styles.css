@@ -527,7 +527,7 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .room-bar b { font-size: 20px; flex: 1; text-shadow: 0 2px 0 rgba(0,0,0,.3); }
 .room-coins { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; color: #ffe27a; background: rgba(0,0,0,.3); padding: 2px 10px; border-radius: 14px; }
 .room-close { position: static; }
-.room-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+.room-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 6px; }
 .room-empty { color: #fff; text-align: center; margin-top: 40px; }
 
 .lobby { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
@@ -601,7 +601,8 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .tl-hint { font-size: 12px; color: #ffd0a0; }
 .tl-hand { display: flex; justify-content: center; padding: 14px 10px 4px; overflow-x: auto; }
 .tl-hand .card { margin: 0 -10px; }
-.tl-actions { display: flex; gap: 8px; justify-content: center; }
+.tl-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding-bottom: 10px; }
+/* the buttons' 3D bottom edge (box-shadow) must not be clipped by the scrolling room body */
 .card {
   position: relative; flex: none; width: 46px; height: 66px; border-radius: 7px; padding: 0; cursor: pointer;
   background: linear-gradient(#fff, #f2efe6); border: 1.5px solid #8a7a62; box-shadow: 0 2px 4px rgba(0,0,0,.35);
