@@ -620,15 +620,16 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .tl-hand .card { margin: 0 -9px; }
 }
 
-/* tiến lên hand: bigger cards, no overlap, wraps into two rows on phones so every card is easy to tap */
-.tl-hand { flex-wrap: wrap; gap: 14px 6px; padding: 16px 6px 6px; overflow: visible; }
-.tl-hand .card, .tl-hand .card.small { margin: 0; width: 58px; height: 84px; font-size: 20px; border-radius: 8px; }
-.tl-hand .card .card-suit { font-size: 19px; }
+/* tiến lên hand: one overlapping row like a real hand, with bigger cards */
+.tl-hand { flex-wrap: nowrap; padding: 22px 6px 6px; overflow: visible; }
+.tl-hand .card { margin: 0 -14px; width: 70px; height: 100px; font-size: 22px; border-radius: 9px; }
+.tl-hand .card .card-suit { font-size: 21px; }
+.tl-hand .card.sel { transform: translateY(-20px); }
 .tl-actions { gap: 14px; }
 .tl-actions .btn { min-height: 46px; min-width: 96px; }
 @media (max-width: 560px) {
-  .tl-hand { gap: 14px 5px; }
-  .tl-hand .card { width: 46px; height: 68px; font-size: 17px; }
-  .tl-hand .card .card-suit { font-size: 16px; }
+  /* 13 cards across a phone: ~26 px of each card shows, enough to tap its rank */
+  .tl-hand .card { margin: 0 -15px; width: 56px; height: 82px; font-size: 19px; }
+  .tl-hand .card .card-suit { font-size: 17px; }
   .tl-board { min-height: 220px; }
 }
