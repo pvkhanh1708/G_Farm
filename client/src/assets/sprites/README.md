@@ -42,6 +42,7 @@ client/src/assets/sprites/
     ├── plant.png           Trồng        ├── trophy.png      Xếp hạng
     ├── harvest.png         Thu hoạch    ├── game-room.png   Phòng game
     ├── settings.png        Cài đặt      ├── egg.png, milk.png  trứng, sữa
+    ├── quests.png, orders.png, upgrade.png  Nhiệm vụ, Đơn hàng, Nâng cấp
     └── chicken.png, cow.png  gà, bò (nút Chuồng, cửa sổ Chuồng trại)
 ```
 

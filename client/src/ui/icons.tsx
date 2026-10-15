@@ -826,7 +826,7 @@ function CowSvg(p: P) {
   );
 }
 
-export function OrderIcon(p: P) {
+function OrderSvg(p: P) {
   return (
     <Svg {...p}>
       <rect x="12" y="10" width="40" height="46" rx="5" fill="#fff6dc" stroke={OUT} strokeWidth="3" />
@@ -837,7 +837,7 @@ export function OrderIcon(p: P) {
   );
 }
 
-export function QuestIcon(p: P) {
+function QuestSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M14 12h32a6 6 0 0 1 6 6v34a4 4 0 0 1-4 4H18a6 6 0 0 1-6-6V14z" fill="#ffe9a8" stroke={OUT} strokeWidth="3" />
@@ -847,7 +847,7 @@ export function QuestIcon(p: P) {
   );
 }
 
-export function UpgradeIcon(p: P) {
+function UpgradeSvg(p: P) {
   return (
     <Svg {...p}>
       <circle cx="32" cy="34" r="24" fill="#7fd14a" stroke={OUT} strokeWidth="3" />
@@ -939,3 +939,6 @@ export const SeedBagIcon = withArt('seeds', SeedBagSvg);
 export const XpIcon = withArt('level-star', XpSvg);
 export const ChickenIcon = withArt('chicken', ChickenSvg);
 export const CowIcon = withArt('cow', CowSvg);
+export const UpgradeIcon = withArt('upgrade', UpgradeSvg);
+export const QuestIcon = withArt('quests', QuestSvg);
+export const OrderIcon = withArt('orders', OrderSvg);
