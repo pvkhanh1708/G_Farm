@@ -7,6 +7,35 @@ Prompt viết bằng tiếng Anh vì mô hình vẽ hiểu tiếng Anh chính x�
 
 ---
 
+## 0. Cách nhanh nhất: mỗi cây một tấm ảnh (31 lần vẽ)
+
+ChatGPT chỉ vẽ một ảnh mỗi lần trả lời. Vì vậy mỗi lần vẽ **trọn một cây** trên một tấm 3×2 (5 giai đoạn + icon),
+lưu thành `client/src/assets/sprites/crops/<mã>.png`; game tự cắt. Tổng cộng 25 tấm cây + 6 hình ô đất / nền (mục 4).
+
+Prompt cho một cây (thay phần trong ngoặc vuông bằng một dòng ở bảng mục 5):
+
+```text
+Draw a game sprite sheet: a 3x2 grid of six equal square cells on a wide 1536x1024 canvas (each cell 512x512),
+TRANSPARENT background, no grid lines, no borders, no text, no labels. Every item is centred inside its own cell
+with empty space around it and never crosses into a neighbouring cell.
+
+Subject: a [TÊN CÂY TIẾNG ANH] plant for a casual mobile farming game, seen STRAIGHT FROM ABOVE (top-down
+orthographic, like a map; not isometric, no perspective). No soil tile and no ground under the plants.
+Cells, left to right, top row then bottom row:
+1. stage 0: two or three small dark-brown seed mounds with tiny [MÀU HẠT] seeds (small, ~30% of the cell)
+2. stage 1: a tiny fresh green sprout with two round seed leaves (~30%)
+3. stage 2: [GĐ 2] (~50%)
+4. stage 3: [GĐ 3] (~65%)
+5. stage 4, ripe: [GĐ 4] (~75%)
+6. shop icon: the ripe [QUẢ / HOA] shown slightly from the side, glossy, ~85% of the cell
+
+Style: polished casual mobile game art, hand-painted 2D cartoon, bright saturated colours, soft cel shading,
+thin dark-brown outline, light from the top-left, soft contact shadow under each plant, bold shapes readable when small.
+Keep exactly the same style as the previous sheets in this chat.
+```
+
+Cây đầu tiên ưng ý thì giữ cùng cuộc trò chuyện cho các cây sau (hoặc đính kèm tấm đó làm mẫu khi mở cuộc mới).
+
 ## 1. Quy trình
 
 1. **Tạo bảng phong cách trước** (mục 3). Chọn ra 1 bảng ưng ý nhất và lưu lại: đây là “ảnh mẫu” cho mọi lần sau.

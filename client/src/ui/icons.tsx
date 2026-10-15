@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { CropId } from '../game/config';
-import { artUrl } from '../game/art';
+import { artUrl, cropSheetUrl, SHEET } from '../game/art';
 
 /** Hand-drawn vector icons in a chunky cartoon style (thick outline, gradients). */
 
@@ -723,8 +723,18 @@ const CROP_ICONS: Record<CropId, (p: P) => React.JSX.Element> = {
 
 export function CropIcon({ crop, ...p }: P & { crop: CropId }) {
   // a hand-made icon (assets/sprites/icons/<crop>.png) wins over the vector one
+  const size = p.size ?? 48;
   const url = artUrl(`icons/${crop}.png`);
-  if (url) return <img className={p.className} src={url} width={p.size ?? 48} height={p.size ?? 48} alt="" draggable={false} />;
+  if (url) return <img className={p.className} src={url} width={size} height={size} alt="" draggable={false} />;
+  // or the last cell of the crop's 3x2 sheet
+  const sheet = cropSheetUrl(crop);
+  if (sheet)
+    return (
+      <span
+        className={p.className}
+        style={{ display: 'inline-block', width: size, height: size, backgroundImage: `url(${sheet})`, backgroundSize: `${SHEET.cols * 100}% ${SHEET.rows * 100}%`, backgroundPosition: '100% 100%' }}
+      />
+    );
   const Icon = CROP_ICONS[crop];
   return <Icon {...p} />;
 }

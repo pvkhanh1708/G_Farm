@@ -1,7 +1,7 @@
 import { Constants, DynamicTexture, Material, Mesh, Scene, StandardMaterial, Texture, VertexData } from '@babylonjs/core';
 import { CROP_ORDER, CropId, STAGE_COUNT } from '../config';
 import { mulberry } from './geometry';
-import { artUrl, loadImage } from '../art';
+import { artUrl, cropSheetUrl, loadImage, SHEET } from '../art';
 
 /**
  * Top-down 2D art for the farm grid: soil tiles, wild-grass tiles and every
@@ -915,8 +915,9 @@ export class SpriteLibrary {
     const c = this.atlas.getContext() as unknown as Ctx;
     c.clearRect(0, 0, ATLAS_W, ATLAS_H);
     let i = 0;
-    const art: Array<[number, string]> = [];
-    const paint = (key: string, file: string, fn: (c: Ctx) => void) => {
+    /** atlas cell <- image url (+ which cell of a 3x2 crop sheet, if it is one) */
+    const art: Array<{ cell: number; url: string; part?: number }> = [];
+    const paint = (key: string, file: string, fn: (c: Ctx) => void, sheet?: { url?: string; part: number }) => {
       const x = (i % COLS) * CELL + PAD, y = Math.floor(i / COLS) * CELL + PAD;
       c.save();
       c.translate(x, y);
@@ -927,28 +928,36 @@ export class SpriteLibrary {
       fn(c);
       c.restore();
       const url = artUrl(file);
-      if (url) art.push([i, url]);
+      if (url) art.push({ cell: i, url });
+      else if (sheet?.url) art.push({ cell: i, url: sheet.url, part: sheet.part });
       this.cells.set(key, i++);
     };
     // file names: see client/src/assets/sprites/README.md
     paint('soil', 'tiles/soil.png', paintSoil);
     for (let v = 0; v < 3; v++) paint(`grass${v}`, `tiles/grass-${v + 1}.png`, (cc) => paintGrass(cc, v));
-    for (const crop of CROP_ORDER)
+    for (const crop of CROP_ORDER) {
+      const sheet = cropSheetUrl(crop);
       for (let s = 0; s < STAGE_COUNT; s++)
         paint(`crop:${crop}:${s}`, `crops/${crop}/${crop}-${s}.png`, (cc) => {
           if (s === 0) paintSeeds(cc, SEED[crop]);
           else if (s === 1) paintSprout(cc, G.mid, G.light, 1);
           else PAINTERS[crop](cc, s);
-        });
+        }, { url: sheet, part: s });
+    }
     this.atlas.update(true);
     // hand-made PNGs replace their procedural cell as they load
     void Promise.all(
-      art.map(async ([cell, url]) => {
+      art.map(async ({ cell, url, part }) => {
         const img = await loadImage(url);
         if (!img) return;
         const x = (cell % COLS) * CELL + PAD, y = Math.floor(cell / COLS) * CELL + PAD;
         c.clearRect(x - PAD, y - PAD, CELL, CELL);
-        c.drawImage(img, x, y, DRAW, DRAW);
+        if (part === undefined) c.drawImage(img, x, y, DRAW, DRAW);
+        else {
+          // one cell of a 3x2 crop sheet
+          const w = img.width / SHEET.cols, h = img.height / SHEET.rows;
+          c.drawImage(img, (part % SHEET.cols) * w, Math.floor(part / SHEET.cols) * h, w, h, x, y, DRAW, DRAW);
+        }
       }),
     ).then(() => art.length && this.atlas.update(true));
 

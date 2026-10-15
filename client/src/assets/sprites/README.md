@@ -33,6 +33,23 @@ client/src/assets/sprites/
     └── …
 ```
 
+## Cách nhanh: mỗi cây một tấm ảnh
+
+Thay vì 5 file riêng, có thể đặt **một tấm** `crops/<mã>.png` (ví dụ `crops/carrot.png`), lưới **3 cột × 2 hàng** ô bằng nhau
+(ChatGPT: khổ ngang 1536×1024, mỗi ô 512×512):
+
+```
+┌──────────┬──────────┬──────────┐
+│ gđ 0     │ gđ 1     │ gđ 2     │
+│ hạt      │ mầm      │ cây non  │
+├──────────┼──────────┼──────────┤
+│ gđ 3     │ gđ 4     │ icon     │
+│ ra hoa   │ chín     │ cửa hàng │
+└──────────┴──────────┴──────────┘
+```
+
+Game tự cắt tấm này. Nếu có cả file lẻ (`crops/carrot/carrot-4.png`, `icons/carrot.png`) thì file lẻ được ưu tiên.
+
 ## Quy tắc đặt tên
 
 - Chỉ chữ thường không dấu, số và dấu gạch ngang. Đuôi `.png` viết thường.
