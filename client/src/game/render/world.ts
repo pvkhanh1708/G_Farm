@@ -66,6 +66,8 @@ function buildGround(scene: Scene, mats: MaterialLibrary) {
     mat.emissiveColor.set(1, 1, 1);
     m.material = mat;
   } else m.material = mats.grassGround;
+  // the meadow is the bottom layer: it must not hide crop sprites whose base dips below y = 0
+  m.material!.disableDepthWrite = true;
   m.position.y = -0.01;
   m.receiveShadows = true;
   m.isPickable = false;
