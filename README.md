@@ -58,6 +58,9 @@ npm run build        # bản production -> client/dist
 npm run preview      # chạy thử bản production tại http://localhost:4173 (cũng proxy /api)
 ```
 
+Triển khai lên server (nongtrai.io.vn + api.nongtrai.io.vn): xem **[DEPLOY.md](DEPLOY.md)**.
+`npm run build` nhúng địa chỉ API từ `client/.env.production`; khi chạy local bằng `npm run dev` thì dùng proxy `/api`.
+
 Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chili` để lọc), `?offline` chơi không cần server.
 Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
 
