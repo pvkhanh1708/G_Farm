@@ -46,7 +46,8 @@ class ThinBatch {
     shareGeometry(template, m, scene);
     m.material = template.material;
     m.isPickable = false;
-    m.receiveShadows = true;
+    // flat 2D sprites are unlit; a shadow sampler would clash with the atlas
+    m.receiveShadows = false;
     m.setBoundingInfo(bounds);
     m.doNotSyncBoundingInfo = true;
     m.setEnabled(false);

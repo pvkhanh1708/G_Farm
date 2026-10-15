@@ -108,7 +108,6 @@ export interface MaterialLibrary {
   props: PBRMaterial; // vertex-coloured static props (cliffs, rocks, trunks...)
   soil: PBRMaterial;
   grassGround: PBRMaterial;
-  crops: PBRMaterial; // all crops share this (double sided, wind)
   foliage: PBRMaterial; // tree canopies (gentle wind)
   grass: PBRMaterial; // grass blades / flowers (strong wind)
   cover: PBRMaterial; // locked grass tiles

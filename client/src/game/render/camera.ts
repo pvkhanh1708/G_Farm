@@ -1,19 +1,20 @@
-import { ArcRotateCamera, Camera, Scene, Vector3 } from '@babylonjs/core';
+import { Camera, Scene, TargetCamera, Vector3 } from '@babylonjs/core';
 
-const ELEVATION_DEG = 40;
 const MIN_R = 8;
 /** The orthographic camera sits this far from its target; zoom only changes the view size. */
 const CAMERA_DISTANCE = 90;
 
 /**
- * Fixed isometric-style camera: drag to pan in 4 directions, wheel / pinch to zoom.
+ * Fixed top-down camera: drag to pan in 4 directions, wheel / pinch to zoom.
  * Orthographic, so the farm is seen from exactly the same angle wherever you pan or
  * zoom (a perspective camera skews tiles near the screen edges). Rotation is never
  * exposed. "Radius" stays the zoom unit: the view shows what a perspective camera
  * at that distance would, so framing maths elsewhere is unchanged.
  */
 export class CameraRig {
-  readonly camera: ArcRotateCamera;
+  readonly camera: TargetCamera;
+  /** Ground point at the centre of the view. */
+  readonly target = new Vector3(0.6, 0, 1.6);
   private goalTarget = new Vector3(0.6, 0, 1.6);
   private goalRadius = 24;
   private velocity = new Vector3();
@@ -26,14 +27,13 @@ export class CameraRig {
   onHover: (x: number, y: number) => void = () => {};
 
   constructor(private scene: Scene, private canvas: HTMLCanvasElement) {
-    const beta = ((90 - ELEVATION_DEG) * Math.PI) / 180;
-    this.camera = new ArcRotateCamera('cam', (-3 * Math.PI) / 4, beta, this.goalRadius, this.goalTarget.clone(), scene);
+    // looking straight down (pitch 90deg): +x is screen right, +z is screen up
+    this.camera = new TargetCamera('cam', new Vector3(this.target.x, CAMERA_DISTANCE, this.target.z), scene);
+    this.camera.rotation.set(Math.PI / 2, 0, 0);
     this.camera.fov = 0.6;
     this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
-    this.camera.radius = CAMERA_DISTANCE;
     this.camera.minZ = 1;
     this.camera.maxZ = CAMERA_DISTANCE * 3;
-    this.camera.inputs.clear();
     this.adaptToAspect();
     this.zoom = this.goalRadius;
     this.applyZoom();
@@ -51,9 +51,7 @@ export class CameraRig {
   fitRadius(width: number) {
     this.fitWidth = width;
     const aspect = this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight);
-    // portrait: the island diamond is narrower than its fit width, so allow a tighter frame
-    const w = aspect < 1 ? width * 0.74 : width;
-    const r = w / 2 / (Math.tan(this.camera.fov / 2) * Math.min(aspect, 1.15));
+    const r = width / 2 / (Math.tan(this.camera.fov / 2) * Math.min(aspect, 1.15));
     return Math.max(MIN_R, Math.min(this.maxR, r));
   }
 
@@ -170,12 +168,8 @@ export class CameraRig {
 
   private panBy(dx: number, dy: number) {
     const k = this.worldPerPixel();
-    const a = this.camera.alpha;
-    // camera right / forward projected onto the ground plane
-    const right = new Vector3(-Math.sin(a), 0, Math.cos(a));
-    const fwd = new Vector3(-Math.cos(a), 0, -Math.sin(a));
-    const sinE = Math.cos(this.camera.beta);
-    const delta = right.scale(-dx * k).add(fwd.scale((dy * k) / Math.max(0.3, sinE)));
+    // screen right = +x, screen up = +z; the ground follows the finger
+    const delta = new Vector3(-dx * k, 0, dy * k);
     this.goalTarget.addInPlace(delta);
     this.clampGoal();
     const dt = Math.max(1 / 120, this.scene.getEngine().getDeltaTime() / 1000);
@@ -196,22 +190,29 @@ export class CameraRig {
       this.clampGoal();
     }
     const k = 1 - Math.pow(0.0005, dt);
-    this.camera.target = Vector3.Lerp(this.camera.target, this.goalTarget, k);
+    this.target.addInPlace(this.goalTarget.subtract(this.target).scaleInPlace(k));
+    this.place();
     this.zoom += (this.goalRadius - this.zoom) * k;
     this.applyZoom();
+  }
+
+  private place() {
+    this.camera.position.set(this.target.x, CAMERA_DISTANCE, this.target.z);
+  }
+
+  /** How far above the ground the camera sits (fog is measured from it). */
+  get distance() {
+    return CAMERA_DISTANCE;
   }
 
   focus(target: Vector3, radius: number, immediate = false) {
     this.goalTarget.copyFrom(target);
     this.goalRadius = radius;
     if (immediate) {
-      this.camera.target = target.clone();
+      this.target.copyFrom(target);
+      this.place();
       this.zoom = radius;
       this.applyZoom();
     }
-  }
-
-  get target() {
-    return this.camera.target;
   }
 }

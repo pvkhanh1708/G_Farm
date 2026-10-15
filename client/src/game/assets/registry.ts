@@ -15,8 +15,9 @@ export interface AssetEntry {
 const PROC = 'Procedural (code, src/game/render)';
 const OWN = 'Project-owned code, no third-party rights';
 
+const SPRITE = 'Procedural 2D sprite (Canvas 2D, src/game/render/sprites.ts)';
 const crop = (id: string, name: string): AssetEntry[] =>
-  [0, 1, 2, 3, 4].map((s) => ({ id: `crop.${id}.s${s}`, label: `${name} – stage ${s}`, source: PROC, license: OWN, status: 'placeholder' as const }));
+  [0, 1, 2, 3, 4].map((s) => ({ id: `crop.${id}.s${s}`, label: `${name} – stage ${s} (top-down sprite)`, source: SPRITE, license: OWN, status: 'placeholder' as const }));
 
 /**
  * Single source of truth for 3D assets. To integrate a real model, drop the
@@ -39,8 +40,8 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   ...crop('pineapple', 'Pineapple'),
   ...crop('cotton', 'Cotton'),
   ...crop('lavender', 'Lavender'),
-  { id: 'tile.soil', label: 'Soil tile (rounded slab)', source: PROC, license: OWN, status: 'placeholder' },
-  { id: 'tile.grass', label: 'Locked grass tile (3 variants)', source: PROC, license: OWN, status: 'placeholder' },
+  { id: 'tile.soil', label: 'Soil tile (top-down sprite)', source: SPRITE, license: OWN, status: 'placeholder' },
+  { id: 'tile.grass', label: 'Locked grass tile, 3 variants (top-down sprite)', source: SPRITE, license: OWN, status: 'placeholder' },
   { id: 'env.island', label: 'Floating island per parcel (grass top + cliff)', source: PROC, license: OWN, status: 'placeholder' },
   { id: 'env.bush', label: 'Bushes (4 variants)', source: PROC, license: OWN, status: 'placeholder' },
   { id: 'env.rock', label: 'Rock cluster', source: PROC, license: OWN, status: 'placeholder' },

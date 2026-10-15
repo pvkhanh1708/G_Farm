@@ -1,4 +1,4 @@
-import{p as o}from"./babylon-p5lyDL7S.js";const e="volumetricLightingBlendVolumePixelShader",i=`varying vec2 vUV;uniform sampler2D textureSampler;uniform sampler2D depthSampler;uniform mat4 invProjection;uniform vec2 outputTextureSize;
+import{s as o}from"./babylon-BOXV-mCz.js";const e="volumetricLightingBlendVolumePixelShader",i=`varying vec2 vUV;uniform sampler2D textureSampler;uniform sampler2D depthSampler;uniform mat4 invProjection;uniform vec2 outputTextureSize;
 #ifdef USE_EXTINCTION
 uniform vec3 extinction;
 #endif

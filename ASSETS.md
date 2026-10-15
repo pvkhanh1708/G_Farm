@@ -1,45 +1,45 @@
 # Farm Empire – Danh sách asset (Vertical Slice)
 
-> **Tình trạng: toàn bộ asset 3D hiện là placeholder thủ tục (procedural).**
+> **Tình trạng: toàn bộ asset hiện là placeholder thủ tục (procedural): hình 2D cho ô đất / cây, 3D cho đảo và cảnh.**
 > Đồ họa **chưa hoàn thiện**. Đây là asset tạm, sinh bằng code để chốt phong cách,
 > bố cục, animation và hiệu năng trước khi đầu tư vào model chính thức.
 
 Không dùng asset, texture, model hay thương hiệu nào của Liên Quân Mobile / Garena / Tencent.
 Phong cách chỉ dùng làm cảm hứng.
 
-## Cách thay asset tạm bằng model thật
+## Ô đất và cây trồng: hình 2D nhìn từ trên xuống
 
-1. Đặt file `.glb` vào `client/public/assets/models/`.
-2. Trong `client/src/game/assets/registry.ts`, gán `glb: 'assets/models/<tên>.glb'` cho entry tương ứng và đổi `status` sang `'integrated'`.
-3. Khi khởi động, `preloadAssets()` nạp GLB. Nếu nạp lỗi thì tự động quay về bản thủ tục.
-   Hiện cây trồng (`crop.*`) đã dùng cơ chế này. Môi trường dùng chung cơ chế, chỉ cần nối thêm khi có model.
+Nông trại nhìn thẳng từ trên xuống. Ô đất, ô cỏ và cây trồng là **hình 2D** vẽ bằng Canvas 2D lúc chạy
+(`client/src/game/render/sprites.ts`) vào một atlas 2048 × 2048 dùng chung, mỗi hình một ô 160 × 160 px
+(vùng vẽ 144 × 144 px, viền 8 px chống lem). Mỗi hình hiển thị bằng một mặt phẳng 4 đỉnh.
 
-Quy ước cho model cây trồng: gốc tọa độ ở tâm ô đất, y = 0 tại mặt đất, ô đất 1,5 × 1,5 đơn vị.
-Mỗi giai đoạn là một file. Nên dùng vertex color hoặc một atlas texture dùng chung để giữ ít draw call.
+Thay bằng ảnh vẽ thật: vẽ mỗi giai đoạn cây thành ảnh PNG vuông, nền trong suốt, nhìn từ trên xuống, ô đất
+chiếm toàn khung, rồi ghép vào atlas theo đúng thứ tự trong `SpriteLibrary` (ô đất, 3 ô cỏ, rồi từng cây ×
+5 giai đoạn theo thứ tự cửa hàng). Có thể vẽ đè từng ô trong `SpriteLibrary` bằng `drawImage` thay cho hàm vẽ thủ tục.
 
 ## Danh sách
 
-Cột “Kích thước”: asset thủ tục không có file. Con số là số đỉnh (vertex) của mesh sinh ra lúc chạy.
+Cột “Kích thước”: asset thủ tục không có file. Hình 2D: một ô 160 px trong atlas, hiển thị bằng 4 đỉnh. Cảnh 3D: số đỉnh của mesh sinh ra lúc chạy.
 
 | ID | Asset | Nguồn | Giấy phép | Kích thước | Trạng thái |
 |---|---|---|---|---|---|
-| crop.carrot.s0–s4 | Cà rốt, 5 giai đoạn (3 củ / ô) | Code (`render/crops.ts`) | Code của dự án | 234 – 2.901 đỉnh / ô | Placeholder |
-| crop.wheat.s0–s4 | Lúa mì, 5 giai đoạn (7 khóm / ô) | Code (`render/crops.ts`) | Code của dự án | 378 – 2.520 đỉnh / ô | Placeholder |
-| crop.tomato.s0–s4 | Cà chua, 5 giai đoạn (1 bụi lớn / ô) | Code (`render/crops.ts`) | Code của dự án | 156 – 2.413 đỉnh / ô | Placeholder |
-| crop.strawberry.s0–s4 | Dâu tây, 5 giai đoạn (3 bụi / ô, hoa trắng, quả có hạt) | Code (`render/crops.ts`) | Code của dự án | 234 – 3.705 đỉnh / ô | Placeholder |
-| crop.cabbage.s0–s4 | Bắp cải, 5 giai đoạn (1 cây cuộn / ô) | Code (`render/crops.ts`) | Code của dự án | 78 – 680 đỉnh / ô | Placeholder |
-| crop.corn.s0–s4 | Ngô, 5 giai đoạn (3 thân / ô, cờ + bắp) | Code (`render/crops.ts`) | Code của dự án | 234 – 1.074 đỉnh / ô | Placeholder |
-| crop.eggplant.s0–s4 | Cà tím, 5 giai đoạn (1 bụi / ô, hoa tím, 4 quả) | Code (`render/crops.ts`) | Code của dự án | 156 – 1.757 đỉnh / ô | Placeholder |
-| crop.pumpkin.s0–s4 | Bí ngô, 5 giai đoạn (dây lá + 1 quả lớn) | Code (`render/crops.ts`) | Code của dự án | 78 – 1.029 đỉnh / ô | Placeholder |
-| crop.sunflower.s0–s4 | Hướng dương, 5 giai đoạn (2 cây / ô, hoa quay về camera) | Code (`render/crops.ts`) | Code của dự án | 156 – 3.578 đỉnh / ô | Placeholder |
-| crop.potato.s0–s4 | Khoai tây, 5 giai đoạn (bụi lá + củ trồi lên mặt đất) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| crop.chili.s0–s4 | Ớt, 5 giai đoạn (bụi, hoa trắng, 8 quả cong) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| crop.watermelon.s0–s4 | Dưa hấu, 5 giai đoạn (dây bò + quả sọc) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| crop.pineapple.s0–s4 | Dứa, 5 giai đoạn (cụm lá gai + quả có vương miện) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| crop.cotton.s0–s4 | Bông, 5 giai đoạn (2 bụi, quả nang nở bông trắng) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| crop.lavender.s0–s4 | Oải hương, 5 giai đoạn (5 khóm, bông tím) | Code (`render/crops.ts`) | Code của dự án | Placeholder thủ tục | Placeholder |
-| tile.soil | Ô đất (tấm đất bo tròn) | Code (`render/tiles.ts`) | Code của dự án | ~730 đỉnh | Placeholder |
-| tile.grass | Ô khóa (tấm cỏ, 3 biến thể) | Code (`render/tiles.ts`) | Code của dự án | 861 đỉnh | Placeholder |
+| crop.carrot.s0–s4 | Cà rốt, 5 giai đoạn (3 củ / ô) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.wheat.s0–s4 | Lúa mì, 5 giai đoạn (7 khóm / ô) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.tomato.s0–s4 | Cà chua, 5 giai đoạn (1 bụi lớn / ô) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.strawberry.s0–s4 | Dâu tây, 5 giai đoạn (3 bụi / ô, hoa trắng, quả có hạt) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.cabbage.s0–s4 | Bắp cải, 5 giai đoạn (1 cây cuộn / ô) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.corn.s0–s4 | Ngô, 5 giai đoạn (3 thân / ô, cờ + bắp) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.eggplant.s0–s4 | Cà tím, 5 giai đoạn (1 bụi / ô, hoa tím, 4 quả) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.pumpkin.s0–s4 | Bí ngô, 5 giai đoạn (dây lá + 1 quả lớn) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.sunflower.s0–s4 | Hướng dương, 5 giai đoạn (mặt hoa nhìn từ trên) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.potato.s0–s4 | Khoai tây, 5 giai đoạn (bụi lá + củ trồi lên mặt đất) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.chili.s0–s4 | Ớt, 5 giai đoạn (bụi, hoa trắng, 8 quả cong) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.watermelon.s0–s4 | Dưa hấu, 5 giai đoạn (dây bò + quả sọc) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.pineapple.s0–s4 | Dứa, 5 giai đoạn (cụm lá gai + quả có vương miện) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.cotton.s0–s4 | Bông, 5 giai đoạn (2 bụi, quả nang nở bông trắng) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.lavender.s0–s4 | Oải hương, 5 giai đoạn (5 khóm, bông tím) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| tile.soil | Ô đất nhìn từ trên (đất nâu, sỏi, viền bo) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px | Placeholder |
+| tile.grass | Ô khóa nhìn từ trên (cỏ, 3 biến thể) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px | Placeholder |
 | env.island | Đảo nổi cho mỗi mảnh 4×4 (mặt cỏ + vách đất) | Code (`render/world.ts`) | Code của dự án | 1.369 + 505 đỉnh / đảo | Placeholder |
 | env.bush / rock / flowers / grass | Bụi, đá, hoa, cỏ viền đảo (thin instances) | Code (`render/kits.ts`) | Code của dự án | 54–288 đỉnh mỗi mẫu | Placeholder |
 | env.clouds | Mây trôi + đảo nhỏ có cây ở xa | Code (`render/world.ts`) | Code của dự án | vài nghìn đỉnh | Placeholder |

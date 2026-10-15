@@ -1,3 +1,3 @@
-import{p as o}from"./babylon-p5lyDL7S.js";const r="oitFinalSimpleBlendPixelShader",t=`var uFrontColor: texture_2d<f32>;@fragment
+import{s as o}from"./babylon-BOXV-mCz.js";const r="oitFinalSimpleBlendPixelShader",t=`var uFrontColor: texture_2d<f32>;@fragment
 fn main(input: FragmentInputs)->FragmentOutputs {var fragCoord: vec2i=vec2i(fragmentInputs.position.xy);var frontColor: vec4f=textureLoad(uFrontColor,fragCoord,0);fragmentOutputs.color=frontColor;}
 `;o.ShadersStoreWGSL[r]||(o.ShadersStoreWGSL[r]=t);const n={name:r,shader:t};export{n as oitFinalSimpleBlendPixelShaderWGSL};

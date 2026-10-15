@@ -15,9 +15,9 @@ import {
 } from '@babylonjs/core';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, ISLAND_SIZE, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
+import { CROP_ORDER, CropId, ISLAND_SIZE, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
-import { CropLibrary } from './render/crops';
+import { SpriteLibrary } from './render/sprites';
 import { Fx } from './render/fx';
 import { hex } from './render/geometry';
 import { MaterialLibrary, toonMaterial, WindPlugin } from './render/materials';
@@ -56,7 +56,7 @@ export class Game {
   private mats!: MaterialLibrary;
   private fx!: Fx;
   private tweens!: Tweens;
-  private crops!: CropLibrary;
+  private sprites!: SpriteLibrary;
   private templates!: TileTemplates;
   private world!: World;
   private tiles = new Map<number, TileView>();
@@ -146,13 +146,10 @@ export class Game {
     grassTex.uScale = grassTex.vScale = 3;
     const soilTex = soilTexture(scene);
     soilTex.uScale = soilTex.vScale = 1.2;
-    const crops = toonMaterial(scene, 'crops', { doubleSided: true, wind: 0.16, roughness: 0.5 });
-    crops.specularIntensity = 0.45;
     this.mats = {
       props: toonMaterial(scene, 'props', { texture: grain }),
       soil: toonMaterial(scene, 'soil', { texture: soilTex, roughness: 0.95 }),
       grassGround: toonMaterial(scene, 'ground', { texture: grassTex, roughness: 0.95 }),
-      crops,
       foliage: toonMaterial(scene, 'foliage', { wind: 0.0045, roughness: 0.85 }),
       grass: toonMaterial(scene, 'grass', { doubleSided: true, wind: 0.5, roughness: 0.85 }),
       cover: toonMaterial(scene, 'cover', { doubleSided: true, wind: 0.25, texture: grain }),
@@ -167,9 +164,8 @@ export class Game {
     await tick();
 
     progress(0.65, 'Ươm cây trồng…');
-    this.crops = new CropLibrary(scene, this.mats.crops);
-    this.crops.warm();
-    this.templates = buildTileTemplates(scene, this.mats);
+    this.sprites = new SpriteLibrary(scene);
+    this.templates = buildTileTemplates(scene, this.sprites);
     this.templates.ring.setEnabled(false);
     this.batches = new TileBatches(scene);
     this.sparkles = this.fx.sparkleField();
@@ -177,7 +173,7 @@ export class Game {
 
     progress(0.85, 'Dọn ô đất…');
     this.rebuildShadows(preset.shadowMapSize, preset.shadowPcfQuality);
-    this.tileCtx = { scene, templates: this.templates, crops: this.crops, fx: this.fx, tweens: this.tweens, batches: this.batches, sparkles: this.sparkles, bobbing: this.bobbing };
+    this.tileCtx = { scene, templates: this.templates, sprites: this.sprites, fx: this.fx, tweens: this.tweens, batches: this.batches, sparkles: this.sparkles, bobbing: this.bobbing };
     if (this.showcase) this.buildShowcase();
     else {
       this.syncTiles(false);
@@ -201,11 +197,11 @@ export class Game {
     const crops = CROP_ORDER.filter((c) => !pick[0] || pick.includes(c));
     crops.forEach((crop, row) => {
       for (let s = 0; s < STAGE_COUNT; s++) {
-        const v = new TileView(this.tileCtx, 1000 + row * 10 + s, (s - 2) * 1.55, ((crops.length - 1) / 2 - row) * 1.75);
+        const v = new TileView(this.tileCtx, 1000 + row * 10 + s, (s - 2) * TILE_PITCH, ((crops.length - 1) / 2 - row) * TILE_PITCH);
         v.forceStage(crop, s);
       }
     });
-    this.rig.focus(new Vector3(0, 0, 0), 7 + crops.length * 1.7, true);
+    this.rig.focus(new Vector3(0, 0, 0), this.rig.fitRadius(Math.max(5, crops.length) * TILE_PITCH * 1.2), true);
   }
 
   private rebuildShadows(size: number, q: 'low' | 'medium' | 'high') {
@@ -236,8 +232,8 @@ export class Game {
     const frustum = Math.round(Math.max(26, Math.min(90, r * 1.5)) / 4) * 4;
     if (this.sun.shadowFrustumSize !== frustum) this.sun.shadowFrustumSize = frustum;
     // fog is measured from the (orthographic) camera, which always sits a fixed distance away
-    this.scene.fogStart = this.rig.camera.radius + r * 0.6 + 14;
-    this.scene.fogEnd = this.rig.camera.radius + r * 0.6 + 100;
+    this.scene.fogStart = this.rig.distance + r * 0.6 + 14;
+    this.scene.fogEnd = this.rig.distance + r * 0.6 + 100;
     this.updateFar();
     if (!this.far) for (const v of this.bobbing) v.bob(dt);
     this.sparkleTimer += dt;
@@ -257,7 +253,7 @@ export class Game {
 
   /** Camera distance that frames one whole parcel. */
   private get parcelRadius() {
-    return this.rig.fitRadius(ISLAND_SIZE * 1.45);
+    return this.rig.fitRadius(ISLAND_SIZE * 1.12);
   }
 
   private updateFar() {
@@ -276,7 +272,7 @@ export class Game {
   focusParcel(k: number) {
     const c = parcelCenter(k);
     this.overview = false;
-    this.rig.focus(new Vector3(c.x, 0, c.z - 0.6), this.parcelRadius, false);
+    this.rig.focus(new Vector3(c.x, 0, c.z), this.parcelRadius, false);
   }
 
   /** Parcel under a screen point, if any (only those with tiles, plus the wild one to come). */
@@ -338,7 +334,7 @@ export class Game {
     const k = Math.min(this.parcels - 1, Math.floor(store.getState().unlocked / TILES_PER_PARCEL));
     const c = parcelCenter(Math.max(0, k));
     this.overview = false;
-    this.rig.focus(new Vector3(c.x, 0, c.z - 0.6), this.rig.fitRadius(ISLAND_SIZE * 1.45), immediate);
+    this.rig.focus(new Vector3(c.x, 0, c.z), this.parcelRadius, immediate);
   }
 
   /** Zoom out to see every parcel at once. */
@@ -348,7 +344,7 @@ export class Game {
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) + ISLAND_SIZE;
     this.overview = true;
-    this.rig.focus(new Vector3(cx, 0, cz), this.rig.fitRadius(span * 1.45), false);
+    this.rig.focus(new Vector3(cx, 0, cz), this.rig.fitRadius(span * 1.1), false);
   }
 
   toggleOverview() {
@@ -541,7 +537,6 @@ export class Game {
       drawCalls: this.instrumentation.drawCallsCounter.current,
       activeMeshes: this.scene.getActiveMeshes().length,
       vertices: this.scene.getTotalVertices(),
-      crops: this.crops.stats(),
       ...this.batches.stats(),
     };
   }

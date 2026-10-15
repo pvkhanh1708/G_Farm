@@ -1,7 +1,7 @@
 # Farm Empire – Vertical Slice
 
 Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước khi làm gameplay đầy đủ.
-Phạm vi: 1 bản đồ nông trại 3D, 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
+Phạm vi: nông trại nhìn từ trên xuống (ô đất và cây dạng 2D trên đảo 3D), 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
 trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp trên trình duyệt.
 
 Bố cục theo kiểu đảo nổi: mỗi **mảnh đất** là một đảo cỏ với lưới **4×4 ô** vuông. Ô mở theo thứ tự
@@ -34,7 +34,7 @@ và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
 | Hướng dương | 34 | 2270 | 720s | ×3 | 1838 | 137 | +3244 |
 
 
-> Đồ họa **chưa hoàn thiện**: mọi model 3D đều là placeholder thủ tục. Xem [ASSETS.md](ASSETS.md).
+> Đồ họa **chưa hoàn thiện**: hình cây / ô đất và cảnh đều là placeholder thủ tục. Xem [ASSETS.md](ASSETS.md).
 > Ảnh chụp màn hình nằm trong [docs/screenshots/](docs/screenshots/).
 
 ## Chạy thử
@@ -65,7 +65,8 @@ Sửa `client/` hoặc `shared/` thì **build lại và commit cả `game/`** tr
 Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chili` để lọc), `?offline` chơi không cần server.
 Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
 
-Điều khiển: kéo để di chuyển camera, cuộn chuột hoặc chụm 2 ngón để zoom, chạm vào ô đất để thao tác.
+Điều khiển: kéo để di chuyển (4 hướng), cuộn chuột hoặc chụm 2 ngón để zoom, chạm vào ô đất để thao tác.
+Zoom ra tổng quan rồi chạm một mảnh đất để phóng to đúng mảnh đó. Chạm biển “Mở khóa” hoặc bất kỳ ô cỏ nào để mở đất.
 Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, cài lên màn hình chính, tài khoản, chơi lại từ đầu.
 
 **Chạy như app trên điện thoại (PWA):** thêm game vào màn hình chính (Android: Chrome → *Cài đặt ứng dụng*,
@@ -124,7 +125,8 @@ Kiểm thử: `cd server && php artisan test` (14 test API, gồm đăng nhập 
 ## Công nghệ
 
 - React 18 + TypeScript + Vite 6 (UI dạng DOM phủ lên canvas)
-- Babylon.js 8 (WebGL2): PBR, directional light + shadow map (PCF), thin instances, particle system
+- Babylon.js 8 (WebGL2): camera trực giao nhìn từ trên xuống; ô đất / cây là hình 2D trong một atlas, vẽ bằng
+  thin instance gộp theo mảnh (tổng quan: gộp toàn nông trại); đảo / cảnh dùng PBR + bóng đổ
 - Laravel 12 (PHP 8.4) + MySQL 8 + Sanctum (token API) — xem phần Backend.
   Capacitor được thêm khi đóng gói Android/iOS.
 
@@ -149,13 +151,14 @@ client/src/
     Game.ts              khởi tạo scene, ánh sáng, bóng, input, cầu nối sang UI
     assets/registry.ts   danh mục asset; GLB thay thế placeholder khi có
     render/
-      crops.ts           model cây thủ tục theo giai đoạn (instanced)
+      sprites.ts         hình 2D (Canvas) ô đất / ô cỏ / 15 cây × 5 giai đoạn, gộp vào 1 atlas
+      batch.ts           thin instance theo mảnh + toàn nông trại
       tiles.ts           ô đất / ô cỏ khóa + animation trồng / thu hoạch / mở khóa
       world.ts           đảo nổi theo mảnh, mây, đảo xa, bướm
       kits.ts            mẫu bụi, hoa, cỏ, đá, cây, bướm dùng chung
       materials.ts       PBR stylized + plugin shader gió (lá / cỏ rung)
       fx.ts              hạt lấp lánh, lá bay, bụi
-      camera.ts          camera isometric cố định góc 40°, kéo / zoom / pinch
+      camera.ts          camera trực giao nhìn thẳng xuống, kéo / zoom / pinch
     audio/sfx.ts         âm thanh tổng hợp WebAudio (tạm)
   ui/                    HUD, popup, nhãn bám ô đất, hiệu ứng bay về kho / thanh xu
 scripts/shot.mjs, flow.mjs   chụp ảnh và chạy tự động cả chu trình (puppeteer-core + Chrome; dùng ?offline)
