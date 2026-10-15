@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TILES_PER_PARCEL, tileWorldPos } from '../game/config';
+import { tileWorldPos } from '../game/config';
 import type { Game } from '../game/Game';
 import { serverNow } from '../game/net/clock';
 import { growthProgress, store, TileState } from '../game/state/store';
@@ -15,6 +15,9 @@ function useNow(ms: number) {
   }, [ms]);
   return now;
 }
+
+/** Natural width of the unlock sign in CSS px (see .sign); it is scaled to 82% of a tile. */
+const SIGN_WIDTH = 96;
 
 function Tag({ tile, now, coins, cost, needLevel, onUnlock }: { tile: TileState; now: number; coins: number; cost: number; needLevel: number | null; onUnlock: () => void }) {
   if (tile.next && needLevel) {
@@ -65,7 +68,6 @@ export function TileOverlays({ game, onUnlock }: { game: Game; onUnlock: () => v
   const now = useNow(250);
   const refs = useRef(new Map<string, HTMLDivElement>());
   const allTiles = useMemo(() => store.tiles(), [s]);
-  const preview = store.parcelCount();
   // re-picked on every 250 ms tick, so the set follows the camera
   const far = game.isFar;
   const center = game.viewTarget;
@@ -78,14 +80,18 @@ export function TileOverlays({ game, onUnlock }: { game: Game; onUnlock: () => v
   });
   useEffect(() => {
     return game.onFrame(() => {
+      // the unlock sign keeps a fixed size relative to its tile, whatever the zoom
+      const signScale = (game.tilePixels * 0.82) / SIGN_WIDTH;
       refs.current.forEach((el, key) => {
-        const p = key === 'parcel' ? game.parcelAnchor(preview) : game.tileAnchor(Number(key), key === String(s.unlocked) ? 0.35 : 0.75);
+        const isSign = key === String(s.unlocked);
+        const p = game.tileAnchor(Number(key), isSign ? 0.35 : 0.75);
+        if (isSign) el.style.setProperty('--s', signScale.toFixed(3));
         el.style.transform = `translate(${p.x}px, ${p.y}px)`;
         // keep world labels out of the HUD strip at the top
         el.style.visibility = p.visible && p.y > 120 && p.x > 70 && p.x < window.innerWidth - 70 ? 'visible' : 'hidden';
       });
     });
-  }, [game, preview, s.unlocked]);
+  }, [game, s.unlocked]);
   const cost = store.nextUnlockCost();
   const needLevel = store.canUnlockByLevel() ? null : store.nextUnlockLevel();
   const bind = (key: string) => (el: HTMLDivElement | null) => {
@@ -99,12 +105,6 @@ export function TileOverlays({ game, onUnlock }: { game: Game; onUnlock: () => v
           <Tag tile={t} now={now} coins={s.coins} cost={cost} needLevel={needLevel} onUnlock={onUnlock} />
         </div>
       ))}
-      <div className="plot-anchor" ref={bind('parcel')}>
-        <div className="parcel-tag">
-          <b>Mảnh đất {preview + 1}</b>
-          <small>Mở hết {TILES_PER_PARCEL} ô của mảnh {preview} để khai hoang</small>
-        </div>
-      </div>
     </div>
   );
 }

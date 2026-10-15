@@ -152,6 +152,11 @@ export class CameraRig {
     return (2 * this.zoom * Math.tan(this.camera.fov / 2)) / h;
   }
 
+  /** CSS pixels per world unit at the current zoom. */
+  get pixelsPerUnit() {
+    return 1 / this.worldPerPixel();
+  }
+
   private applyZoom() {
     const halfH = this.zoom * Math.tan(this.camera.fov / 2);
     const halfW = halfH * (this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));

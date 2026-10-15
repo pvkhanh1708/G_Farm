@@ -462,8 +462,11 @@ export class Game {
 
   unlockNext() {
     const res = store.unlockNext();
-    if (res.ok) sfx.unlock();
-    else sfx.error();
+    if (res.ok) {
+      sfx.unlock();
+      // the parcel is full: after the unlock animation, move on to the next one
+      if (store.getState().unlocked % TILES_PER_PARCEL === 0) this.tweens.wait(1.1, () => this.focusCurrent());
+    } else sfx.error();
     return res;
   }
 
@@ -503,6 +506,11 @@ export class Game {
 
   get cameraRadius() {
     return this.rig.radius;
+  }
+
+  /** On-screen width of one tile in CSS pixels (labels scale with it). */
+  get tilePixels() {
+    return this.rig.pixelsPerUnit * TILE_SIZE;
   }
 
   /** Zoomed out to the overview (taps pick a parcel, tile labels hidden). */

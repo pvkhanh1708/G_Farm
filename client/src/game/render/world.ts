@@ -1,4 +1,4 @@
-import { CreateGroundVertexData, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Vector3, VertexData } from '@babylonjs/core';
+import { CreateGroundVertexData, DynamicTexture, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3, VertexData } from '@babylonjs/core';
 import { ISLAND_SIZE, PARCEL_DIM, parcelCenter, QualityPreset, TILE_PITCH, TILE_SIZE } from '../config';
 import { hex, mulberry } from './geometry';
 import { bushKit, buildButterflies, flowerKit, grassKit, rockKit, roundTree, pineTree } from './kits';
@@ -61,6 +61,53 @@ function buildGround(scene: Scene, mats: MaterialLibrary) {
   return m;
 }
 
+/** Light tilled earth covering an opened parcel (the tiles on it are darker soil). */
+function buildPad(scene: Scene) {
+  const half = ISLAND_SIZE / 2;
+  const vd = CreateGroundVertexData({ width: ISLAND_SIZE, height: ISLAND_SIZE, subdivisions: 24 });
+  const p = vd.positions as number[];
+  const uvs: number[] = [];
+  for (let i = 0; i < p.length; i += 3) {
+    const [x, z] = roundCorner(p[i], p[i + 2], half, 0.5);
+    p[i] = x;
+    p[i + 2] = z;
+    uvs.push(x / 3, z / 3);
+  }
+  vd.uvs = uvs;
+  const m = new Mesh('parcel-pad', scene);
+  vd.applyToMesh(m);
+  // speckled light earth, painted once and tiled
+  const tex = new DynamicTexture('pad-tex', { width: 256, height: 256 }, scene, true);
+  const ctx = tex.getContext() as unknown as CanvasRenderingContext2D;
+  ctx.fillStyle = '#d6b483';
+  ctx.fillRect(0, 0, 256, 256);
+  const r = mulberry(17);
+  for (let i = 0; i < 260; i++) {
+    ctx.beginPath();
+    ctx.ellipse(r() * 256, r() * 256, 2 + r() * 9, 1.5 + r() * 5, r() * 3, 0, Math.PI * 2);
+    ctx.fillStyle = r() < 0.55 ? 'rgba(150,104,60,.18)' : 'rgba(255,236,200,.22)';
+    ctx.fill();
+  }
+  for (let i = 0; i < 30; i++) {
+    ctx.beginPath();
+    ctx.arc(r() * 256, r() * 256, 1 + r() * 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(120,110,95,.45)';
+    ctx.fill();
+  }
+  tex.update(true);
+  tex.wrapU = tex.wrapV = Texture.WRAP_ADDRESSMODE;
+  const mat = new StandardMaterial('pad-mat', scene);
+  // unlit: shows the texture as painted (same set-up as the tile sprites)
+  mat.disableLighting = true;
+  mat.diffuseTexture = tex;
+  mat.emissiveColor.set(1, 1, 1);
+  mat.backFaceCulling = false;
+  m.material = mat;
+  m.position.y = 0.002;
+  m.isPickable = false;
+  return m;
+}
+
 /** Thin dirt path around a parcel: a rounded-rectangle ribbon (drawn as thin instances, one per parcel). */
 function buildPath(scene: Scene) {
   const half = ISLAND_SIZE / 2 - PATH_WIDTH / 2;
@@ -91,7 +138,7 @@ function buildPath(scene: Scene) {
   vd.applyToMesh(m);
   const mat = new StandardMaterial('path-mat', scene);
   mat.disableLighting = true;
-  mat.emissiveColor = hex('#c9a46c');
+  mat.emissiveColor = hex('#a8814e');
   mat.backFaceCulling = false;
   m.material = mat;
   m.position.y = 0.005;
@@ -104,6 +151,7 @@ export class World {
   private scatter: Array<{ mesh: Mesh; items: Placement[]; limit: () => number }> = [];
   private ground: Mesh;
   private path: Mesh;
+  private pad: Mesh;
   private flies;
   private casters: Mesh[] = [];
   private quality: QualityPreset;
@@ -118,6 +166,7 @@ export class World {
     this.quality = quality;
     this.ground = buildGround(scene, mats);
     this.path = buildPath(scene);
+    this.pad = buildPad(scene);
     this.grassMeshes = [grassKit(80), grassKit(81)].map((g, i) => g.build(`grass-${i}`, scene, mats.grass));
     const flowerColours: Array<[string, string]> = [['#ff6fa3', '#ffe27a'], ['#ffd84a', '#e08a1e'], ['#ffffff', '#ffd23f'], ['#b98cff', '#fff3a0'], ['#ff7a45', '#7a3d1a']];
     this.flowerMeshes = flowerColours.map(([p, c], i) => flowerKit(60 + i, hex(p), hex(c)).build(`flowers-${i}`, scene, mats.grass));
@@ -149,13 +198,17 @@ export class World {
     const trees: Placement[][] = [[], [], []];
     const rocks: Placement[] = [];
     const paths: Placement[] = [];
+    const pads: Placement[] = [];
     const half = ISLAND_SIZE / 2 - 0.3;
     const active = this.active;
     for (let k = 0; k <= active + WILD_RING; k++) {
       const { x: ox, z: oz } = parcelCenter(k);
       const r = mulberry(1000 + k * 77);
       const opened = k < active, next = k === active, wild = k > active;
-      if (opened) paths.push({ x: ox, y: 0.005, z: oz, s: 1, yaw: 0 });
+      if (opened) {
+        paths.push({ x: ox, y: 0.005, z: oz, s: 1, yaw: 0 });
+        pads.push({ x: ox, y: 0, z: oz, s: 1, yaw: 0 });
+      }
       const inBorder = (x: number, z: number) => Math.max(Math.abs(x), Math.abs(z)) > TILES_HALF + 0.12;
       const inside = (x: number, z: number) => {
         const [rx, rz] = roundCorner(x, z, half, ISLAND_CORNER - 0.3);
@@ -172,9 +225,11 @@ export class World {
         return null;
       };
       const put = (list: Placement[], y: number, s: number, p = spot()) => p && list.push({ x: ox + p[0], y, z: oz + p[1], s, yaw: r() * 6.28 });
-      for (let i = 0; i < (opened ? 30 : 60); i++) put(grass[i % 2], 0, 0.5 + r() * 0.35);
-      for (let i = 0; i < (opened ? 12 : 20); i++) put(flowers[Math.floor(r() * flowers.length)], 0, 0.9 + r() * 0.5);
-      for (let i = 0; i < (opened ? 2 : 3); i++) put(rocks, -0.04, 0.25 + r() * 0.25);
+      if (!opened) {
+        for (let i = 0; i < 60; i++) put(grass[i % 2], 0, 0.5 + r() * 0.35);
+        for (let i = 0; i < 20; i++) put(flowers[Math.floor(r() * flowers.length)], 0, 0.9 + r() * 0.5);
+      }
+      for (let i = 0; i < (opened ? 2 : 3); i++) put(rocks, -0.04, (opened ? 0.18 : 0.25) + r() * 0.2);
       if (next) {
         const bushSpots: Array<[number, number]> = [[half - 0.4, half - 0.4], [half - 0.3, 0.6], [-1.2, half - 0.3], [half - 0.5, -half + 0.6]];
         for (let i = 0; i < 6; i++) bushSpots.push([(r() * 2 - 1) * (TILES_HALF - 0.4), (r() * 2 - 1) * (TILES_HALF - 0.4)]);
@@ -192,6 +247,7 @@ export class World {
       ...trees.flatMap((list, i) => [this.treeMeshes[i * 2], this.treeMeshes[i * 2 + 1]].map((mesh) => ({ mesh, items: list, limit: () => Infinity }))),
       { mesh: this.rockMesh, items: rocks, limit: () => Infinity },
       { mesh: this.path, items: paths, limit: () => Infinity },
+      { mesh: this.pad, items: pads, limit: () => Infinity },
     ];
     this.applyScatter();
   }
@@ -202,6 +258,7 @@ export class World {
       s.mesh.thinInstanceCount = Math.max(1, Math.min(s.items.length, s.limit()));
     }
     this.path.receiveShadows = false;
+    this.pad.receiveShadows = false;
   }
 
   // ---------------------------------------------------------------- frame

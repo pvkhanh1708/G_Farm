@@ -479,4 +479,8 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 
 /* the unlock sign is tappable (the 3D tile under it is too) */
 .plot-anchor > .sign.clickable { pointer-events: auto; cursor: pointer; }
-.plot-anchor > .sign.clickable:active { scale: .94; }
+.plot-anchor > .sign.clickable:active { filter: brightness(.88); }
+
+/* unlock sign: sized relative to its tile (TileOverlays sets --s from the zoom), anchored on the tile centre */
+.plot-anchor > .sign { width: 96px; box-sizing: border-box; justify-content: center; scale: var(--s, 1); transform: translate(-50%, -50%); transform-origin: 0 0; }
+.plot-anchor > .sign::after { display: none; }

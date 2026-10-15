@@ -164,8 +164,8 @@ function paintSoil(c: Ctx) {
   const r = mulberry(11);
   roundRect(c, 2, 2, S - 4, S - 4, 18);
   const g = c.createLinearGradient(0, 0, S, S);
-  g.addColorStop(0, '#7a5232');
-  g.addColorStop(1, '#5c3a20');
+  g.addColorStop(0, '#5e3c20');
+  g.addColorStop(1, '#3e2410');
   c.fillStyle = g;
   c.fill();
   c.save();
@@ -174,7 +174,7 @@ function paintSoil(c: Ctx) {
   for (let i = 0; i < 26; i++) {
     c.beginPath();
     c.ellipse(r() * S, r() * S, 6 + r() * 14, 4 + r() * 8, r() * 3, 0, Math.PI * 2);
-    c.fillStyle = r() < 0.5 ? 'rgba(40,24,10,.22)' : 'rgba(150,104,64,.18)';
+    c.fillStyle = r() < 0.5 ? 'rgba(25,14,4,.25)' : 'rgba(130,88,52,.18)';
     c.fill();
   }
   // a few grey pebbles like a ploughed bed
