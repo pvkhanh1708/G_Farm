@@ -1,4 +1,4 @@
-import{o as i}from"./babylon-CMLb6qkG.js";const e="selectionPixelShader",d=`#ifdef INSTANCES
+import{p as i}from"./babylon-v1Wk6wip.js";const e="selectionPixelShader",d=`#ifdef INSTANCES
 flat varying float vSelectionId;
 #else
 uniform float selectionId;

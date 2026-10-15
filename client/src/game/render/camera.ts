@@ -1,11 +1,16 @@
-import { ArcRotateCamera, Scene, Vector3 } from '@babylonjs/core';
+import { ArcRotateCamera, Camera, Scene, Vector3 } from '@babylonjs/core';
 
 const ELEVATION_DEG = 40;
 const MIN_R = 8;
+/** The orthographic camera sits this far from its target; zoom only changes the view size. */
+const CAMERA_DISTANCE = 90;
 
 /**
- * Fixed-angle isometric-style camera: drag to pan, wheel / pinch to zoom.
- * Rotation is never exposed so the composition always stays readable.
+ * Fixed isometric-style camera: drag to pan in 4 directions, wheel / pinch to zoom.
+ * Orthographic, so the farm is seen from exactly the same angle wherever you pan or
+ * zoom (a perspective camera skews tiles near the screen edges). Rotation is never
+ * exposed. "Radius" stays the zoom unit: the view shows what a perspective camera
+ * at that distance would, so framing maths elsewhere is unchanged.
  */
 export class CameraRig {
   readonly camera: ArcRotateCamera;
@@ -24,15 +29,20 @@ export class CameraRig {
     const beta = ((90 - ELEVATION_DEG) * Math.PI) / 180;
     this.camera = new ArcRotateCamera('cam', (-3 * Math.PI) / 4, beta, this.goalRadius, this.goalTarget.clone(), scene);
     this.camera.fov = 0.6;
-    this.camera.minZ = 0.5;
-    this.camera.maxZ = 160;
+    this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
+    this.camera.radius = CAMERA_DISTANCE;
+    this.camera.minZ = 1;
+    this.camera.maxZ = CAMERA_DISTANCE * 3;
     this.camera.inputs.clear();
     this.adaptToAspect();
-    this.camera.radius = this.goalRadius;
+    this.zoom = this.goalRadius;
+    this.applyZoom();
     this.bind();
     scene.onBeforeRenderObservable.add(() => this.update(scene.getEngine().getDeltaTime() / 1000));
   }
 
+  /** Current zoom (in radius units), easing toward goalRadius. */
+  private zoom = 24;
   private maxR = 40;
   private fitWidth = 7;
   private bounds = { minX: -9, maxX: 9, minZ: -9, maxZ: 9 };
@@ -141,7 +151,21 @@ export class CameraRig {
 
   private worldPerPixel() {
     const h = Math.max(1, this.canvas.clientHeight);
-    return (2 * this.camera.radius * Math.tan(this.camera.fov / 2)) / h;
+    return (2 * this.zoom * Math.tan(this.camera.fov / 2)) / h;
+  }
+
+  private applyZoom() {
+    const halfH = this.zoom * Math.tan(this.camera.fov / 2);
+    const halfW = halfH * (this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
+    this.camera.orthoTop = halfH;
+    this.camera.orthoBottom = -halfH;
+    this.camera.orthoLeft = -halfW;
+    this.camera.orthoRight = halfW;
+  }
+
+  /** Current zoom in radius units (what a perspective camera's distance would be). */
+  get radius() {
+    return this.zoom;
   }
 
   private panBy(dx: number, dy: number) {
@@ -173,7 +197,8 @@ export class CameraRig {
     }
     const k = 1 - Math.pow(0.0005, dt);
     this.camera.target = Vector3.Lerp(this.camera.target, this.goalTarget, k);
-    this.camera.radius += (this.goalRadius - this.camera.radius) * k;
+    this.zoom += (this.goalRadius - this.zoom) * k;
+    this.applyZoom();
   }
 
   focus(target: Vector3, radius: number, immediate = false) {
@@ -181,7 +206,8 @@ export class CameraRig {
     this.goalRadius = radius;
     if (immediate) {
       this.camera.target = target.clone();
-      this.camera.radius = radius;
+      this.zoom = radius;
+      this.applyZoom();
     }
   }
 

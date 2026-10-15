@@ -215,12 +215,13 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 
 /* ------------------------------------------------------------ popups */
 .modal-backdrop {
-  position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
+  position: absolute; inset: 0; z-index: 20; display: grid; place-items: center;
+  padding: calc(var(--safe-top) + 36px) calc(var(--safe-right) + 14px) calc(var(--safe-bottom) + 16px) calc(var(--safe-left) + 14px);
   background: radial-gradient(ellipse at center, rgba(30, 50, 10, .25), rgba(20, 30, 5, .55)); animation: fade .2s ease;
 }
 @keyframes fade { from { opacity: 0; } }
 .panel {
-  position: relative; width: min(440px, 100%); max-height: calc(100% - 40px); padding: 38px 18px 18px; border-radius: 30px;
+  position: relative; width: min(440px, 100%); max-height: min(80%, 80vh); padding: 38px 18px 18px; border-radius: 30px;
   background: linear-gradient(var(--cream), var(--cream-2)); border: 4px solid var(--wood);
   box-shadow: inset 0 0 0 4px #fff3d6, 0 8px 0 var(--wood-dark), 0 24px 50px rgba(0,0,0,.4);
   animation: popIn .38s cubic-bezier(.2, 1.5, .4, 1); display: flex; flex-direction: column;
@@ -263,19 +264,6 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .warn { text-align: center; color: #c0392b; font-weight: 700; margin: 10px 0 0; font-size: 14px; }
 
 /* ------------------------------------------------------------ seed shop */
-.seed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.seed-card {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px 12px; border-radius: 22px;
-  background: #fffdf5; border: 3px solid #e4c48f; box-shadow: 0 4px 0 #d2ab6c;
-}
-.seed-art { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; border: 3px solid rgba(90, 50, 20, .25); box-shadow: inset 0 -6px 0 rgba(0,0,0,.06); }
-.seed-art svg { filter: drop-shadow(0 4px 2px rgba(0,0,0,.18)); transition: transform .2s; }
-.seed-card:hover .seed-art svg { transform: scale(1.08) rotate(-4deg); }
-.seed-name { font-size: 20px; font-weight: 800; line-height: 1.1; }
-.seed-stats { display: flex; gap: 8px; font-size: 14px; font-weight: 700; color: var(--wood); }
-.seed-stats span { display: inline-flex; align-items: center; gap: 2px; }
-.seed-sell { display: flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; color: #3f8f1c; margin-bottom: 4px; }
-.seed-card .btn { width: 100%; }
 
 /* ------------------------------------------------------------ inventory */
 .inv-list { display: flex; flex-direction: column; gap: 10px; }
@@ -358,12 +346,6 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .dock { gap: 16px; }
   .hint { left: 10px; max-width: none; font-size: 13px; padding: 6px 10px 6px 6px; bottom: calc(118px + var(--safe-bottom)); right: 10px; }
   .hint-avatar { width: 34px; height: 34px; }
-  .seed-grid { gap: 6px; }
-  .seed-art { width: 70px; height: 70px; }
-  .seed-art svg { width: 50px; height: 50px; }
-  .seed-name { font-size: 17px; }
-  .seed-stats { flex-direction: column; gap: 0; align-items: center; font-size: 13px; }
-  .seed-card .btn { font-size: 17px; padding: 0 6px; }
   .panel { padding: 34px 12px 14px; }
   .panel-ribbon { font-size: 20px; }
   .inv-actions .btn { font-size: 14px; }
@@ -384,11 +366,6 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .xp-fill { position: absolute; inset: 0 auto 0 0; border-radius: 8px; background: linear-gradient(#9fe8ff, #34a0e8); box-shadow: inset 0 2px 0 rgba(255,255,255,.5); transition: width .5s ease-out; }
 .xp-bar span { position: relative; display: block; text-align: center; font-size: 12px; font-weight: 800; color: #fff; line-height: 16px; text-shadow: 0 1px 0 #1a3a5a, 1px 0 0 #1a3a5a, -1px 0 0 #1a3a5a, 0 -1px 0 #1a3a5a; }
 
-.seed-card.locked { background: #f1ece2; border-color: #d2c4a8; box-shadow: 0 4px 0 #bfae8c; }
-.seed-card.locked .seed-art { filter: grayscale(.85) brightness(1.05); opacity: .7; }
-.seed-card.locked .seed-name { color: #8a7a62; }
-.seed-lock { display: inline-flex; align-items: center; gap: 4px; justify-content: center; }
-.seed-xp { display: inline-flex; align-items: center; gap: 2px; color: #1f6fb0; }
 
 .sign.level { background: linear-gradient(#e6f3ff, #b8dcff); border-color: #2f6fb0; }
 .sign.level .sign-title, .sign.level .sign-price { color: #1a4f80; }
@@ -449,3 +426,47 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .account-card b { display: block; font-size: 18px; }
 .account-card small { display: block; color: var(--wood); font-weight: 600; }
 .google-chip { display: inline-block; margin-top: 3px; padding: 0 8px; border-radius: 10px; background: #e8f0fe; color: #1a56c4; font-size: 12px; font-weight: 800; }
+
+/* ------------------------------------------------------------ seed shop (compact cards + hold tooltip) */
+.seed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.seed-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 20px; cursor: pointer;
+  background: #fffdf5; border: 3px solid #e4c48f; box-shadow: 0 4px 0 #d2ab6c; transition: transform .1s; -webkit-user-select: none; user-select: none;
+}
+.seed-card:active, .seed-card.holding { transform: scale(.96); }
+.seed-art { position: relative; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; border: 3px solid rgba(90, 50, 20, .2); }
+.seed-art > svg { filter: drop-shadow(0 3px 2px rgba(0,0,0,.18)); }
+.seed-name { font-size: 14px; font-weight: 800; line-height: 1.15; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.seed-price {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 72px; height: 30px; padding: 0 10px; border-radius: 15px;
+  font-weight: 800; font-size: 16px; color: #fff; background: linear-gradient(var(--green-hi), var(--green)); border: 3px solid var(--green-dark);
+  text-shadow: 0 1px 0 rgba(0,0,0,.25);
+}
+.seed-price.poor { background: linear-gradient(#e9e2d4, #cfc5b2); border-color: #a89a80; color: #6e604a; text-shadow: none; }
+.seed-price.locked { background: #e7e0d2; border-color: #c2b498; color: #7a6a52; text-shadow: none; font-size: 14px; }
+.seed-card.locked { background: #f1ece2; border-color: #d2c4a8; box-shadow: 0 4px 0 #bfae8c; }
+.seed-card.locked .seed-art { filter: grayscale(.85) brightness(1.05); opacity: .75; }
+.seed-card.locked .seed-name { color: #8a7a62; }
+.seed-lock-badge { position: absolute; right: -4px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid #c2b498; }
+
+.seed-tip {
+  position: fixed; z-index: 40; width: 220px; padding: 10px 14px 12px; border-radius: 18px; pointer-events: none;
+  background: #fffaf0; border: 3px solid var(--wood); box-shadow: 0 6px 0 var(--wood-dark), 0 14px 30px rgba(0,0,0,.35);
+  animation: tipIn .14s ease-out;
+}
+@keyframes tipIn { from { opacity: 0; transform: translateY(6px) scale(.96); } }
+.seed-tip-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.seed-tip-head b { font-size: 18px; }
+.seed-tip-lock { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-size: 13px; font-weight: 800; color: #b0461a; }
+.seed-tip dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 14px; }
+.seed-tip dt { display: flex; align-items: center; gap: 4px; color: var(--wood); font-weight: 700; }
+.seed-tip dd { margin: 0; display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-weight: 800; }
+.seed-tip dd.profit { color: #3f8f1c; }
+
+@media (max-width: 560px) {
+  .seed-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .seed-art { width: 62px; height: 62px; }
+  .seed-art > svg { width: 44px; height: 44px; }
+  .seed-name { font-size: 13px; }
+  .seed-price { min-width: 0; width: 100%; font-size: 15px; height: 28px; }
+}

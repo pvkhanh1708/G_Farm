@@ -63,7 +63,7 @@ await shot('after-harvest');
 await tapPlot(0); // now empty -> seed shop
 await wait(500);
 await shot('seed-shop');
-await click('.seed-card .btn', '7');
+await click('.seed-card', 'Cà rốt');
 await wait(350);
 await shot('planted');
 await click('.round-btn.barn');
@@ -88,7 +88,7 @@ await shot('unlocked');
 await click('.round-btn.plant');
 await wait(500);
 await shot('plant-all-shop');
-await click('.seed-card .btn', '7');
+await click('.seed-card', 'Cà rốt');
 await wait(700);
 await shot('planted-all');
 await page.evaluate(() => {

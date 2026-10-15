@@ -216,15 +216,16 @@ export class Game {
     this.time += dt;
     WindPlugin.time = this.time;
     const target = this.rig.target;
-    const r = this.rig.camera.radius;
+    const r = this.rig.radius;
     this.world.setFocus(target);
     this.world.update(this.time, dt);
     // shadows and haze follow the camera so zooming out to the overview still works
     this.sun.position.copyFrom(target.subtract(this.sun.direction.scale(50)));
     const frustum = Math.round(Math.max(26, Math.min(90, r * 1.5)) / 4) * 4;
     if (this.sun.shadowFrustumSize !== frustum) this.sun.shadowFrustumSize = frustum;
-    this.scene.fogStart = r + 20;
-    this.scene.fogEnd = r + 110;
+    // fog is measured from the (orthographic) camera, which always sits a fixed distance away
+    this.scene.fogStart = this.rig.camera.radius + r * 0.6 + 14;
+    this.scene.fogEnd = this.rig.camera.radius + r * 0.6 + 100;
     this.syncTimer += dt;
     if (this.syncTimer > 0.2 && !this.showcase) {
       this.syncTimer = 0;
@@ -436,7 +437,7 @@ export class Game {
   }
 
   get cameraRadius() {
-    return this.rig.camera.radius;
+    return this.rig.radius;
   }
 
   get fps() {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
 import { ApiError } from '../game/net/api';
@@ -36,49 +36,142 @@ const CROP_BG: Record<CropId, string> = {
   potato: '#f3e2c8', chili: '#ffd8d0', watermelon: '#d8f5d0', pineapple: '#fff0b8', cotton: '#eef0f4', lavender: '#e8dcff',
 };
 
+function formatDuration(sec: number) {
+  if (sec < 60) return `${sec} giây`;
+  const m = Math.floor(sec / 60), r = sec % 60;
+  return r ? `${m} phút ${r} giây` : `${m} phút`;
+}
+
+/** Details for one seed, shown while a card is long-pressed (touch) or hovered (mouse). */
+function SeedTip({ id, rect, level }: { id: CropId; rect: DOMRect; level: number }) {
+  const c = CROPS[id];
+  const profit = c.yield * c.sellPrice - c.seedPrice;
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  useLayoutEffect(() => {
+    // above the card when it fits, otherwise below; always inside the screen
+    const el = ref.current!;
+    const w = el.offsetWidth, h = el.offsetHeight, m = 10;
+    const left = Math.max(m, Math.min(innerWidth - w - m, rect.left + rect.width / 2 - w / 2));
+    const below = rect.top - h - 12 < m;
+    setPos({ left, top: below ? rect.bottom + 12 : rect.top - h - 12, below });
+  }, [rect]);
+  return (
+    <div ref={ref} className={`seed-tip ${pos?.below ? 'below' : ''}`} style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }} role="tooltip">
+      <div className="seed-tip-head">
+        <CropIcon crop={id} size={34} />
+        <b>{c.name}</b>
+      </div>
+      {c.unlockLevel > level && (
+        <div className="seed-tip-lock">
+          <LockIcon size={14} /> Mở khóa ở cấp {c.unlockLevel}
+        </div>
+      )}
+      <dl>
+        <dt>
+          <ClockIcon size={16} /> Thời gian lớn
+        </dt>
+        <dd>{formatDuration(c.growSeconds)}</dd>
+        <dt>Thu hoạch</dt>
+        <dd>×{c.yield}</dd>
+        <dt>Giá bán</dt>
+        <dd>
+          <CoinIcon size={14} /> {c.sellPrice}/cái
+        </dd>
+        <dt>
+          <XpIcon size={14} /> Kinh nghiệm
+        </dt>
+        <dd>+{c.xp} XP</dd>
+        <dt>Lãi mỗi ô</dt>
+        <dd className="profit">
+          <CoinIcon size={14} /> +{profit}
+        </dd>
+      </dl>
+    </div>
+  );
+}
+
+const HOLD_MS = 350;
+
 export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | null; bulkCount: number; onPick: (c: CropId) => void; onClose: () => void }) {
   const s = useGameState();
+  const [tip, setTip] = useState<{ id: CropId; rect: DOMRect } | null>(null);
+  const hold = useRef<{ timer: number; x: number; y: number; shown: boolean } | null>(null);
+  const cancelHold = () => {
+    if (hold.current) clearTimeout(hold.current.timer);
+  };
+  // touch: hold to see details, release hides them (and does not buy); mouse: hover shows them
+  const press = (id: CropId) => ({
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      cancelHold();
+      const el = e.currentTarget;
+      hold.current = { x: e.clientX, y: e.clientY, shown: false, timer: window.setTimeout(() => {
+        hold.current!.shown = true;
+        setTip({ id, rect: el.getBoundingClientRect() });
+        navigator.vibrate?.(10);
+      }, HOLD_MS) };
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const h = hold.current;
+      if (h && !h.shown && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 10) cancelHold();
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      cancelHold();
+      if (e.pointerType !== 'mouse') setTip(null);
+    },
+    onPointerCancel: () => {
+      cancelHold();
+      setTip(null);
+    },
+    onPointerEnter: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === 'mouse') setTip({ id, rect: e.currentTarget.getBoundingClientRect() });
+    },
+    onPointerLeave: (e: React.PointerEvent) => {
+      if (e.pointerType === 'mouse') setTip(null);
+    },
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  });
+  // a long-press ends in a click on touch screens: swallow it so holding never buys
+  const buy = (id: CropId, can: boolean) => {
+    if (hold.current?.shown) {
+      hold.current = null;
+      return;
+    }
+    if (can) onPick(id);
+  };
   return (
     <Modal title="Cửa hàng hạt giống" icon={<SeedBagIcon size={34} />} onClose={onClose} wide>
-      <p className="panel-sub">{bulkCount > 0 ? `Trồng tất cả: gieo cho ${bulkCount} ô đất trống (theo số xu bạn có)` : tile !== null ? 'Chọn hạt để gieo vào ô đất này' : 'Chọn hạt rồi chạm vào các ô đất trống để gieo'}</p>
+      <p className="panel-sub">
+        {bulkCount > 0 ? `Gieo cho ${bulkCount} ô đất trống` : tile !== null ? 'Chọn hạt để gieo vào ô đất này' : 'Chọn hạt rồi chạm vào các ô đất trống'} · Nhấn giữ để xem chi tiết
+      </p>
       <div className="seed-grid">
         {CROP_ORDER.map((id) => {
           const c = CROPS[id];
           const locked = c.unlockLevel > s.level;
           const can = !locked && s.coins >= c.seedPrice;
           return (
-            <div className={`seed-card ${locked ? 'locked' : ''}`} key={id}>
+            <div className={`seed-card ${locked ? 'locked' : ''} ${tip?.id === id ? 'holding' : ''}`} key={id} {...press(id)} onClick={() => buy(id, can)}>
               <div className="seed-art" style={{ background: CROP_BG[id] }}>
-                <CropIcon crop={id} size={64} />
+                <CropIcon crop={id} size={52} />
+                {locked && (
+                  <span className="seed-lock-badge">
+                    <LockIcon size={14} />
+                  </span>
+                )}
               </div>
               <b className="seed-name">{c.name}</b>
-              <div className="seed-stats">
-                <span>
-                  <ClockIcon size={16} /> {c.growSeconds}s
-                </span>
-                <span>
-                  Thu ×{c.yield}
-                </span>
-                <span className="seed-xp">
-                  <XpIcon size={14} /> {c.xp}
-                </span>
-              </div>
-              <div className="seed-sell">
-                Bán <CoinIcon size={14} /> {c.sellPrice}/cái
-              </div>
               {locked ? (
-                <button className="btn btn-disabled seed-lock" disabled>
-                  <LockIcon size={18} /> Cấp {c.unlockLevel}
-                </button>
+                <span className="seed-price locked">Cấp {c.unlockLevel}</span>
               ) : (
-                <button className={`btn ${can ? 'btn-green' : 'btn-disabled'}`} onClick={() => can && onPick(id)}>
-                  <CoinIcon size={22} /> {c.seedPrice}
-                </button>
+                <span className={`seed-price ${can ? '' : 'poor'}`}>
+                  <CoinIcon size={18} /> {c.seedPrice}
+                </span>
               )}
             </div>
           );
         })}
       </div>
+      {tip && <SeedTip id={tip.id} rect={tip.rect} level={s.level} />}
     </Modal>
   );
 }
