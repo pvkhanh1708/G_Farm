@@ -77,12 +77,15 @@ php84 server/artisan key:generate --force
 
 ### 5. Đăng nhập Google (không bắt buộc)
 
-1. [Google Cloud Console](https://console.cloud.google.com/) → tạo project → **APIs & Services → OAuth consent screen**:
-   chọn *External*, điền tên app “Nông Trại”, email hỗ trợ, rồi **Publish app** (chỉ dùng thông tin cơ bản:
-   email, tên, ảnh nên không cần Google duyệt).
-2. **Credentials → Create credentials → OAuth client ID** → loại **Web application**.
-   *Authorized JavaScript origins*: `https://nongtrai.io.vn` (thêm `http://localhost:5173` nếu muốn thử ở máy dev).
-   Không cần *redirect URI*.
+1. [Google Cloud Console](https://console.cloud.google.com/) → tạo project → **Google Auth Platform**
+   (menu *APIs & Services → OAuth consent screen* cũng dẫn tới đây):
+   - **Overview → Get started** (hoặc mục **Branding**): App name `Nông Trại`, email hỗ trợ, **Audience: External**,
+     email liên hệ → Create.
+   - **Audience** → *Publishing status* → **Publish app**. Để *Testing* thì chỉ các email trong danh sách test đăng nhập được.
+     Game chỉ dùng email, tên, ảnh nên không cần Google duyệt. Mục **Data Access** không cần thêm gì.
+2. **Clients → + Create client** → *Application type*: **Web application**.
+   *Authorized JavaScript origins*: `https://nongtrai.io.vn`, `https://www.nongtrai.io.vn`
+   (thêm `http://localhost:5173` nếu muốn thử ở máy dev). *Authorized redirect URIs*: để trống. Không cần *Client secret*.
 3. Chép **Client ID** (dạng `1234…apps.googleusercontent.com`) vào **hai** chỗ:
    - `client/.env` → `VITE_GOOGLE_CLIENT_ID=...` (máy dev), rồi `npm run build` và commit `game/`;
    - `server/.env` trên server → `GOOGLE_CLIENT_ID=...`, rồi `./deploy.sh --after-pull`.
