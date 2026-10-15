@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
+import { CROP_ORDER, CROPS, CropId, CropKind, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
 import { ApiError } from '../game/net/api';
 import { sync } from '../game/net/sync';
@@ -35,6 +35,8 @@ const CROP_BG: Record<CropId, string> = {
   carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf', strawberry: '#ffd9e0', cabbage: '#dcf5cf',
   corn: '#fff3b0', eggplant: '#ecdcff', pumpkin: '#ffe0c0', sunflower: '#fff6c2',
   potato: '#f3e2c8', chili: '#ffd8d0', watermelon: '#d8f5d0', pineapple: '#fff0b8', cotton: '#eef0f4', lavender: '#e8dcff',
+  tea: '#dcf5cf', grape: '#ecdcff', coffee: '#ffe0d8', dragonfruit: '#ffd8ea', rose: '#ffd6dc', durian: '#f4f0c0', orchid: '#f2e4ff',
+  ginseng: '#f6ead0', saffron: '#ece0ff', cantaloupe: '#f8f0d6',
 };
 
 function formatDuration(sec: number) {
@@ -63,6 +65,7 @@ function SeedTip({ id, rect, level }: { id: CropId; rect: DOMRect; level: number
         <CropIcon crop={id} size={34} />
         <b>{c.name}</b>
       </div>
+      <KindTag kind={c.kind} />
       {c.unlockLevel > level && (
         <div className="seed-tip-lock">
           <LockIcon size={14} /> Mở khóa ở cấp {c.unlockLevel}
@@ -87,6 +90,14 @@ function SeedTip({ id, rect, level }: { id: CropId; rect: DOMRect; level: number
         <dd className="profit">
           <CoinIcon size={14} /> +{formatNum(profit)}
         </dd>
+        <dt>Lãi / phút</dt>
+        <dd className={c.kind === 'coin' ? 'best' : ''}>
+          <CoinIcon size={14} /> {formatNum((profit * 60) / c.growSeconds)}
+        </dd>
+        <dt>XP / phút</dt>
+        <dd className={c.kind === 'xp' ? 'best' : ''}>
+          <XpIcon size={14} /> {formatNum((c.xp * 60) / c.growSeconds)}
+        </dd>
       </dl>
     </div>
   );
@@ -94,9 +105,37 @@ function SeedTip({ id, rect, level }: { id: CropId; rect: DOMRect; level: number
 
 const HOLD_MS = 350;
 
+const KIND_LABEL: Record<CropKind, string> = { coin: 'Cày tiền', xp: 'Cày cấp' };
+
+function KindTag({ kind }: { kind: CropKind }) {
+  return (
+    <span className={`kind-tag ${kind}`}>
+      {kind === 'coin' ? <CoinIcon size={13} /> : <XpIcon size={13} />} {KIND_LABEL[kind]}
+    </span>
+  );
+}
+
+type ShopFilter = 'all' | CropKind;
+const FILTER_KEY = 'farm-empire:shop-filter';
+
 export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | null; bulkCount: number; onPick: (c: CropId) => void; onClose: () => void }) {
   const s = useGameState();
   const [tip, setTip] = useState<{ id: CropId; rect: DOMRect } | null>(null);
+  const [filter, setFilterState] = useState<ShopFilter>(() => {
+    try {
+      return (localStorage.getItem(FILTER_KEY) as ShopFilter) || 'all';
+    } catch {
+      return 'all';
+    }
+  });
+  const setFilter = (f: ShopFilter) => {
+    setFilterState(f);
+    try {
+      localStorage.setItem(FILTER_KEY, f);
+    } catch {
+      /* remembered for this session only */
+    }
+  };
   const hold = useRef<{ timer: number; x: number; y: number; shown: boolean } | null>(null);
   const cancelHold = () => {
     if (hold.current) clearTimeout(hold.current.timer);
@@ -145,8 +184,23 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
       <p className="panel-sub">
         {bulkCount > 0 ? `Gieo cho ${bulkCount} ô đất trống` : tile !== null ? 'Chọn hạt để gieo vào ô đất này' : 'Chọn hạt rồi chạm vào các ô đất trống'} · Nhấn giữ để xem chi tiết
       </p>
+      <div className="segmented shop-tabs">
+        {(['all', 'coin', 'xp'] as ShopFilter[]).map((f) => (
+          <button key={f} className={`${filter === f ? 'on' : ''} ${f}`} onClick={() => setFilter(f)}>
+            {f === 'all' ? 'Tất cả' : f === 'coin' ? (
+              <>
+                <CoinIcon size={16} /> Cày tiền
+              </>
+            ) : (
+              <>
+                <XpIcon size={16} /> Cày cấp
+              </>
+            )}
+          </button>
+        ))}
+      </div>
       <div className="seed-grid">
-        {CROP_ORDER.map((id) => {
+        {CROP_ORDER.filter((id) => filter === 'all' || CROPS[id].kind === filter).map((id) => {
           const c = CROPS[id];
           const locked = c.unlockLevel > s.level;
           const can = !locked && s.coins >= c.seedPrice;
@@ -154,6 +208,9 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
             <div className={`seed-card ${locked ? 'locked' : ''} ${tip?.id === id ? 'holding' : ''}`} key={id} {...press(id)} onClick={() => buy(id, can)}>
               <div className="seed-art" style={{ background: CROP_BG[id] }}>
                 <CropIcon crop={id} size={52} />
+                <span className={`seed-kind ${c.kind}`} title={KIND_LABEL[c.kind]}>
+                  {c.kind === 'coin' ? <CoinIcon size={14} /> : <XpIcon size={14} />}
+                </span>
                 {locked && (
                   <span className="seed-lock-badge">
                     <LockIcon size={14} />

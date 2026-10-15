@@ -38,6 +38,16 @@ Cột “Kích thước”: asset thủ tục không có file. Hình 2D: một �
 | crop.pineapple.s0–s4 | Dứa, 5 giai đoạn (cụm lá gai + quả có vương miện) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
 | crop.cotton.s0–s4 | Bông, 5 giai đoạn (2 bụi, quả nang nở bông trắng) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
 | crop.lavender.s0–s4 | Oải hương, 5 giai đoạn (5 khóm, bông tím) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.tea.s0–s4 | Trà, 5 giai đoạn (4 bụi trà, hoa trắng) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.grape.s0–s4 | Nho, 5 giai đoạn (giàn + chùm nho tím) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.coffee.s0–s4 | Cà phê, 5 giai đoạn (cành lá bóng, quả đỏ) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.dragonfruit.s0–s4 | Thanh long, 5 giai đoạn (cành xương rồng, quả hồng) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.rose.s0–s4 | Hoa hồng, 5 giai đoạn (bụi, hoa đỏ nhiều lớp) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.durian.s0–s4 | Sầu riêng, 5 giai đoạn (lá lớn, quả gai) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.orchid.s0–s4 | Hoa lan, 5 giai đoạn (lá dày, cành hoa tím) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.ginseng.s0–s4 | Nhân sâm, 5 giai đoạn (lá chân vịt, chùm quả đỏ, củ) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.saffron.s0–s4 | Nghệ tây, 5 giai đoạn (lá kim, hoa tím nhụy đỏ) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
+| crop.cantaloupe.s0–s4 | Dưa lưới, 5 giai đoạn (dây lá, quả vân lưới) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px / giai đoạn | Placeholder |
 | tile.soil | Ô đất nhìn từ trên (đất nâu, sỏi, viền bo) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px | Placeholder |
 | tile.grass | Ô khóa nhìn từ trên (cỏ, 3 biến thể) | Code (`render/sprites.ts`) | Code của dự án | Ô atlas 160 px | Placeholder |
 | env.island | Đảo nổi cho mỗi mảnh 4×4 (mặt cỏ + vách đất) | Code (`render/world.ts`) | Code của dự án | 1.369 + 505 đỉnh / đảo | Placeholder |

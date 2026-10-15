@@ -19,166 +19,301 @@
       "id": "carrot",
       "name": "Cà rốt",
       "seedName": "Hạt cà rốt",
+      "kind": "coin",
       "unlockLevel": 1,
       "seedPrice": 7,
       "growSeconds": 20,
       "yield": 4,
-      "sellPrice": 4,
+      "sellPrice": 6,
       "xp": 1
     },
     {
       "id": "wheat",
       "name": "Lúa mì",
       "seedName": "Hạt lúa mì",
+      "kind": "xp",
       "unlockLevel": 2,
       "seedPrice": 12,
       "growSeconds": 30,
       "yield": 5,
-      "sellPrice": 6,
-      "xp": 2
+      "sellPrice": 4,
+      "xp": 3
     },
     {
       "id": "tomato",
       "name": "Cà chua",
       "seedName": "Hạt cà chua",
+      "kind": "coin",
       "unlockLevel": 3,
       "seedPrice": 22,
       "growSeconds": 45,
       "yield": 6,
-      "sellPrice": 9,
-      "xp": 3
+      "sellPrice": 11,
+      "xp": 1
     },
     {
       "id": "strawberry",
       "name": "Dâu tây",
       "seedName": "Hạt dâu tây",
+      "kind": "xp",
       "unlockLevel": 5,
       "seedPrice": 34,
       "growSeconds": 60,
       "yield": 5,
-      "sellPrice": 16,
-      "xp": 4
+      "sellPrice": 12,
+      "xp": 7
     },
     {
       "id": "potato",
       "name": "Khoai tây",
       "seedName": "Hạt khoai tây",
+      "kind": "xp",
       "unlockLevel": 7,
       "seedPrice": 49,
       "growSeconds": 75,
       "yield": 6,
-      "sellPrice": 20,
-      "xp": 5
+      "sellPrice": 15,
+      "xp": 10
     },
     {
       "id": "cabbage",
       "name": "Bắp cải",
       "seedName": "Hạt bắp cải",
+      "kind": "xp",
       "unlockLevel": 9,
       "seedPrice": 69,
       "growSeconds": 90,
       "yield": 3,
-      "sellPrice": 56,
-      "xp": 7
+      "sellPrice": 41,
+      "xp": 13
     },
     {
       "id": "corn",
       "name": "Ngô",
       "seedName": "Hạt ngô",
+      "kind": "coin",
       "unlockLevel": 11,
       "seedPrice": 110,
       "growSeconds": 120,
       "yield": 4,
-      "sellPrice": 66,
-      "xp": 11
+      "sellPrice": 85,
+      "xp": 5
     },
     {
       "id": "chili",
       "name": "Ớt",
       "seedName": "Hạt ớt",
+      "kind": "xp",
       "unlockLevel": 13,
       "seedPrice": 160,
       "growSeconds": 150,
       "yield": 8,
-      "sellPrice": 48,
-      "xp": 15
+      "sellPrice": 35,
+      "xp": 26
     },
     {
       "id": "eggplant",
       "name": "Cà tím",
       "seedName": "Hạt cà tím",
+      "kind": "coin",
       "unlockLevel": 15,
       "seedPrice": 220,
       "growSeconds": 180,
       "yield": 5,
-      "sellPrice": 107,
-      "xp": 19
+      "sellPrice": 140,
+      "xp": 10
     },
     {
       "id": "watermelon",
       "name": "Dưa hấu",
       "seedName": "Hạt dưa hấu",
+      "kind": "coin",
       "unlockLevel": 18,
       "seedPrice": 345,
       "growSeconds": 240,
       "yield": 2,
-      "sellPrice": 419,
-      "xp": 28
+      "sellPrice": 540,
+      "xp": 14
     },
     {
       "id": "pumpkin",
       "name": "Bí ngô",
       "seedName": "Hạt bí ngô",
+      "kind": "coin",
       "unlockLevel": 21,
       "seedPrice": 505,
       "growSeconds": 300,
       "yield": 2,
-      "sellPrice": 613,
-      "xp": 39
+      "sellPrice": 795,
+      "xp": 19
     },
     {
       "id": "pineapple",
       "name": "Dứa",
       "seedName": "Hạt dứa",
+      "kind": "coin",
       "unlockLevel": 24,
       "seedPrice": 710,
       "growSeconds": 360,
       "yield": 2,
-      "sellPrice": 861,
-      "xp": 51
+      "sellPrice": 1115,
+      "xp": 26
     },
     {
       "id": "cotton",
       "name": "Bông",
       "seedName": "Hạt bông",
+      "kind": "xp",
       "unlockLevel": 27,
       "seedPrice": 1105,
       "growSeconds": 480,
       "yield": 6,
-      "sellPrice": 447,
-      "xp": 75
+      "sellPrice": 330,
+      "xp": 136
     },
     {
       "id": "lavender",
       "name": "Oải hương",
       "seedName": "Hạt oải hương",
+      "kind": "xp",
       "unlockLevel": 30,
       "seedPrice": 1615,
       "growSeconds": 600,
       "yield": 5,
-      "sellPrice": 785,
-      "xp": 104
+      "sellPrice": 575,
+      "xp": 186
     },
     {
       "id": "sunflower",
       "name": "Hướng dương",
       "seedName": "Hạt hướng dương",
+      "kind": "coin",
       "unlockLevel": 34,
       "seedPrice": 2270,
       "growSeconds": 720,
       "yield": 3,
-      "sellPrice": 1838,
-      "xp": 137
+      "sellPrice": 2380,
+      "xp": 68
+    },
+    {
+      "id": "tea",
+      "name": "Trà",
+      "seedName": "Hạt trà",
+      "kind": "xp",
+      "unlockLevel": 36,
+      "seedPrice": 3100,
+      "growSeconds": 840,
+      "yield": 6,
+      "sellPrice": 920,
+      "xp": 316
+    },
+    {
+      "id": "grape",
+      "name": "Nho",
+      "seedName": "Hạt nho",
+      "kind": "coin",
+      "unlockLevel": 38,
+      "seedPrice": 3885,
+      "growSeconds": 900,
+      "yield": 6,
+      "sellPrice": 2035,
+      "xp": 103
+    },
+    {
+      "id": "coffee",
+      "name": "Cà phê",
+      "seedName": "Hạt cà phê",
+      "kind": "xp",
+      "unlockLevel": 41,
+      "seedPrice": 5455,
+      "growSeconds": 1080,
+      "yield": 5,
+      "sellPrice": 1950,
+      "xp": 491
+    },
+    {
+      "id": "dragonfruit",
+      "name": "Thanh long",
+      "seedName": "Hạt thanh long",
+      "kind": "coin",
+      "unlockLevel": 44,
+      "seedPrice": 7090,
+      "growSeconds": 1200,
+      "yield": 3,
+      "sellPrice": 7425,
+      "xp": 167
+    },
+    {
+      "id": "rose",
+      "name": "Hoa hồng",
+      "seedName": "Hạt hoa hồng",
+      "kind": "xp",
+      "unlockLevel": 47,
+      "seedPrice": 10350,
+      "growSeconds": 1500,
+      "yield": 4,
+      "sellPrice": 4625,
+      "xp": 826
+    },
+    {
+      "id": "durian",
+      "name": "Sầu riêng",
+      "seedName": "Hạt sầu riêng",
+      "kind": "coin",
+      "unlockLevel": 50,
+      "seedPrice": 14550,
+      "growSeconds": 1800,
+      "yield": 1,
+      "sellPrice": 45750,
+      "xp": 303
+    },
+    {
+      "id": "orchid",
+      "name": "Hoa lan",
+      "seedName": "Hạt hoa lan",
+      "kind": "xp",
+      "unlockLevel": 54,
+      "seedPrice": 19850,
+      "growSeconds": 2100,
+      "yield": 3,
+      "sellPrice": 11800,
+      "xp": 1399
+    },
+    {
+      "id": "ginseng",
+      "name": "Nhân sâm",
+      "seedName": "Hạt nhân sâm",
+      "kind": "coin",
+      "unlockLevel": 58,
+      "seedPrice": 26550,
+      "growSeconds": 2400,
+      "yield": 2,
+      "sellPrice": 41750,
+      "xp": 488
+    },
+    {
+      "id": "saffron",
+      "name": "Nghệ tây",
+      "seedName": "Hạt nghệ tây",
+      "kind": "xp",
+      "unlockLevel": 63,
+      "seedPrice": 38850,
+      "growSeconds": 3000,
+      "yield": 4,
+      "sellPrice": 17350,
+      "xp": 2418
+    },
+    {
+      "id": "cantaloupe",
+      "name": "Dưa lưới",
+      "seedName": "Hạt dưa lưới",
+      "kind": "coin",
+      "unlockLevel": 70,
+      "seedPrice": 54550,
+      "growSeconds": 3600,
+      "yield": 2,
+      "sellPrice": 85750,
+      "xp": 886
     }
   ]
 }

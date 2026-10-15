@@ -13,25 +13,39 @@ nằm sát nhau (viền lối đất phân cách) và xếp theo vòng xoắn qu
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
 `5 × cấp^2.1`. Giá ô đất thứ n: `40 + 20 × (n − 4)^2.4` xu. Toàn bộ số liệu nằm trong
 `client/src/game/config.ts`; nhịp độ được cân bằng bằng mô phỏng người chơi tích cực
-(cấp 10 ≈ 45 phút, cấp 20 ≈ 3 giờ, cấp 30 ≈ 6 giờ).
+(cấp 10 ≈ 30 phút, cấp 30 ≈ 5 giờ, cấp 70 ≈ 20 giờ).
 
-| Cây | Cấp mở | Hạt | Thời gian | Thu | Giá bán | XP | Lãi/ô |
-|---|---|---|---|---|---|---|---|
-| Cà rốt | 1 | 7 | 20s | ×4 | 4 | 1 | +9 |
-| Lúa mì | 2 | 12 | 30s | ×5 | 6 | 2 | +18 |
-| Cà chua | 3 | 22 | 45s | ×6 | 9 | 3 | +32 |
-| Dâu tây | 5 | 34 | 60s | ×5 | 16 | 4 | +46 |
-| Khoai tây | 7 | 49 | 75s | ×6 | 20 | 5 | +71 |
-| Bắp cải | 9 | 69 | 90s | ×3 | 56 | 7 | +99 |
-| Ngô | 11 | 110 | 120s | ×4 | 66 | 11 | +154 |
-| Ớt | 13 | 160 | 150s | ×8 | 48 | 15 | +224 |
-| Cà tím | 15 | 220 | 180s | ×5 | 107 | 19 | +315 |
-| Dưa hấu | 18 | 345 | 240s | ×2 | 419 | 28 | +493 |
-| Bí ngô | 21 | 505 | 300s | ×2 | 613 | 39 | +721 |
-| Dứa | 24 | 710 | 360s | ×2 | 861 | 51 | +1012 |
-| Bông | 27 | 1105 | 480s | ×6 | 447 | 75 | +1577 |
-| Oải hương | 30 | 1615 | 600s | ×5 | 785 | 104 | +2310 |
-| Hướng dương | 34 | 2270 | 720s | ×3 | 1838 | 137 | +3244 |
+**Hai loại cây:** *Cày tiền* (lãi ×1,5, XP ×0,5) để kiếm xu mua đất, *Cày cấp* (lãi ×0,55, XP ×1,8) để lên cấp mở
+thêm đất và cây. Bảng cây được sinh và mô phỏng nhịp chơi bằng `cd client && node scripts/economy.mjs` (thêm `--write` để ghi
+vào `shared/economy.json`).
+
+| Cây | Loại | Cấp mở | Hạt | Thời gian | Thu | Giá bán | XP | Lãi/ô |
+|---|---|---|---|---|---|---|---|---|
+| Cà rốt | Cày tiền | 1 | 7 | 20s | ×4 | 6 | 1 | +17 |
+| Lúa mì | Cày cấp | 2 | 12 | 30s | ×5 | 4 | 3 | +8 |
+| Cà chua | Cày tiền | 3 | 22 | 45s | ×6 | 11 | 1 | +44 |
+| Dâu tây | Cày cấp | 5 | 34 | 1 phút | ×5 | 12 | 7 | +26 |
+| Khoai tây | Cày cấp | 7 | 49 | 1p15s | ×6 | 15 | 10 | +41 |
+| Bắp cải | Cày cấp | 9 | 69 | 1p30s | ×3 | 41 | 13 | +54 |
+| Ngô | Cày tiền | 11 | 110 | 2 phút | ×4 | 85 | 5 | +230 |
+| Ớt | Cày cấp | 13 | 160 | 2p30s | ×8 | 35 | 26 | +120 |
+| Cà tím | Cày tiền | 15 | 220 | 3 phút | ×5 | 140 | 10 | +480 |
+| Dưa hấu | Cày tiền | 18 | 345 | 4 phút | ×2 | 540 | 14 | +735 |
+| Bí ngô | Cày tiền | 21 | 505 | 5 phút | ×2 | 795 | 19 | +1.085 |
+| Dứa | Cày tiền | 24 | 710 | 6 phút | ×2 | 1.115 | 26 | +1.520 |
+| Bông | Cày cấp | 27 | 1.105 | 8 phút | ×6 | 330 | 136 | +875 |
+| Oải hương | Cày cấp | 30 | 1.615 | 10 phút | ×5 | 575 | 186 | +1.260 |
+| Hướng dương | Cày tiền | 34 | 2.270 | 12 phút | ×3 | 2.380 | 68 | +4.870 |
+| Trà | Cày cấp | 36 | 3.100 | 14 phút | ×6 | 920 | 316 | +2.420 |
+| Nho | Cày tiền | 38 | 3.885 | 15 phút | ×6 | 2.035 | 103 | +8.325 |
+| Cà phê | Cày cấp | 41 | 5.455 | 18 phút | ×5 | 1.950 | 491 | +4.295 |
+| Thanh long | Cày tiền | 44 | 7.090 | 20 phút | ×3 | 7.425 | 167 | +15.185 |
+| Hoa hồng | Cày cấp | 47 | 10.350 | 25 phút | ×4 | 4.625 | 826 | +8.150 |
+| Sầu riêng | Cày tiền | 50 | 14.550 | 30 phút | ×1 | 45.750 | 303 | +31.200 |
+| Hoa lan | Cày cấp | 54 | 19.850 | 35 phút | ×3 | 11.800 | 1.399 | +15.550 |
+| Nhân sâm | Cày tiền | 58 | 26.550 | 40 phút | ×2 | 41.750 | 488 | +56.950 |
+| Nghệ tây | Cày cấp | 63 | 38.850 | 50 phút | ×4 | 17.350 | 2.418 | +30.550 |
+| Dưa lưới | Cày tiền | 70 | 54.550 | 60 phút | ×2 | 85.750 | 886 | +116.950 |
 
 
 > Đồ họa **chưa hoàn thiện**: hình cây / ô đất và cảnh đều là placeholder thủ tục. Xem [ASSETS.md](ASSETS.md).

@@ -635,11 +635,263 @@ const PAINTERS: Record<CropId, Painter> = {
       }
     }
   },
+  tea(c, st) {
+    // clipped tea bushes in two rows, glossy small leaves
+    const k = [0, 0, 0.6, 0.9, 1][st];
+    for (const [sx, sy] of [[0.3, 0.32], [0.7, 0.32], [0.3, 0.7], [0.7, 0.7]] as Array<[number, number]>) {
+      const x = sx * S, y = sy * S;
+      shade(c, x, y, 26 * k);
+      for (let i = 0; i < 9; i++) leaf(c, x, y, (i / 9) * Math.PI * 2 + sx * 4, 20 * k, 7 * k, '#2f6e2a', '#7fd060');
+      if (st >= 3) for (let i = 0; i < 3; i++) leaf(c, x, y, i * 2.1 + 0.4, 10, 4.5, '#8fe070', '#d6ffb0');
+      if (st === 3) flower(c, x + 9, y - 8, 4.5, '#ffffff', '#ffd23a');
+    }
+  },
+  grape(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    // trellis posts and wires seen from above
+    c.strokeStyle = '#8a6a44';
+    c.lineWidth = 3;
+    for (const y of [0.3, 0.7]) {
+      c.beginPath();
+      c.moveTo(10, y * S);
+      c.lineTo(S - 10, y * S);
+      c.stroke();
+    }
+    for (let i = 0; i < 6; i++) roundLeaf(c, cx, cy, (i / 6) * Math.PI * 2 + 0.3, 44 * k, 14 * k, '#3f7a2a', '#9fd860');
+    if (st >= 3)
+      for (const [dx, dy] of [[-28, -26], [26, -24], [-24, 26], [28, 28]] as Array<[number, number]>) {
+        const ripe = st === 4;
+        for (let i = 0; i < (ripe ? 9 : 5); i++) {
+          const row = Math.floor(Math.sqrt(i * 2));
+          ball(c, cx + dx + (i % 3) * 6 - 6, cy + dy + row * 6 - 6, ripe ? 5.5 : 4, ripe ? '#c8a0f0' : '#d6f59a', ripe ? '#7a3ab8' : '#9ad64e', ripe ? '#3e1468' : '#5ea832', 'rgba(30,10,40,.4)');
+        }
+      }
+  },
+  coffee(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 58 * k);
+    // glossy dark leaves in opposite pairs along branches
+    for (let b = 0; b < 4; b++) {
+      const a = (b / 4) * Math.PI * 2 + 0.4;
+      for (let j = 1; j <= 3; j++) {
+        const px = cx + Math.cos(a) * j * 15 * k, py = cy + Math.sin(a) * j * 15 * k;
+        leaf(c, px, py, a + 1.2, 18 * k, 7 * k, '#1f5a26', '#4ea83a');
+        leaf(c, px, py, a - 1.2, 18 * k, 7 * k, '#1f5a26', '#4ea83a');
+        if (st === 3 && j === 2) flower(c, px, py, 4, '#ffffff', '#f6f0d0');
+        if (st === 4 && j >= 2) for (let q = 0; q < 3; q++) ball(c, px + (q - 1) * 5, py + 3, 4, '#ff9a8a', '#d0281e', '#7a0e0a', 'rgba(0,0,0,.35)');
+      }
+    }
+  },
+  dragonfruit(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 56 * k);
+    // three-ribbed cactus arms
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + 0.2;
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(a);
+      c.beginPath();
+      c.ellipse(28 * k, 0, 30 * k, 8 * k, 0, 0, Math.PI * 2);
+      c.fillStyle = '#5aa86a';
+      c.fill();
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.6;
+      c.stroke();
+      c.beginPath();
+      c.moveTo(4, 0);
+      c.lineTo(56 * k, 0);
+      c.strokeStyle = '#9ad8a0';
+      c.stroke();
+      c.restore();
+    }
+    if (st === 3) for (const a of [0.8, 3.3]) flower(c, cx + Math.cos(a) * 34, cy + Math.sin(a) * 34, 9, '#fff6e0', '#ffe066');
+    if (st === 4)
+      for (const a of [0.8, 2.9, 5.0]) {
+        const x = cx + Math.cos(a) * 36, y = cy + Math.sin(a) * 36;
+        ball(c, x, y, 13, '#ffb0d0', '#f0287a', '#a0104a');
+        for (let i = 0; i < 6; i++) leaf(c, x, y, (i / 6) * Math.PI * 2, 10, 4, '#c0e070', '#88c040', false);
+      }
+  },
+  rose(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 58 * k);
+    for (let i = 0; i < 12; i++) leaf(c, cx, cy, (i / 12) * Math.PI * 2, 46 * k, 10 * k, '#2a6a2e', '#6ab84a');
+    const spots: Array<[number, number]> = [[0, 0], [-28, -18], [26, -22], [-22, 26], [28, 22]];
+    for (const [dx, dy] of spots) {
+      const x = cx + dx, y = cy + dy;
+      if (st === 3) ball(c, x, y, 6, '#ff9aaa', '#d82a4a', '#8a1028');
+      if (st === 4) {
+        // spiral of petals
+        for (let r = 3; r >= 0; r--) {
+          const R = 5 + r * 3.2;
+          for (let p = 0; p < 5; p++) {
+            const a = (p / 5) * Math.PI * 2 + r * 0.6;
+            circle(c, x + Math.cos(a) * R * 0.45, y + Math.sin(a) * R * 0.45, R * 0.55, r % 2 ? '#e8304e' : '#c41a3a', 'rgba(90,0,20,.4)', 1);
+          }
+        }
+        circle(c, x, y, 3, '#8a0a24', '', 0);
+      }
+    }
+  },
+  durian(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 60 * k);
+    rosette(c, 8, 56 * k, 18 * k, '#2f6e2a', '#8fcf5a', 0.2);
+    if (st === 3) ball(c, cx, cy, 14, '#d6f59a', '#9ad64e', '#5ea832');
+    if (st === 4) {
+      const R = 32;
+      ball(c, cx, cy, R, '#e8e070', '#b8b030', '#6e6a14');
+      // spikes
+      for (let ring = 0; ring < 3; ring++)
+        for (let i = 0; i < 6 + ring * 6; i++) {
+          const a = (i / (6 + ring * 6)) * Math.PI * 2 + ring;
+          const r = ring * 11;
+          star(c, cx + Math.cos(a) * r, cy + Math.sin(a) * r, 4, 4.5, 1.6, '#8a8a20', a);
+        }
+    }
+  },
+  orchid(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 50 * k);
+    for (let i = 0; i < 6; i++) leaf(c, cx, cy, (i / 6) * Math.PI * 2 + 0.3, 44 * k, 16 * k, '#2f6a3a', '#7ac070');
+    if (st >= 3) {
+      // arching flower spike
+      c.strokeStyle = '#4f7a3a';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx, cy);
+      c.quadraticCurveTo(cx + 30, cy - 40, cx + 46, cy - 10);
+      c.stroke();
+      const pts: Array<[number, number]> = [[18, -26], [32, -30], [42, -20], [46, -6]];
+      for (const [dx, dy] of pts) {
+        const x = cx + dx, y = cy + dy;
+        if (st === 3) ball(c, x, y, 4, '#f6e8ff', '#c8a0e0', '#8a5ab0');
+        else {
+          for (let p = 0; p < 5; p++) {
+            const a = (p / 5) * Math.PI * 2 - Math.PI / 2;
+            c.beginPath();
+            c.ellipse(x + Math.cos(a) * 6, y + Math.sin(a) * 6, 6.5, 4.2, a, 0, Math.PI * 2);
+            c.fillStyle = p === 2 ? '#a83ac8' : '#f0d8ff';
+            c.fill();
+            c.strokeStyle = 'rgba(90,30,110,.5)';
+            c.lineWidth = 1;
+            c.stroke();
+          }
+          circle(c, x, y, 3, '#ffd23a', '', 0);
+        }
+      }
+    }
+  },
+  ginseng(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    shade(c, cx, cy, 52 * k);
+    // palmate leaves: 3 stalks each ending in 5 leaflets
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + 0.5;
+      const x = cx + Math.cos(a) * 28 * k, y = cy + Math.sin(a) * 28 * k;
+      c.strokeStyle = '#4f7a2a';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx, cy);
+      c.lineTo(x, y);
+      c.stroke();
+      for (let j = 0; j < 5; j++) leaf(c, x, y, a + (j - 2) * 0.55, 22 * k, 7 * k, '#2f7a2a', '#9ae070');
+    }
+    if (st === 3) circle(c, cx, cy, 6, '#c8e07a', OUTLINE, 1.5);
+    if (st === 4) {
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2;
+        ball(c, cx + Math.cos(a) * 7, cy + Math.sin(a) * 7, 4.5, '#ff9a8a', '#e01e1e', '#800a0a', 'rgba(0,0,0,.35)');
+      }
+      ball(c, cx, cy, 4.5, '#ff9a8a', '#e01e1e', '#800a0a', 'rgba(0,0,0,.35)');
+      // the root shows at the soil
+      c.beginPath();
+      c.ellipse(cx - 34, cy + 38, 16, 7, 0.5, 0, Math.PI * 2);
+      c.fillStyle = '#e8d2a0';
+      c.fill();
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 1.5;
+      c.stroke();
+    }
+  },
+  saffron(c, st) {
+    const k = [0, 0, 0.6, 0.9, 1][st];
+    const spots: Array<[number, number]> = [[0.28, 0.3], [0.7, 0.28], [0.5, 0.52], [0.3, 0.74], [0.72, 0.72]];
+    for (const [sx, sy] of spots) {
+      const x = sx * S, y = sy * S;
+      shade(c, x, y, 20 * k);
+      for (let i = 0; i < 8; i++) leaf(c, x, y, (i / 8) * Math.PI * 2 + sx, 24 * k, 3 * k, '#3f7a3a', '#9ad070', false);
+      if (st === 3) ball(c, x, y, 5, '#e8d8ff', '#b890e0', '#6a40a0');
+      if (st === 4) {
+        for (let p = 0; p < 6; p++) {
+          const a = (p / 6) * Math.PI * 2;
+          c.beginPath();
+          c.ellipse(x + Math.cos(a) * 6, y + Math.sin(a) * 6, 7, 4, a, 0, Math.PI * 2);
+          c.fillStyle = p % 2 ? '#9a6ae0' : '#b88af0';
+          c.fill();
+          c.strokeStyle = 'rgba(60,20,100,.5)';
+          c.lineWidth = 1;
+          c.stroke();
+        }
+        // the precious red stigmas
+        for (let s = 0; s < 3; s++) {
+          const a = (s / 3) * Math.PI * 2 + 0.4;
+          c.beginPath();
+          c.moveTo(x, y);
+          c.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 7);
+          c.strokeStyle = '#e0201a';
+          c.lineWidth = 2.2;
+          c.stroke();
+        }
+      }
+    }
+  },
+  cantaloupe(c, st) {
+    const cx = S / 2, cy = S / 2, k = [0, 0, 0.6, 0.9, 1][st];
+    c.strokeStyle = '#4f8a2a';
+    c.lineWidth = 3;
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.57 + 0.2;
+      c.beginPath();
+      c.moveTo(cx, cy);
+      c.quadraticCurveTo(cx + Math.cos(a + 0.6) * 40 * k, cy + Math.sin(a + 0.6) * 40 * k, cx + Math.cos(a) * 64 * k, cy + Math.sin(a) * 64 * k);
+      c.stroke();
+    }
+    for (let i = 0; i < 6; i++) roundLeaf(c, cx, cy, (i / 6) * Math.PI * 2 + 0.5, 40 * k, 13 * k, G.deep, G.light);
+    if (st === 3) {
+      flower(c, cx + 28, cy - 26, 7, '#ffe03a', '#e0a00a');
+      ball(c, cx - 4, cy + 4, 13, '#e0f0b0', '#a8c870', '#6a8a3a');
+    }
+    if (st === 4)
+      for (const [dx, dy, R] of [[-14, -6, 26], [22, 20, 20]] as Array<[number, number, number]>) {
+        const x = cx + dx, y = cy + dy;
+        ball(c, x, y, R, '#f6efc0', '#d8c48a', '#9a8450');
+        // netted rind
+        c.save();
+        c.beginPath();
+        c.arc(x, y, R - 1, 0, Math.PI * 2);
+        c.clip();
+        c.strokeStyle = 'rgba(255,250,230,.75)';
+        c.lineWidth = 1.2;
+        for (let i = -4; i <= 4; i++) {
+          c.beginPath();
+          c.moveTo(x - R, y + i * 6);
+          c.lineTo(x + R, y + i * 6 + R * 0.6);
+          c.moveTo(x - R, y + i * 6 + R * 0.6);
+          c.lineTo(x + R, y + i * 6);
+          c.stroke();
+        }
+        c.restore();
+      }
+  },
 };
 
 const SEED: Record<CropId, string> = {
   carrot: '#e8c48c', wheat: '#f5cf5a', tomato: '#fff0b8', strawberry: '#ffe9a8', potato: '#c9915a', cabbage: '#c9a46a', corn: '#ffd23a', chili: '#fff0c0',
   eggplant: '#f2e2b0', watermelon: '#3a2a1a', pumpkin: '#fff3d0', pineapple: '#8a6a3a', cotton: '#5a4a3a', lavender: '#3a3040', sunflower: '#4a3a2a',
+  tea: '#6a4a2a', grape: '#7a5a3a', coffee: '#d8c08a', dragonfruit: '#222222', rose: '#9a7a4a', durian: '#c8a46a', orchid: '#e8e0c8',
+  ginseng: '#e01e1e', saffron: '#c8a07a', cantaloupe: '#f0e6c0',
 };
 
 // ------------------------------------------------------------------ atlas + quads

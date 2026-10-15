@@ -344,6 +344,194 @@ export function LevelStar({ level, size = 54 }: { level: number; size?: number }
   );
 }
 
+export function TeaIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M32 58V36" stroke={OUT} strokeWidth="5" />
+      <path d="M32 58V36" stroke="#6a8a3a" strokeWidth="2.4" />
+      <path d="M32 38C18 38 10 26 14 12c12 2 20 12 18 26z" fill="#5cb83a" stroke={OUT} strokeWidth="2.8" />
+      <path d="M32 34C44 34 54 24 50 8c-12 2-20 12-18 26z" fill="#8fd860" stroke={OUT} strokeWidth="2.8" />
+      <path d="M32 46c-8 0-14-4-16-10 8-1 14 3 16 10z" fill="#4ea83a" stroke={OUT} strokeWidth="2.4" />
+      <path d="M17 15c4 6 8 12 14 20M47 11c-4 6-8 12-14 20" stroke="#fff" strokeOpacity=".5" strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function GrapeIcon(p: P) {
+  const id = useId();
+  const grapes: Array<[number, number]> = [[22, 26], [32, 26], [42, 26], [27, 35], [37, 35], [22, 44], [32, 44], [42, 44], [27, 52], [37, 52], [32, 59]];
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}g`} cx="0.35" cy="0.3" r="0.8">
+          <stop stopColor="#c8a0f0" />
+          <stop offset=".55" stopColor="#7a3ab8" />
+          <stop offset="1" stopColor="#3e1468" />
+        </radialGradient>
+      </defs>
+      <path d="M33 22c0-8 3-14 9-17" stroke={OUT} strokeWidth="3.5" />
+      <path d="M36 14c6-8 16-8 20-2-6 4-13 5-20 2z" fill="#5cb83a" stroke={OUT} strokeWidth="2.4" />
+      {grapes.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y - 4} r="6.2" fill={`url(#${id}g)`} stroke={OUT} strokeWidth="2" />
+      ))}
+    </Svg>
+  );
+}
+
+export function CoffeeIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}c`} cx="0.35" cy="0.3" r="0.8">
+          <stop stopColor="#ff9a8a" />
+          <stop offset=".55" stopColor="#d0281e" />
+          <stop offset="1" stopColor="#7a0e0a" />
+        </radialGradient>
+      </defs>
+      <path d="M8 22C20 12 36 10 56 16" stroke={OUT} strokeWidth="4" />
+      <path d="M8 22C20 12 36 10 56 16" stroke="#7a5a3a" strokeWidth="2" />
+      <path d="M18 18c-4-8-12-10-14-6 2 6 8 8 14 6zM44 13c4-8 12-8 14-4-3 5-9 6-14 4z" fill="#2f7a2a" stroke={OUT} strokeWidth="2.2" />
+      {[[18, 34], [30, 30], [42, 32], [24, 46], [36, 44], [30, 56]].map(([x, y], i) => (
+        <g key={i}>
+          <ellipse cx={x} cy={y} rx="7" ry="8" fill={`url(#${id}c)`} stroke={OUT} strokeWidth="2.2" />
+          <path d={`M${x} ${y - 5}v10`} stroke="#5a0a06" strokeWidth="1.6" />
+        </g>
+      ))}
+    </Svg>
+  );
+}
+
+export function DragonfruitIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}d`} cx="0.4" cy="0.35" r="0.8">
+          <stop stopColor="#ffb0d0" />
+          <stop offset=".55" stopColor="#f0287a" />
+          <stop offset="1" stopColor="#a0104a" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="32" cy="36" rx="18" ry="22" fill={`url(#${id}d)`} stroke={OUT} strokeWidth="3" />
+      {[[-1, 18], [1, 18], [-1, 32], [1, 32], [-1, 46], [1, 46]].map(([s, y], i) => (
+        <path key={i} d={`M${32 + s * 8} ${y + 4}c${s * 10} -4 ${s * 16} -10 ${s * 18} -18c${-s * 4} 6 ${-s * 10} 10 ${-s * 18} 12z`} fill="#9ad850" stroke={OUT} strokeWidth="2" />
+      ))}
+      <path d="M32 14c-2-6-1-10 2-12 2 3 2 7-2 12z" fill="#9ad850" stroke={OUT} strokeWidth="2" />
+      <path d="M22 28c2-4 5-6 8-7" stroke="#fff" strokeOpacity=".7" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function RoseIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M32 60V34" stroke={OUT} strokeWidth="5" />
+      <path d="M32 60V34" stroke="#3f8a2a" strokeWidth="2.4" />
+      <path d="M32 48c-8-6-16-4-18 0 6 4 12 4 18 0zM32 52c8-6 16-4 18 0-6 4-12 4-18 0z" fill="#5cb83a" stroke={OUT} strokeWidth="2.2" />
+      <path d="M32 36c-14 0-18-10-14-20 4 4 8 4 14 0 6 4 10 4 14 0 4 10 0 20-14 20z" fill="#d81e3e" stroke={OUT} strokeWidth="3" />
+      <path d="M32 16c-6 0-10 4-10 8 4-2 8-2 10 2 2-4 6-4 10-2 0-4-4-8-10-8z" fill="#f04060" stroke={OUT} strokeWidth="2.2" />
+      <path d="M26 26c2 4 4 5 6 5s4-1 6-5" stroke="#8a0a24" strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function DurianIcon(p: P) {
+  const id = useId();
+  const spikes = [];
+  for (let r = 0; r < 4; r++)
+    for (let c = 0; c < 4; c++) {
+      const x = 18 + c * 9 + (r % 2) * 4.5, y = 22 + r * 9;
+      spikes.push(<path key={`${r}${c}`} d={`M${x} ${y - 4}l3 4-3 4-3-4z`} fill="#8a8a20" stroke={OUT} strokeWidth="1.2" />);
+    }
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}d`} cx="0.4" cy="0.35" r="0.8">
+          <stop stopColor="#f0ec90" />
+          <stop offset=".6" stopColor="#b8b030" />
+          <stop offset="1" stopColor="#6e6a14" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="34" cy="38" rx="22" ry="20" fill={`url(#${id}d)`} stroke={OUT} strokeWidth="3" />
+      {spikes}
+      <path d="M32 18c0-6 2-10 6-12" stroke={OUT} strokeWidth="4" />
+      <path d="M32 18c0-6 2-10 6-12" stroke="#7a6a2a" strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function OrchidIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M14 58c4-14 10-24 22-30" stroke={OUT} strokeWidth="4" />
+      <path d="M14 58c4-14 10-24 22-30" stroke="#4f7a3a" strokeWidth="2" />
+      <path d="M8 58c6-6 14-8 22-6-6 6-14 8-22 6z" fill="#3f8a4a" stroke={OUT} strokeWidth="2.2" />
+      {[0, 72, 144, 216, 288].map((a, i) => (
+        <ellipse key={i} cx="38" cy="14" rx="7" ry="13" fill={i === 2 ? '#a83ac8' : '#f0d8ff'} stroke={OUT} strokeWidth="2.2" transform={`rotate(${a} 38 26)`} />
+      ))}
+      <circle cx="38" cy="26" r="5" fill="#ffd23a" stroke={OUT} strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function GinsengIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M30 26c-4 10-2 18 2 24-6 2-10 6-12 10M32 50c4 2 8 6 10 10M34 26c2 8 4 14 2 20" stroke={OUT} strokeWidth="4" />
+      <path d="M30 26c-4 10-2 18 2 24-6 2-10 6-12 10M32 50c4 2 8 6 10 10M34 26c2 8 4 14 2 20" stroke="#e8d2a0" strokeWidth="2" />
+      <path d="M26 20c-2 6-2 12 6 16 8-4 8-10 6-16-4-2-8-2-12 0z" fill="#f2e2b8" stroke={OUT} strokeWidth="2.6" />
+      <path d="M32 20c0-6-4-12-10-14M32 20c0-6 4-12 10-14" stroke="#3f8a2a" strokeWidth="2.4" />
+      {[[22, 6], [42, 6], [32, 4]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y + 2} r="3.4" fill="#e01e1e" stroke={OUT} strokeWidth="1.6" />
+      ))}
+    </Svg>
+  );
+}
+
+export function SaffronIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M32 60V38" stroke={OUT} strokeWidth="4" />
+      <path d="M32 60V38" stroke="#5f8a3a" strokeWidth="2" />
+      <path d="M32 58C28 48 22 42 14 40M32 58c4-10 10-16 18-18" stroke="#6aa040" strokeWidth="2.6" />
+      {[-40, -14, 14, 40].map((a, i) => (
+        <ellipse key={i} cx="32" cy="22" rx="7" ry="15" fill={i % 2 ? '#9a6ae0' : '#b88af0'} stroke={OUT} strokeWidth="2.2" transform={`rotate(${a} 32 38)`} />
+      ))}
+      <path d="M32 34l-6-14M32 34l0-16M32 34l6-14" stroke="#e0201a" strokeWidth="2.6" />
+    </Svg>
+  );
+}
+
+export function CantaloupeIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}m`} cx="0.4" cy="0.35" r="0.8">
+          <stop stopColor="#fff6d0" />
+          <stop offset=".6" stopColor="#d8c48a" />
+          <stop offset="1" stopColor="#9a8450" />
+        </radialGradient>
+        <clipPath id={`${id}k`}>
+          <circle cx="32" cy="36" r="22" />
+        </clipPath>
+      </defs>
+      <circle cx="32" cy="36" r="22" fill={`url(#${id}m)`} stroke={OUT} strokeWidth="3" />
+      <g clipPath={`url(#${id}k)`} stroke="#fffaf0" strokeOpacity=".85" strokeWidth="1.6">
+        {[-20, -10, 0, 10, 20].map((o) => (
+          <path key={`a${o}`} d={`M${10 + o} 14l30 44`} />
+        ))}
+        {[-20, -10, 0, 10, 20].map((o) => (
+          <path key={`b${o}`} d={`M${54 + o} 14l-30 44`} />
+        ))}
+      </g>
+      <path d="M32 14c0-5 2-9 6-11" stroke={OUT} strokeWidth="3.5" />
+      <path d="M36 8c6-4 14-2 16 2-6 3-11 2-16-2z" fill="#5cb83a" stroke={OUT} strokeWidth="2.2" />
+    </Svg>
+  );
+}
+
 export function CoinIcon(p: P) {
   const id = useId();
   return (
@@ -520,6 +708,16 @@ const CROP_ICONS: Record<CropId, (p: P) => React.JSX.Element> = {
   pineapple: PineappleIcon,
   cotton: CottonIcon,
   lavender: LavenderIcon,
+  tea: TeaIcon,
+  grape: GrapeIcon,
+  coffee: CoffeeIcon,
+  dragonfruit: DragonfruitIcon,
+  rose: RoseIcon,
+  durian: DurianIcon,
+  orchid: OrchidIcon,
+  ginseng: GinsengIcon,
+  saffron: SaffronIcon,
+  cantaloupe: CantaloupeIcon,
 };
 
 export function CropIcon({ crop, ...p }: P & { crop: CropId }) {

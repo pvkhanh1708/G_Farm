@@ -484,3 +484,14 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 /* unlock sign: sized relative to its tile (TileOverlays sets --s from the zoom), anchored on the tile centre */
 .plot-anchor > .sign { width: 96px; box-sizing: border-box; justify-content: center; scale: var(--s, 1); transform: translate(-50%, -50%); transform-origin: 0 0; }
 .plot-anchor > .sign::after { display: none; }
+
+/* seed kinds: money farming vs level farming */
+.shop-tabs { display: flex; margin: 0 auto 10px; width: fit-content; }
+.shop-tabs button { display: inline-flex; align-items: center; gap: 4px; }
+.seed-kind { position: absolute; left: -4px; top: -2px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid #e4c48f; box-shadow: 0 2px 0 rgba(0,0,0,.12); }
+.seed-kind.xp { border-color: #8cc6f0; }
+.seed-art > .seed-kind > svg { width: 14px; height: 14px; filter: none; }
+.kind-tag { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 6px; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 800; }
+.kind-tag.coin { background: #fff2c8; color: #9a6a0a; }
+.kind-tag.xp { background: #e2f1ff; color: #1f5f99; }
+.seed-tip dd.best { color: #1f7a1a; background: #eaffd8; border-radius: 6px; padding: 0 4px; }

@@ -63,10 +63,11 @@ class FarmApiTest extends TestCase
             ->assertJsonPath('state.inventory.carrot', 8)
             ->assertJsonPath('state.xp', 2);
 
+        $sell = app(Economy::class)->crop('carrot')['sellPrice'];
         $this->postJson('/farm/sell', ['crop' => 'carrot', 'qty' => 99], $h)
             ->assertOk()
-            ->assertJsonPath('result.earned', 8 * 4)
-            ->assertJsonPath('state.coins', 50 - 14 + 32)
+            ->assertJsonPath('result.earned', 8 * $sell)
+            ->assertJsonPath('state.coins', 50 - 14 + 8 * $sell)
             ->assertJsonPath('state.inventory.carrot', 0);
     }
 

@@ -2,12 +2,17 @@ import economy from '../../../shared/economy.json';
 
 export type CropId =
   | 'carrot' | 'wheat' | 'tomato' | 'strawberry' | 'potato' | 'cabbage' | 'corn' | 'chili'
-  | 'eggplant' | 'watermelon' | 'pumpkin' | 'pineapple' | 'cotton' | 'lavender' | 'sunflower';
+  | 'eggplant' | 'watermelon' | 'pumpkin' | 'pineapple' | 'cotton' | 'lavender' | 'sunflower'
+  | 'tea' | 'grape' | 'coffee' | 'dragonfruit' | 'rose' | 'durian' | 'orchid' | 'ginseng' | 'saffron' | 'cantaloupe';
+
+/** "coin" crops are for farming money, "xp" crops for levelling (see client/scripts/economy.mjs). */
+export type CropKind = 'coin' | 'xp';
 
 export interface CropDef {
   id: CropId;
   name: string;
   seedName: string;
+  kind: CropKind;
   /** Player level needed to buy the seed. */
   unlockLevel: number;
   seedPrice: number;
@@ -24,9 +29,10 @@ export const STAGE_NAMES = ['Vừa gieo hạt', 'Nảy mầm', 'Lá non', 'Lá t
 
 /**
  * Prices, yields, XP and level formulas live in shared/economy.json so the
- * Laravel server validates actions with exactly the same numbers. Balanced
- * with an economy sim (greedy active player): each newer crop earns ~17% more
- * profit per minute and ~10% more XP per minute than the one before.
+ * Laravel server validates actions with exactly the same numbers. The crop
+ * table is generated (and its pacing simulated) by client/scripts/economy.mjs:
+ * each tier earns ~17% more profit/min and ~10% more XP/min than the one
+ * before, then "coin" crops pay x1.5 money / x0.5 XP and "xp" crops x0.55 / x1.8.
  */
 export const ECONOMY = economy;
 
