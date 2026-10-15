@@ -798,7 +798,7 @@ function MilkSvg(p: P) {
   );
 }
 
-export function ChickenIcon(p: P) {
+function ChickenSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M16 38c0-11 8-19 18-19 4 0 6-6 10-6 5 0 7 5 7 9 0 3-1 5-1 9 0 12-8 21-19 21-9 0-15-6-15-14z" fill="#fffaf0" stroke={OUT} strokeWidth="3" />
@@ -811,7 +811,7 @@ export function ChickenIcon(p: P) {
   );
 }
 
-export function CowIcon(p: P) {
+function CowSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M12 18c-4-2-6 2-3 5l6 3M52 18c4-2 6 2 3 5l-6 3" fill="#f2c9a8" stroke={OUT} strokeWidth="3" />
@@ -937,3 +937,5 @@ export const SickleIcon = withArt('harvest', SickleSvg);
 export const SproutIcon = withArt('plant', SproutSvg);
 export const SeedBagIcon = withArt('seeds', SeedBagSvg);
 export const XpIcon = withArt('level-star', XpSvg);
+export const ChickenIcon = withArt('chicken', ChickenSvg);
+export const CowIcon = withArt('cow', CowSvg);
