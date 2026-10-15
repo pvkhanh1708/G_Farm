@@ -3,6 +3,7 @@ import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileC
 import { store } from '../game/state/store';
 import { ApiError } from '../game/net/api';
 import { sync } from '../game/net/sync';
+import { pwa } from '../game/pwa';
 import { assetSummary } from '../game/assets/registry';
 import { useGameState } from './Hud';
 import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
@@ -327,6 +328,65 @@ export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onS
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2f7ae5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
+      <path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2" />
+    </svg>
+  );
+}
+
+function AddIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3a3a3a" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  );
+}
+
+/** How to add the game to the home screen (iOS has no install API; other browsers use their menu). */
+export function InstallPopup({ onClose }: { onClose: () => void }) {
+  const steps = pwa.ios
+    ? [
+        <>Mở trang này bằng <b>Safari</b></>,
+        <>
+          Bấm nút <b>Chia sẻ</b> <ShareIcon /> ở thanh dưới (iPad: góc trên)
+        </>,
+        <>
+          Chọn <b>Thêm vào MH chính</b> <AddIcon />
+        </>,
+        <>Bấm <b>Thêm</b>, rồi mở game từ biểu tượng Nông Trại</>,
+      ]
+    : [
+        <>Mở trang này bằng <b>Chrome</b></>,
+        <>Bấm nút menu <b>⋮</b> ở góc trên bên phải</>,
+        <>
+          Chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>
+        </>,
+        <>Mở game từ biểu tượng Nông Trại trên màn hình chính</>,
+      ];
+  return (
+    <Modal title="Cài như ứng dụng" icon={<SproutIcon size={32} />} tone="green" onClose={onClose}>
+      <p className="panel-sub">Mở từ màn hình chính, game chạy toàn màn hình như một ứng dụng thật — không còn thanh địa chỉ của trình duyệt.</p>
+      <ol className="install-steps">
+        {steps.map((s, i) => (
+          <li key={i}>
+            <span className="step">{i + 1}</span>
+            <span>{s}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="row-center">
+        <button className="btn btn-green" onClick={onClose}>
+          Đã hiểu
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function Settings({
   quality,
   onQuality,
@@ -336,6 +396,7 @@ export function Settings({
   onFps,
   onReset,
   onAccount,
+  onInstall,
   onClose,
 }: {
   quality: Quality;
@@ -346,10 +407,12 @@ export function Settings({
   onFps: (on: boolean) => void;
   onReset: () => void;
   onAccount: () => void;
+  onInstall: () => void;
   onClose: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
   useSyncExternalStore(sync.subscribe, () => sync.user);
+  useSyncExternalStore(pwa.subscribe, () => pwa.canPrompt);
   const a = assetSummary();
   return (
     <Modal title="Cài đặt" icon={<GearIcon size={32} />} tone="blue" onClose={onClose}>
@@ -374,6 +437,16 @@ export function Settings({
         <button className={`toggle ${fps ? 'on' : ''}`} onClick={() => onFps(!fps)}>
           {fps ? 'Bật' : 'Tắt'}
         </button>
+      </div>
+      <div className="set-row">
+        <span>Ứng dụng</span>
+        {pwa.installed ? (
+          <span className="muted">Đã cài trên máy</span>
+        ) : (
+          <button className="btn btn-green small" onClick={onInstall}>
+            Cài lên màn hình chính
+          </button>
+        )}
       </div>
       <div className="set-row">
         <span>Tài khoản</span>

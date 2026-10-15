@@ -4,6 +4,9 @@ import '@fontsource/baloo-2/700.css';
 import '@fontsource/baloo-2/800.css';
 import './ui/styles.css';
 import { App } from './App';
+import { pwa } from './game/pwa';
+
+pwa.register();
 
 createRoot(document.getElementById('root')!).render(
   // No StrictMode: its double-mount would create two WebGL engines on one canvas.

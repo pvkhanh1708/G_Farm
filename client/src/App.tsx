@@ -4,15 +4,16 @@ import { CROP_ORDER, CROPS, CropId, Quality } from './game/config';
 import { Game } from './game/Game';
 import { serverNow } from './game/net/clock';
 import { sync } from './game/net/sync';
+import { pwa } from './game/pwa';
 import { growthProgress, store, TileState } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
 import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './ui/Hud';
 import { SproutIcon } from './ui/icons';
-import { AccountPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
+import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
 import { TileOverlays } from './ui/TileOverlays';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -241,6 +242,7 @@ export function App() {
       )}
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
       {popup?.type === 'levels' && <LevelsPopup onClose={close} />}
+      {popup?.type === 'install' && <InstallPopup onClose={close} />}
       {popup?.type === 'account' && (
         <AccountPopup
           onClose={close}
@@ -274,6 +276,11 @@ export function App() {
           fps={prefs.fps}
           onFps={(on) => setPrefs({ ...prefs, fps: on })}
           onAccount={() => setPopup({ type: 'account' })}
+          onInstall={() => {
+            // Android/Chrome: open the real install dialog; otherwise show the manual steps
+            if (pwa.canPrompt) void pwa.prompt().then((ok) => ok && setPopup(null));
+            else setPopup({ type: 'install' });
+          }}
           onReset={() => {
             store.reset();
             setTool(null);

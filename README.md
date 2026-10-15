@@ -66,7 +66,13 @@ Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chi
 Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
 
 Điều khiển: kéo để di chuyển camera, cuộn chuột hoặc chụm 2 ngón để zoom, chạm vào ô đất để thao tác.
-Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, tài khoản, chơi lại từ đầu.
+Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, cài lên màn hình chính, tài khoản, chơi lại từ đầu.
+
+**Chạy như app trên điện thoại (PWA):** thêm game vào màn hình chính (Android: Chrome → *Cài đặt ứng dụng*,
+hoặc nút trong Cài đặt; iPhone/iPad: Safari → Chia sẻ → *Thêm vào MH chính*) thì game mở toàn màn hình, có
+biểu tượng riêng, không thanh địa chỉ. Gồm `client/public/manifest.webmanifest`, `sw.js` (không cache gì, để
+luôn chạy bản mới nhất), icon trong `public/icons/` (tạo lại bằng `node scripts/icons.mjs`) và các thẻ
+`apple-mobile-web-app-*` trong `index.html`. Cần HTTPS (đã có trên nongtrai.io.vn).
 
 ## Backend
 

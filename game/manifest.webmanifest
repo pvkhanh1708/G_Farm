@@ -1,0 +1,20 @@
+{
+  "name": "Farm Empire – Nông trại",
+  "short_name": "Nông Trại",
+  "description": "Trồng cây, thu hoạch, lên cấp và mở rộng nông trại của bạn.",
+  "lang": "vi",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#bfe8ff",
+  "theme_color": "#7cc14f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
