@@ -48,12 +48,12 @@ composer install
 cp .env.example .env && php artisan key:generate   # .env đã trỏ MySQL farm_empire, user root, không mật khẩu
 mysql -uroot -e "create database if not exists farm_empire character set utf8mb4 collate utf8mb4_unicode_ci"
 php artisan migrate
-php artisan serve                                   # API tại http://127.0.0.1:8000/api
+php artisan serve                                   # API tại http://127.0.0.1:8000 (vd. /farm)
 
 # 2. Client
 cd client
 npm install
-npm run dev          # http://localhost:5173 — Vite chuyển /api sang 127.0.0.1:8000
+npm run dev          # http://localhost:5173 — Vite chuyển /api/* sang 127.0.0.1:8000/*
 npm run build        # bản production -> client/dist
 npm run preview      # chạy thử bản production tại http://localhost:4173 (cũng proxy /api)
 ```
@@ -90,19 +90,19 @@ người chơi đặt email + mật khẩu để giữ nông trại, hoặc đă
 
 | Method | Đường dẫn | Mô tả |
 |---|---|---|
-| POST | `/api/auth/guest` | Tạo tài khoản khách + nông trại mới, trả token |
-| POST | `/api/auth/login` | `{email, password}` → token |
-| POST | `/api/auth/register` | (đã có token) gắn `{name, email, password}` cho tài khoản khách |
-| POST | `/api/auth/logout` | Thu hồi token hiện tại |
-| GET | `/api/me` | Thông tin người chơi |
-| GET | `/api/farm` | State nông trại |
-| POST | `/api/farm/plant` | `{tiles: number[], crop}` — gieo theo thứ tự đến khi hết xu |
-| POST | `/api/farm/harvest` | `{tiles: number[]}` — thu các ô đã chín, bỏ qua ô chưa chín |
-| POST | `/api/farm/sell` | `{crop, qty}` |
-| POST | `/api/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
-| POST | `/api/farm/reset` | Chơi lại từ đầu |
+| POST | `/auth/guest` | Tạo tài khoản khách + nông trại mới, trả token |
+| POST | `/auth/login` | `{email, password}` → token |
+| POST | `/auth/register` | (đã có token) gắn `{name, email, password}` cho tài khoản khách |
+| POST | `/auth/logout` | Thu hồi token hiện tại |
+| GET | `/me` | Thông tin người chơi |
+| GET | `/farm` | State nông trại |
+| POST | `/farm/plant` | `{tiles: number[], crop}` — gieo theo thứ tự đến khi hết xu |
+| POST | `/farm/harvest` | `{tiles: number[]}` — thu các ô đã chín, bỏ qua ô chưa chín |
+| POST | `/farm/sell` | `{crop, qty}` |
+| POST | `/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
+| POST | `/farm/reset` | Chơi lại từ đầu |
 
-Mọi API `/farm/*` trả `{ok, message, result, state, serverTime}`; bị từ chối thì HTTP 422 kèm `message` và `state`.
+API nằm ở gốc domain (production: `https://api.nongtrai.io.vn/farm`…). Mọi API `/farm/*` trả `{ok, message, result, state, serverTime}`; bị từ chối thì HTTP 422 kèm `message` và `state`.
 Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập / tạo khách.
 
 Bảng dữ liệu: `users` (thêm `is_guest`, email/mật khẩu cho phép trống), `farms` (xu, cấp, XP, số ô, kho dạng JSON),

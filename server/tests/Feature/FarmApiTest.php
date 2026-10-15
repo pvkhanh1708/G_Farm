@@ -14,7 +14,7 @@ class FarmApiTest extends TestCase
 
     private function guest(): array
     {
-        $res = $this->postJson('/api/auth/guest')->assertCreated();
+        $res = $this->postJson('/auth/guest')->assertCreated();
 
         return ['Authorization' => 'Bearer '.$res->json('token')];
     }
@@ -27,7 +27,7 @@ class FarmApiTest extends TestCase
     public function test_guest_gets_a_starting_farm(): void
     {
         $h = $this->guest();
-        $this->getJson('/api/farm', $h)
+        $this->getJson('/farm', $h)
             ->assertOk()
             ->assertJsonPath('state.coins', 50)
             ->assertJsonPath('state.level', 1)
@@ -38,32 +38,32 @@ class FarmApiTest extends TestCase
 
     public function test_farm_requires_a_token(): void
     {
-        $this->getJson('/api/farm')->assertUnauthorized();
+        $this->getJson('/farm')->assertUnauthorized();
     }
 
     public function test_plant_harvest_sell_loop(): void
     {
         $h = $this->guest();
-        $this->postJson('/api/farm/plant', ['tiles' => [0, 1], 'crop' => 'carrot'], $h)
+        $this->postJson('/farm/plant', ['tiles' => [0, 1], 'crop' => 'carrot'], $h)
             ->assertOk()
             ->assertJsonPath('result.planted', [0, 1])
             ->assertJsonPath('state.coins', 50 - 2 * 7);
 
         // not ripe yet: rejected with the authoritative state attached
-        $this->postJson('/api/farm/harvest', ['tiles' => [0]], $h)
+        $this->postJson('/farm/harvest', ['tiles' => [0]], $h)
             ->assertStatus(422)
             ->assertJsonPath('message', 'Cây chưa chín')
             ->assertJsonPath('state.plantings.0.crop', 'carrot');
 
         $this->ripen(0);
         $this->ripen(1);
-        $this->postJson('/api/farm/harvest', ['tiles' => [0, 1]], $h)
+        $this->postJson('/farm/harvest', ['tiles' => [0, 1]], $h)
             ->assertOk()
             ->assertJsonPath('result.harvested', [0, 1])
             ->assertJsonPath('state.inventory.carrot', 8)
             ->assertJsonPath('state.xp', 2);
 
-        $this->postJson('/api/farm/sell', ['crop' => 'carrot', 'qty' => 99], $h)
+        $this->postJson('/farm/sell', ['crop' => 'carrot', 'qty' => 99], $h)
             ->assertOk()
             ->assertJsonPath('result.earned', 8 * 4)
             ->assertJsonPath('state.coins', 50 - 14 + 32)
@@ -74,37 +74,37 @@ class FarmApiTest extends TestCase
     {
         $h = $this->guest();
         // 50 coins buy 7 carrots, but only tiles 0..3 are owned
-        $this->postJson('/api/farm/plant', ['tiles' => [0, 1, 2, 3, 4, 9], 'crop' => 'carrot'], $h)
+        $this->postJson('/farm/plant', ['tiles' => [0, 1, 2, 3, 4, 9], 'crop' => 'carrot'], $h)
             ->assertJsonPath('result.planted', [0, 1, 2, 3]);
-        $this->postJson('/api/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h)
+        $this->postJson('/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h)
             ->assertStatus(422);
     }
 
     public function test_locked_crops_are_rejected(): void
     {
         $h = $this->guest();
-        $this->postJson('/api/farm/plant', ['tiles' => [0], 'crop' => 'sunflower'], $h)
+        $this->postJson('/farm/plant', ['tiles' => [0], 'crop' => 'sunflower'], $h)
             ->assertStatus(422)
             ->assertJsonPath('message', 'Hướng dương mở ở cấp 34');
-        $this->postJson('/api/farm/plant', ['tiles' => [0], 'crop' => 'banana'], $h)->assertStatus(422)->assertJsonValidationErrors('crop');
+        $this->postJson('/farm/plant', ['tiles' => [0], 'crop' => 'banana'], $h)->assertStatus(422)->assertJsonValidationErrors('crop');
     }
 
     public function test_leveling_grants_coins_and_land(): void
     {
         $h = $this->guest();
         $eco = app(Economy::class);
-        $this->postJson('/api/farm/plant', ['tiles' => [0, 1, 2, 3], 'crop' => 'carrot'], $h);
+        $this->postJson('/farm/plant', ['tiles' => [0, 1, 2, 3], 'crop' => 'carrot'], $h);
         foreach ([0, 1, 2, 3] as $t) {
             $this->ripen($t);
         }
         $coins = Farm::first()->coins;
         // 4 carrots = 4 XP; level 1 needs xpToNext(1)
         $this->assertSame(5, $eco->xpToNext(1));
-        $this->postJson('/api/farm/harvest', ['tiles' => [0, 1, 2, 3]], $h)->assertJsonPath('result.levelUps', []);
+        $this->postJson('/farm/harvest', ['tiles' => [0, 1, 2, 3]], $h)->assertJsonPath('result.levelUps', []);
         Farm::first()->update(['xp' => 4]);
-        $this->postJson('/api/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h);
+        $this->postJson('/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h);
         $this->ripen(0);
-        $this->postJson('/api/farm/harvest', ['tiles' => [0]], $h)
+        $this->postJson('/farm/harvest', ['tiles' => [0]], $h)
             ->assertJsonPath('result.levelUps', [2])
             ->assertJsonPath('state.level', 2)
             ->assertJsonPath('state.xp', 0)
@@ -116,30 +116,30 @@ class FarmApiTest extends TestCase
         $h = $this->guest();
         Farm::first()->update(['coins' => 10_000]);
         // level 1 may own 5 tiles: one purchase allowed
-        $this->postJson('/api/farm/unlock', [], $h)->assertOk()->assertJsonPath('result.tile', 4)->assertJsonPath('state.coins', 10_000 - 40);
-        $this->postJson('/api/farm/unlock', [], $h)->assertStatus(422)->assertJsonPath('message', 'Cần đạt cấp 2 để mở thêm đất');
+        $this->postJson('/farm/unlock', [], $h)->assertOk()->assertJsonPath('result.tile', 4)->assertJsonPath('state.coins', 10_000 - 40);
+        $this->postJson('/farm/unlock', [], $h)->assertStatus(422)->assertJsonPath('message', 'Cần đạt cấp 2 để mở thêm đất');
         Farm::first()->update(['level' => 2, 'coins' => 10]);
-        $this->postJson('/api/farm/unlock', [], $h)->assertStatus(422)->assertJsonPath('message', 'Không đủ xu!');
+        $this->postJson('/farm/unlock', [], $h)->assertStatus(422)->assertJsonPath('message', 'Không đủ xu!');
     }
 
     public function test_register_then_login_on_another_device_keeps_the_farm(): void
     {
         $h = $this->guest();
-        $this->postJson('/api/farm/plant', ['tiles' => [2], 'crop' => 'carrot'], $h);
-        $this->postJson('/api/auth/register', ['name' => 'Lan', 'email' => 'lan@example.com', 'password' => 'secret123'], $h)
+        $this->postJson('/farm/plant', ['tiles' => [2], 'crop' => 'carrot'], $h);
+        $this->postJson('/auth/register', ['name' => 'Lan', 'email' => 'lan@example.com', 'password' => 'secret123'], $h)
             ->assertOk()->assertJsonPath('user.isGuest', false);
 
-        $login = $this->postJson('/api/auth/login', ['email' => 'lan@example.com', 'password' => 'secret123'])->assertOk();
-        $this->getJson('/api/farm', ['Authorization' => 'Bearer '.$login->json('token')])
+        $login = $this->postJson('/auth/login', ['email' => 'lan@example.com', 'password' => 'secret123'])->assertOk();
+        $this->getJson('/farm', ['Authorization' => 'Bearer '.$login->json('token')])
             ->assertJsonPath('state.plantings.2.crop', 'carrot');
 
-        $this->postJson('/api/auth/login', ['email' => 'lan@example.com', 'password' => 'wrong'])->assertStatus(422);
+        $this->postJson('/auth/login', ['email' => 'lan@example.com', 'password' => 'wrong'])->assertStatus(422);
     }
 
     public function test_reset(): void
     {
         $h = $this->guest();
-        $this->postJson('/api/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h);
-        $this->postJson('/api/farm/reset', [], $h)->assertOk()->assertJsonPath('state.coins', 50)->assertJsonPath('state.plantings', []);
+        $this->postJson('/farm/plant', ['tiles' => [0], 'crop' => 'carrot'], $h);
+        $this->postJson('/farm/reset', [], $h)->assertOk()->assertJsonPath('state.coins', 50)->assertJsonPath('state.plantings', []);
     }
 }

@@ -1,6 +1,6 @@
 import type { GameState } from '../state/store';
 
-/** Same-origin by default (Vite proxies /api to Laravel in dev); override for a separate API host. */
+/** API root, no trailing slash. Dev: /api (Vite proxies it to Laravel); production: https://api.nongtrai.io.vn */
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 const TOKEN_KEY = 'farm-empire:token';
 

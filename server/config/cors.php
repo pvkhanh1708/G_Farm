@@ -15,7 +15,8 @@ return [
     |
     */
 
-    'paths' => ['api/*'],
+    // the whole (sub)domain is the API
+    'paths' => ['*'],
 
     'allowed_methods' => ['*'],
 
