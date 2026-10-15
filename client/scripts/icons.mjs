@@ -2,7 +2,9 @@
 // client/icon-source.png (kept out of git, like the other art originals), using Chrome.
 // Usage: node scripts/icons.mjs
 import puppeteer from 'puppeteer-core';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = fileURLToPath(new URL('../icon-source.png', import.meta.url));
@@ -67,12 +69,32 @@ const pngs = await page.evaluate(
 );
 await browser.close();
 
+/**
+ * Every icon file name carries a hash of its content (icon-192-1a2b3c4d.png): the CDN keeps
+ * images for a week whatever the query string, and iOS remembers a site's touch icon, so a
+ * changed icon must have a new URL. Old versions are deleted and the pages that point to the
+ * icons are updated.
+ */
+const PAGES = ['index.html', 'public/manifest.webmanifest', 'public/privacy.html'].map((f) => fileURLToPath(new URL(`../${f}`, import.meta.url)));
 const buffers = {};
+const renamed = [];
 OUTPUTS.forEach((o, i) => {
-  buffers[o.file] = Buffer.from(pngs[i], 'base64');
-  fs.writeFileSync(new URL(o.file, PUBLIC), buffers[o.file]);
-  console.log(`[icons] public/${o.file} (${o.size}px, ${Math.round(buffers[o.file].length / 1024)} KB)`);
+  const buf = Buffer.from(pngs[i], 'base64');
+  buffers[o.file] = buf;
+  const base = o.file.replace(/\.png$/, '');
+  const name = `${base}-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8)}.png`;
+  const dir = path.dirname(fileURLToPath(new URL(o.file, PUBLIC)));
+  const stem = path.basename(base);
+  for (const f of fs.readdirSync(dir)) if (new RegExp(`^${stem}(-[0-9a-f]{8})?\\.png$`).test(f)) fs.unlinkSync(path.join(dir, f));
+  fs.writeFileSync(new URL(name, PUBLIC), buf);
+  renamed.push([new RegExp(`/${base}(-[0-9a-f]{8})?\\.png`, 'g'), `/${name}`]);
+  console.log(`[icons] public/${name} (${o.size}px, ${Math.round(buf.length / 1024)} KB)`);
 });
+for (const page of PAGES) {
+  let text = fs.readFileSync(page, 'utf8');
+  for (const [re, url] of renamed) text = text.replace(re, url);
+  fs.writeFileSync(page, text);
+}
 
 // favicon.ico for browsers and crawlers that ask for it: PNG entries inside an ICO container
 const entries = [buffers['favicon-32.png'], buffers['favicon-48.png']];
