@@ -7,6 +7,7 @@ import { pwa } from '../game/pwa';
 import { GOOGLE_CLIENT_ID, renderGoogleButton } from '../game/net/google';
 import { useGameState } from './Hud';
 import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
+import { formatNum } from './format';
 
 function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title: string; icon: React.ReactNode; tone?: 'green' | 'orange' | 'blue'; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -76,15 +77,15 @@ function SeedTip({ id, rect, level }: { id: CropId; rect: DOMRect; level: number
         <dd>×{c.yield}</dd>
         <dt>Giá bán</dt>
         <dd>
-          <CoinIcon size={14} /> {c.sellPrice}/cái
+          <CoinIcon size={14} /> {formatNum(c.sellPrice)}/cái
         </dd>
         <dt>
           <XpIcon size={14} /> Kinh nghiệm
         </dt>
-        <dd>+{c.xp} XP</dd>
+        <dd>+{formatNum(c.xp)} XP</dd>
         <dt>Lãi mỗi ô</dt>
         <dd className="profit">
-          <CoinIcon size={14} /> +{profit}
+          <CoinIcon size={14} /> +{formatNum(profit)}
         </dd>
       </dl>
     </div>
@@ -164,7 +165,7 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
                 <span className="seed-price locked">Cấp {c.unlockLevel}</span>
               ) : (
                 <span className={`seed-price ${can ? '' : 'poor'}`}>
-                  <CoinIcon size={18} /> {c.seedPrice}
+                  <CoinIcon size={18} /> {formatNum(c.seedPrice)}
                 </span>
               )}
             </div>
@@ -194,12 +195,12 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
               <div className="inv-row" key={c}>
                 <div className="inv-art" style={{ background: CROP_BG[c] }}>
                   <CropIcon crop={c} size={44} />
-                  <span className="inv-count">×{s.inventory[c]}</span>
+                  <span className="inv-count">×{formatNum(s.inventory[c], 1000)}</span>
                 </div>
                 <div className="inv-info">
                   <b>{CROPS[c].name}</b>
                   <small>
-                    <CoinIcon size={14} /> {CROPS[c].sellPrice} / cái
+                    <CoinIcon size={14} /> {formatNum(CROPS[c].sellPrice)} / cái
                   </small>
                 </div>
                 <div className="inv-actions">
@@ -207,14 +208,14 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
                     Bán 1
                   </button>
                   <button className="btn btn-orange small" onClick={(e) => onSell(c, s.inventory[c], e.currentTarget.getBoundingClientRect())}>
-                    Bán hết <CoinIcon size={16} /> {s.inventory[c] * CROPS[c].sellPrice}
+                    Bán hết <CoinIcon size={16} /> {formatNum(s.inventory[c] * CROPS[c].sellPrice)}
                   </button>
                 </div>
               </div>
             ))}
           </div>
           <div className="inv-total">
-            Tổng giá trị: <CoinIcon size={18} /> <b>{total}</b>
+            Tổng giá trị: <CoinIcon size={18} /> <b>{formatNum(total)}</b>
           </div>
         </>
       )}
@@ -244,7 +245,7 @@ export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onC
           Để sau
         </button>
         <button className={`btn ${can ? 'btn-green' : 'btn-disabled'}`} onClick={() => can && onConfirm()}>
-          Mở khóa <CoinIcon size={22} /> {cost}
+          Mở khóa <CoinIcon size={22} /> {formatNum(cost)}
         </button>
       </div>
       {!levelOk ? (
@@ -252,7 +253,7 @@ export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onC
           Cấp {s.level} được sở hữu tối đa {tileCap(s.level)} ô. Lên cấp {store.nextUnlockLevel()} để mở thêm — thu hoạch để nhận XP!
         </p>
       ) : (
-        !can && <p className="warn">Cần thêm {cost - s.coins} xu — hãy bán nông sản!</p>
+        !can && <p className="warn">Cần thêm {formatNum(cost - s.coins)} xu — hãy bán nông sản!</p>
       )}
     </Modal>
   );
@@ -265,7 +266,7 @@ function LevelGains({ level }: { level: number }) {
       <div className="lvl-row">
         <CoinIcon size={34} />
         <div>
-          +{levelReward(level)} xu<small>Phần thưởng lên cấp</small>
+          +{formatNum(levelReward(level))} xu<small>Phần thưởng lên cấp</small>
         </div>
       </div>
       <div className="lvl-row">
@@ -315,7 +316,7 @@ export function LevelsPopup({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={`Cấp ${s.level}`} icon={<XpIcon size={32} />} tone="blue" onClose={onClose}>
       <p className="panel-sub">
-        Thu hoạch để nhận XP. Còn {(xpToNext(s.level) - s.xp).toLocaleString('vi-VN')} XP nữa lên cấp {s.level + 1}.
+        Thu hoạch để nhận XP. Còn {formatNum(xpToNext(s.level) - s.xp)} XP nữa lên cấp {s.level + 1}.
       </p>
       <table className="lvl-table">
         <thead>
@@ -340,7 +341,7 @@ export function LevelsPopup({ onClose }: { onClose: () => void }) {
                   </span>
                 ))}
               </td>
-              <td>{l > 1 && <>+{levelReward(l)} xu</>}</td>
+              <td>{l > 1 && <>+{formatNum(levelReward(l))} xu</>}</td>
             </tr>
           ))}
         </tbody>

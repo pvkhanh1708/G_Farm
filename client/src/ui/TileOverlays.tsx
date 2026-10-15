@@ -5,6 +5,7 @@ import { serverNow } from '../game/net/clock';
 import { growthProgress, store, TileState } from '../game/state/store';
 import { useGameState } from './Hud';
 import { CoinIcon, CropIcon, LockIcon, XpIcon } from './icons';
+import { formatNum } from './format';
 
 function useNow(ms: number) {
   const [now, setNow] = useState(serverNow);
@@ -38,7 +39,7 @@ function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; no
           <LockIcon size={16} /> Mở khóa
         </span>
         <span className="sign-price">
-          <CoinIcon size={16} /> {cost}
+          <CoinIcon size={16} /> {formatNum(cost)}
         </span>
       </div>
     );

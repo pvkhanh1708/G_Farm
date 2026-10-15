@@ -12,6 +12,7 @@ import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
 import { TileOverlays } from './ui/TileOverlays';
+import { formatNum } from './ui/format';
 
 type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | null;
 
@@ -118,7 +119,7 @@ export function App() {
         return false;
       }
       const p = game.tileAnchor(g, 0.5);
-      fxBus.float(p.x, p.y, `-${CROPS[crop].seedPrice}`, { type: 'coin' });
+      fxBus.float(p.x, p.y, `-${formatNum(CROPS[crop].seedPrice)}`, { type: 'coin' });
       return true;
     },
     [game],
@@ -130,7 +131,7 @@ export function App() {
       const res = game.plantAll(crop);
       if (!res.ok) return fxBus.toast(res.reason, 'bad');
       const n = res.value.length;
-      fxBus.toast(`Đã gieo ${CROPS[crop].name.toLowerCase()} cho ${n} ô · -${n * CROPS[crop].seedPrice} xu`, 'good');
+      fxBus.toast(`Đã gieo ${CROPS[crop].name.toLowerCase()} cho ${n} ô · -${formatNum(n * CROPS[crop].seedPrice)} xu`, 'good');
     },
     [game],
   );
@@ -158,8 +159,8 @@ export function App() {
           if (st?.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
         }
       } else if (e.type === 'harvested') {
-        fxBus.float(e.x, e.y - 20, `+${e.amount}`, { type: 'crop', crop: e.crop });
-        fxBus.float(e.x + 46, e.y + 14, `+${e.xp} XP`, { type: 'xp' });
+        fxBus.float(e.x, e.y - 20, `+${formatNum(e.amount)}`, { type: 'crop', crop: e.crop });
+        fxBus.float(e.x + 46, e.y + 14, `+${formatNum(e.xp)} XP`, { type: 'xp' });
         if (!e.bulk) fxBus.fly({ type: 'xp' }, { x: e.x, y: e.y }, 'level', 2, () => bump('level'));
         fxBus.fly({ type: 'crop', crop: e.crop }, { x: e.x, y: e.y }, 'inventory', e.bulk ? 2 : Math.min(e.amount, 6), () => {
           if (!e.bulk) sfx.collect();
@@ -178,8 +179,8 @@ export function App() {
       sfx.coinTick();
       bump('coins');
     });
-    fxBus.float(origin.x, origin.y - 30, `+${res.value}`, { type: 'coin' });
-    fxBus.toast(`Đã bán ${qty} ${CROPS[crop].name.toLowerCase()} · +${res.value} xu`, 'good');
+    fxBus.float(origin.x, origin.y - 30, `+${formatNum(res.value)}`, { type: 'coin' });
+    fxBus.toast(`Đã bán ${formatNum(qty)} ${CROPS[crop].name.toLowerCase()} · +${formatNum(res.value)} xu`, 'good');
   };
 
   const close = () => {

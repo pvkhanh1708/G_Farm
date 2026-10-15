@@ -3,6 +3,7 @@ import { CROPS, CropId, xpToNext } from '../game/config';
 import type { Game } from '../game/Game';
 import { store } from '../game/state/store';
 import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, LevelStar, SeedBagIcon, SickleIcon, SproutIcon, ZoomIcon } from './icons';
+import { formatNum } from './format';
 
 export function useGameState() {
   return useSyncExternalStore(store.subscribe, store.getState);
@@ -31,7 +32,7 @@ function AnimatedNumber({ value }: { value: number }) {
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return <span className="num">{shown.toLocaleString('vi-VN')}</span>;
+  return <span className="num">{formatNum(shown)}</span>;
 }
 
 export function TopBar({ onSettings, onLevel }: { onSettings: () => void; onLevel: () => void }) {
@@ -46,7 +47,7 @@ export function TopBar({ onSettings, onLevel }: { onSettings: () => void; onLeve
           <div className="xp-bar">
             <div className="xp-fill" style={{ width: `${Math.min(100, (s.xp / need) * 100)}%` }} />
             <span>
-              {s.xp.toLocaleString('vi-VN')} / {need.toLocaleString('vi-VN')} XP
+              {formatNum(s.xp)} / {formatNum(need)} XP
             </span>
           </div>
         </div>
@@ -89,7 +90,7 @@ export function BottomBar(p: BottomBarProps) {
           <button className="round-btn dock-btn barn" onClick={p.onInventory} data-fx-target="inventory">
             <BarnIcon size={44} />
             <span className="round-btn-label">Kho</span>
-            {total > 0 && <span className="count-badge">{total}</span>}
+            {total > 0 && <span className="count-badge">{formatNum(total, 1000)}</span>}
           </button>
           <button className="round-btn dock-btn shop" onClick={p.onShop}>
             <SeedBagIcon size={44} />
@@ -122,7 +123,7 @@ export function ToolBanner({ seed, onCancel }: { seed: CropId; onCancel: () => v
       <div>
         <b>Gieo nhanh: {def.name}</b>
         <small>
-          Chạm ô đất trống · <CoinIcon size={14} /> {def.seedPrice}/ô
+          Chạm ô đất trống · <CoinIcon size={14} /> {formatNum(def.seedPrice)}/ô
         </small>
       </div>
       <button className="close-chip" onClick={onCancel} aria-label="Thoát gieo nhanh">
