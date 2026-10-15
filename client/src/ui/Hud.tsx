@@ -86,25 +86,25 @@ export function BottomBar(p: BottomBarProps) {
       <div className="bottombar">
         {/* left: storage + shop */}
         <div className="dock">
-          <button className="round-btn big barn" onClick={p.onInventory} data-fx-target="inventory">
-            <BarnIcon size={50} />
+          <button className="round-btn dock-btn barn" onClick={p.onInventory} data-fx-target="inventory">
+            <BarnIcon size={44} />
             <span className="round-btn-label">Kho</span>
             {total > 0 && <span className="count-badge">{total}</span>}
           </button>
-          <button className="round-btn big shop" onClick={p.onShop}>
-            <SeedBagIcon size={50} />
+          <button className="round-btn dock-btn shop" onClick={p.onShop}>
+            <SeedBagIcon size={44} />
             <span className="round-btn-label">Hạt giống</span>
           </button>
         </div>
         {/* right: bulk helpers, harvest nearest the thumb */}
         <div className="dock">
-          <button className="round-btn mid bulk plant" onClick={p.onPlantAll}>
-            <SproutIcon size={40} />
+          <button className="round-btn dock-btn plant" onClick={p.onPlantAll}>
+            <SproutIcon size={44} />
             <span className="round-btn-label">Trồng tất cả</span>
             {p.emptyCount > 0 && <span className="count-badge green">{p.emptyCount}</span>}
           </button>
-          <button className={`round-btn mid bulk harvest ${p.readyCount ? 'glow' : ''}`} onClick={p.onHarvestAll}>
-            <SickleIcon size={40} />
+          <button className={`round-btn dock-btn harvest ${p.readyCount ? 'glow' : ''}`} onClick={p.onHarvestAll}>
+            <SickleIcon size={44} />
             <span className="round-btn-label">Thu tất cả</span>
             {p.readyCount > 0 && <span className="count-badge">{p.readyCount}</span>}
           </button>

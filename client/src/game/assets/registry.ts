@@ -80,9 +80,3 @@ export async function preloadAssets(scene: Scene, onProgress?: (k: number) => vo
 export function loadedAsset(id: string): Mesh | null {
   return loaded.get(id) ?? null;
 }
-
-export function assetSummary() {
-  const total = ASSET_MANIFEST.length;
-  const integrated = ASSET_MANIFEST.filter((a) => a.status === 'integrated').length;
-  return { total, integrated, placeholder: total - integrated };
-}

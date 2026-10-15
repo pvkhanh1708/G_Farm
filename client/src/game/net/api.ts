@@ -9,6 +9,9 @@ export interface ApiUser {
   name: string;
   email: string | null;
   isGuest: boolean;
+  google: boolean;
+  avatar: string | null;
+  hasPassword: boolean;
 }
 
 export interface FarmResponse<R = unknown> {

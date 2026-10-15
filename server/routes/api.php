@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/auth/guest', [AuthController::class, 'guest']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    // optional bearer token: a guest signing in keeps their farm
+    Route::post('/auth/google', [AuthController::class, 'google']);
 });
 
 Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {

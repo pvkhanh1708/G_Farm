@@ -93,12 +93,14 @@ Số liệu kinh tế nằm ở **`shared/economy.json`**, được cả client 
 đọc, nên không bao giờ lệch nhau. Sửa giá / XP / thời gian chỉ cần sửa file này.
 
 **Tài khoản:** lần đầu mở game, server tự tạo tài khoản khách (token Sanctum lưu ở máy). Trong Cài đặt → Tài khoản,
-người chơi đặt email + mật khẩu để giữ nông trại, hoặc đăng nhập để tải nông trại trên máy khác.
+người chơi **đăng nhập Google** (giữ nông trại khách đang chơi) hoặc đặt email + mật khẩu; đăng nhập trên máy khác để chơi tiếp.
+Server kiểm tra ID token của Google bằng khóa công khai của Google (`app/Auth/GoogleIdToken.php`); cấu hình ở DEPLOY.md.
 
 | Method | Đường dẫn | Mô tả |
 |---|---|---|
 | POST | `/auth/guest` | Tạo tài khoản khách + nông trại mới, trả token |
 | POST | `/auth/login` | `{email, password}` → token |
+| POST | `/auth/google` | `{credential}` (ID token từ Google Sign-In) → token; nếu đang là khách thì giữ nông trại hiện tại |
 | POST | `/auth/register` | (đã có token) gắn `{name, email, password}` cho tài khoản khách |
 | POST | `/auth/logout` | Thu hồi token hiện tại |
 | GET | `/me` | Thông tin người chơi |
@@ -115,7 +117,7 @@ Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập 
 Bảng dữ liệu: `users` (thêm `is_guest`, email/mật khẩu cho phép trống), `farms` (xu, cấp, XP, số ô, kho dạng JSON),
 `plantings` (ô, cây, `planted_at` ms; duy nhất theo nông trại + ô), `personal_access_tokens` (Sanctum).
 
-Kiểm thử: `cd server && php artisan test` (9 test API trên database MySQL riêng `farm_empire_test`, tạo bằng
+Kiểm thử: `cd server && php artisan test` (14 test API, gồm đăng nhập Google, trên database MySQL riêng `farm_empire_test`, tạo bằng
 `mysql -uroot -e "create database farm_empire_test"`);
 `cd client && node scripts/online.mjs` chạy thật qua trình duyệt với API (gieo, chặn thu hoạch gian lận, thu, tải lại từ server).
 

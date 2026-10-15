@@ -165,6 +165,16 @@ class Sync {
     this.listeners.forEach((l) => l());
   }
 
+  /** Sign in with a Google ID token; a guest keeps the current farm, a linked account loads its own. */
+  async loginWithGoogle(credential: string) {
+    const res = await api<{ token: string; user: ApiUser }>('POST', '/auth/google', { credential });
+    this.queue = [];
+    token.set(res.token);
+    this.user = res.user;
+    await this.loadFarm();
+    this.listeners.forEach((l) => l());
+  }
+
   /** Sign out and continue as a fresh guest. */
   async logout() {
     await api('POST', '/auth/logout', {}).catch(() => {});

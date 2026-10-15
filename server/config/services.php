@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Sign in with Google (Google Identity Services). Same OAuth "Web application"
+    // client id as VITE_GOOGLE_CLIENT_ID in the game client.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
 ];

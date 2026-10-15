@@ -1,10 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
 import { ApiError } from '../game/net/api';
 import { sync } from '../game/net/sync';
 import { pwa } from '../game/pwa';
-import { assetSummary } from '../game/assets/registry';
+import { GOOGLE_CLIENT_ID, renderGoogleButton } from '../game/net/google';
 import { useGameState } from './Hud';
 import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
 
@@ -257,6 +257,17 @@ export function LevelsPopup({ onClose }: { onClose: () => void }) {
 }
 
 /** Guest -> register (keeps this farm), or log in to load another farm on this device. */
+/** Google's own "Continue with Google" button (rendered by Google Identity Services). */
+function GoogleButton({ onCredential, onError }: { onCredential: (credential: string) => void; onError: (message: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) renderGoogleButton(ref.current, onCredential).catch((e: Error) => onError(e.message));
+    // render once per mount; the callbacks only start async work
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <div className="google-btn" ref={ref} />;
+}
+
 export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onSwitched: () => void }) {
   const user = useSyncExternalStore(sync.subscribe, () => sync.user);
   const [tab, setTab] = useState<'register' | 'login'>(user?.isGuest === false ? 'login' : 'register');
@@ -278,13 +289,32 @@ export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onS
     }
   };
   const registered = user && !user.isGuest;
+  const google = (
+    <GoogleButton
+      onCredential={(c) => void run(() => sync.loginWithGoogle(c), true)}
+      onError={(m) => setError(m)}
+    />
+  );
   return (
     <Modal title="Tài khoản" icon={<SproutIcon size={32} />} tone="blue" onClose={onClose}>
       {registered ? (
         <>
-          <p className="panel-sub">
-            Đang chơi bằng tài khoản <b>{user.name}</b> ({user.email}). Đăng nhập email này trên máy khác để chơi tiếp nông trại.
-          </p>
+          <div className="account-card">
+            {user.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : <SproutIcon size={44} />}
+            <div>
+              <b>{user.name}</b>
+              <small>{user.email}</small>
+              {user.google && <span className="google-chip">Đã liên kết Google</span>}
+            </div>
+          </div>
+          <p className="panel-sub">Nông trại được lưu trên máy chủ. Đăng nhập tài khoản này trên máy khác để chơi tiếp.</p>
+          {!user.google && GOOGLE_CLIENT_ID && (
+            <>
+              <p className="panel-sub">Liên kết Google để lần sau đăng nhập chỉ bằng một chạm:</p>
+              {google}
+            </>
+          )}
+          {error && <p className="warn">{error}</p>}
           <div className="row-center">
             <button className="btn btn-ghost" disabled={busy} onClick={() => run(() => sync.logout(), true)}>
               Đăng xuất
@@ -293,6 +323,17 @@ export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onS
         </>
       ) : (
         <>
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <p className="panel-sub">
+                Bạn đang chơi với tư cách khách ({user?.name ?? ''}). Đăng nhập Google để <b>giữ nông trại này</b> và chơi tiếp trên máy khác.
+              </p>
+              {google}
+              <div className="or-line">
+                <span>hoặc dùng email</span>
+              </div>
+            </>
+          )}
           <div className="segmented account-tabs">
             <button className={tab === 'register' ? 'on' : ''} onClick={() => setTab('register')}>
               Lưu nông trại
@@ -303,7 +344,9 @@ export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onS
           </div>
           <p className="panel-sub">
             {tab === 'register'
-              ? `Bạn đang chơi với tư cách khách (${user?.name ?? ''}). Đặt email và mật khẩu để giữ nông trại này và chơi trên máy khác.`
+              ? GOOGLE_CLIENT_ID
+                ? 'Đặt email và mật khẩu để giữ nông trại này.'
+                : `Bạn đang chơi với tư cách khách (${user?.name ?? ''}). Đặt email và mật khẩu để giữ nông trại này và chơi trên máy khác.`
               : 'Đăng nhập để tải nông trại đã lưu. Nông trại khách hiện tại sẽ được thay thế trên máy này.'}
           </p>
           <form
@@ -413,7 +456,6 @@ export function Settings({
   const [confirm, setConfirm] = useState(false);
   useSyncExternalStore(sync.subscribe, () => sync.user);
   useSyncExternalStore(pwa.subscribe, () => pwa.canPrompt);
-  const a = assetSummary();
   return (
     <Modal title="Cài đặt" icon={<GearIcon size={32} />} tone="blue" onClose={onClose}>
       <div className="set-row">
@@ -451,7 +493,10 @@ export function Settings({
       <div className="set-row">
         <span>Tài khoản</span>
         {sync.status === 'offline' ? (
-          <span className="muted">Ngoại tuyến</span>
+          // offline sessions never reached the API: a reload retries the connection
+          <button className="btn btn-orange small" onClick={() => location.reload()}>
+            Mất kết nối · Kết nối lại
+          </button>
         ) : (
           <button className="btn btn-blue small" onClick={onAccount}>
             {sync.user?.isGuest === false ? sync.user.name : 'Khách · Lưu tài khoản'}
@@ -469,9 +514,6 @@ export function Settings({
             Chơi lại từ đầu
           </button>
         )}
-      </div>
-      <div className="asset-note">
-        <b>Bản Vertical Slice</b> — đồ họa đang dùng mô hình thủ tục tạm thời ({a.placeholder}/{a.total} asset là placeholder). Xem ASSETS.md.
       </div>
     </Modal>
   );

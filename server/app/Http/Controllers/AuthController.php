@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Auth\GoogleIdToken;
 use App\Game\FarmService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,44 @@ class AuthController extends Controller
         $this->farms->create($user);
 
         return $this->withToken($user, 201);
+    }
+
+    /**
+     * Sign in with a Google ID token. Order of preference:
+     *  1. the Google account is already linked -> log into that farm;
+     *  2. the caller is signed in (guest or email account) -> attach Google to them, keeping this farm;
+     *  3. a password account uses the same email -> link Google to it;
+     *  4. otherwise a new player with a fresh farm.
+     */
+    public function google(Request $request, GoogleIdToken $google): JsonResponse
+    {
+        if (! $google->enabled()) {
+            return response()->json(['message' => 'Đăng nhập Google chưa được bật trên máy chủ'], 503);
+        }
+        $data = $request->validate(['credential' => ['required', 'string', 'max:4096']]);
+        $g = $google->verify($data['credential']) ?? throw ValidationException::withMessages(['credential' => 'Không xác minh được tài khoản Google, hãy thử lại']);
+
+        $current = $request->user('sanctum');
+        $user = User::where('google_id', $g['sub'])->first();
+        if (! $user && $current) {
+            $user = $current;
+        }
+        $user ??= User::where('email', $g['email'])->first();
+        if (! $user) {
+            $user = User::create(['name' => $g['name'], 'is_guest' => false]);
+            $this->farms->create($user);
+        }
+
+        // a guest picks up the Google name; an existing name is kept
+        $user->fill([
+            'google_id' => $g['sub'],
+            'avatar' => $g['picture'],
+            'is_guest' => false,
+            'name' => $user->is_guest ? mb_substr($g['name'], 0, 40) : $user->name,
+            'email' => $user->email ?: (User::where('email', $g['email'])->whereKeyNot($user->id)->exists() ? null : $g['email']),
+        ])->save();
+
+        return $this->withToken($user->refresh());
     }
 
     public function register(Request $request): JsonResponse
@@ -77,6 +116,14 @@ class AuthController extends Controller
 
     private function userJson(User $user): array
     {
-        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'isGuest' => $user->is_guest];
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'isGuest' => $user->is_guest,
+            'google' => $user->google_id !== null,
+            'avatar' => $user->avatar,
+            'hasPassword' => $user->password !== null,
+        ];
     }
 }

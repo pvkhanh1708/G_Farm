@@ -33,7 +33,8 @@ API chạy ở subdomain, còn `server/.env`, `.git/config`, `shared/`, `client/
 
 ### 1. hPanel
 
-1. **PHP 8.4:** Websites → Advanced → **PHP Configuration** → 8.4 (cho cả domain chính và subdomain `api`).
+1. **PHP:** Websites → Advanced → **PHP Configuration** → 8.4 (tối thiểu 8.2). Đây là PHP của **website**, khác với
+   `php84` dùng qua SSH; hãy kiểm tra cả ở site của subdomain `api`.
 2. **Subdomain:** Domains → **Subdomains** → `api.nongtrai.io.vn`, tick *Custom folder* → `public_html/api`.
 3. **SSH:** Advanced → **SSH Access** → Enable.
 4. **Database:** Databases → **Management** → tạo database + user (vd. `u123456789_nongtrai`). Ghi lại mật khẩu.
@@ -74,7 +75,21 @@ php84 server/artisan key:generate --force
 
 `deploy.sh` dùng `php84` và `composer84` (PHP 8.4 bạn đã cấu hình trên Hostinger).
 
-### 5. Kiểm tra
+### 5. Đăng nhập Google (không bắt buộc)
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → tạo project → **APIs & Services → OAuth consent screen**:
+   chọn *External*, điền tên app “Nông Trại”, email hỗ trợ, rồi **Publish app** (chỉ dùng thông tin cơ bản:
+   email, tên, ảnh nên không cần Google duyệt).
+2. **Credentials → Create credentials → OAuth client ID** → loại **Web application**.
+   *Authorized JavaScript origins*: `https://nongtrai.io.vn` (thêm `http://localhost:5173` nếu muốn thử ở máy dev).
+   Không cần *redirect URI*.
+3. Chép **Client ID** (dạng `1234…apps.googleusercontent.com`) vào **hai** chỗ:
+   - `client/.env` → `VITE_GOOGLE_CLIENT_ID=...` (máy dev), rồi `npm run build` và commit `game/`;
+   - `server/.env` trên server → `GOOGLE_CLIENT_ID=...`, rồi `./deploy.sh --after-pull`.
+
+Chưa điền Client ID thì nút Google tự ẩn, đăng ký bằng email vẫn dùng được.
+
+### 6. Kiểm tra
 
 ```bash
 curl https://api.nongtrai.io.vn/up                                                  # 200
@@ -107,7 +122,9 @@ Không muốn dùng hook thì thay `git pull` bằng `./deploy.sh` (tự pull + 
 | Game hiện “Ngoại tuyến” | API không truy cập được: `curl https://api.nongtrai.io.vn/up`; F12 → Console/Network xem lỗi |
 | Console báo lỗi **CORS** | `CORS_ALLOWED_ORIGINS` thiếu đúng domain game (có `https://`, không `/` cuối) → sửa `server/.env` → `./deploy.sh --after-pull` |
 | Console báo **Mixed Content** | Chưa bật SSL cho `api.nongtrai.io.vn` |
+| Nút Google báo lỗi *origin not allowed* | Thêm đúng `https://nongtrai.io.vn` vào *Authorized JavaScript origins* |
 | `api.nongtrai.io.vn` ra trang game hoặc 404 | Thư mục subdomain chưa phải `public_html/api` (hPanel → Subdomains) |
+| API trả **500**, log/console có *Composer detected issues… PHP version* | PHP của website thấp hơn 8.2 → đổi PHP của site `api` trong hPanel |
 | API trả **500** | Xem `server/storage/logs/laravel-*.log`. Hay gặp: thiếu `APP_KEY`, sai mật khẩu DB, quyền `storage/` |
 | API trả **401** dù có token | Kiểm tra `api/.htaccess` còn dòng `HTTP_AUTHORIZATION` (có sẵn) |
 | Sửa `server/.env` không có tác dụng | `./deploy.sh --after-pull` (cache lại config) |
