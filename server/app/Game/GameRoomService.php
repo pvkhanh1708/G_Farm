@@ -52,7 +52,7 @@ class GameRoomService
 
     public function create(User $user, string $game, int $stake): GameTable
     {
-        if ($this->activeTableOf($user)) {
+        if ($this->activeTableOf($user) || app(TienLenService::class)->activeOf($user)) {
             throw new GameException('Bạn đang có một bàn chưa kết thúc');
         }
 
@@ -71,7 +71,7 @@ class GameRoomService
 
     public function join(User $user, int $id): GameTable
     {
-        if ($this->activeTableOf($user)) {
+        if ($this->activeTableOf($user) || app(TienLenService::class)->activeOf($user)) {
             throw new GameException('Bạn đang có một bàn chưa kết thúc');
         }
 

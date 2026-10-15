@@ -1,3 +1,4 @@
+import { TienLenRoom } from './TienLenRoom';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { serverNow } from '../game/net/clock';
 import { ApiError } from '../game/net/api';
@@ -11,10 +12,10 @@ import { fxBus } from './FxLayer';
 
 const STAKE_PRESETS = [100, 1_000, 10_000, 100_000, 1_000_000];
 
-const errText = (e: unknown) => (e instanceof ApiError ? e.firstError : 'Không kết nối được máy chủ');
+export const errText = (e: unknown) => (e instanceof ApiError ? e.firstError : 'Không kết nối được máy chủ');
 
 /** Poll `fn` every `ms` while mounted (and once immediately). */
-function usePoll(fn: () => Promise<void> | void, ms: number, active = true) {
+export function usePoll(fn: () => Promise<void> | void, ms: number, active = true) {
   const ref = useRef(fn);
   ref.current = fn;
   useEffect(() => {
@@ -36,8 +37,46 @@ function usePoll(fn: () => Promise<void> | void, ms: number, active = true) {
   }, [ms, active]);
 }
 
-/** Full-screen game room: lobby of caro tables, then the board. */
+type RoomGame = 'caro' | 'tienlen';
+const TAB_KEY = 'farm-empire:room-game';
+
+/** Full-screen game room with one tab per game. */
 export function GameRoom({ onClose }: { onClose: () => void }) {
+  const [game, setGame] = useState<RoomGame>(() => {
+    try {
+      return (localStorage.getItem(TAB_KEY) as RoomGame) || 'caro';
+    } catch {
+      return 'caro';
+    }
+  });
+  const pick = (g: RoomGame) => {
+    setGame(g);
+    try {
+      localStorage.setItem(TAB_KEY, g);
+    } catch {
+      /* session only */
+    }
+  };
+  const tabs = (
+    <div className="segmented room-tabs">
+      <button className={game === 'caro' ? 'on' : ''} onClick={() => pick('caro')}>
+        Cờ caro
+      </button>
+      <button className={game === 'tienlen' ? 'on' : ''} onClick={() => pick('tienlen')}>
+        Tiến lên
+      </button>
+    </div>
+  );
+  if (sync.status === 'offline')
+    return (
+      <Shell onClose={onClose}>
+        <p className="room-empty">Phòng game cần kết nối máy chủ. Hãy kết nối mạng rồi thử lại.</p>
+      </Shell>
+    );
+  return game === 'caro' ? <CaroRoom onClose={onClose} tabs={tabs} /> : <TienLenRoom onClose={onClose} tabs={tabs} />;
+}
+
+function CaroRoom({ onClose, tabs }: { onClose: () => void; tabs: React.ReactNode }) {
   const [table, setTable] = useState<TableView | null>(null);
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,25 +116,21 @@ export function GameRoom({ onClose }: { onClose: () => void }) {
     }
   }, 1000, !!table && (table.status === 'waiting' || table.status === 'playing'));
 
-  if (sync.status === 'offline')
-    return (
-      <Shell onClose={onClose}>
-        <p className="room-empty">Phòng game cần kết nối máy chủ. Hãy kết nối mạng rồi thử lại.</p>
-      </Shell>
-    );
-
   return (
     <Shell onClose={onClose} title={table ? `Cờ caro · cược ${formatNum(table.stake)}` : 'Phòng game'}>
       {table ? (
         <CaroTable table={table} busy={busy} run={run} onLeave={() => setTable(null)} />
       ) : (
-        <LobbyView lobby={lobby} busy={busy} run={run} />
+        <>
+          {tabs}
+          <LobbyView lobby={lobby} busy={busy} run={run} />
+        </>
       )}
     </Shell>
   );
 }
 
-function Shell({ title = 'Phòng game', onClose, children }: { title?: string; onClose: () => void; children: React.ReactNode }) {
+export function Shell({ title = 'Phòng game', onClose, children }: { title?: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="room" role="dialog" aria-label={title}>
       <div className="room-bar">
@@ -121,15 +156,13 @@ function RoomCoins() {
 
 // ---------------------------------------------------------------- lobby
 
-function LobbyView({ lobby, busy, run }: { lobby: Lobby | null; busy: boolean; run: (fn: () => Promise<TableView | void>) => void }) {
+/** Stake presets + formatted input + create button. */
+export function StakePicker({ busy, onCreate }: { busy: boolean; onCreate: (stake: number) => void }) {
   const s = useGameState();
   const [stake, setStake] = useState(MIN_STAKE);
   const valid = stake >= MIN_STAKE && stake <= s.coins;
   return (
-    <div className="lobby">
-      <section className="lobby-card">
-        <h3>Mở bàn cờ caro</h3>
-        <p className="lobby-sub">15×15, 5 quân liên tiếp là thắng. Người thắng nhận cả 2 phần cược (nhà cái giữ 5%).</p>
+    <>
         <div className="stake-presets">
           {STAKE_PRESETS.map((v) => (
             <button key={v} className={`chip ${stake === v ? 'on' : ''}`} disabled={v > s.coins} onClick={() => setStake(v)}>
@@ -149,9 +182,21 @@ function LobbyView({ lobby, busy, run }: { lobby: Lobby | null; busy: boolean; r
           <CoinIcon size={20} />
         </label>
         {!valid && <p className="warn">{stake < MIN_STAKE ? `Cược tối thiểu ${MIN_STAKE} xu` : 'Không đủ xu'}</p>}
-        <button className="btn btn-green" disabled={busy || !valid} onClick={() => run(() => games.create(stake))}>
+        <button className="btn btn-green" disabled={busy || !valid} onClick={() => onCreate(stake)}>
           Tạo bàn
         </button>
+    </>
+  );
+}
+
+function LobbyView({ lobby, busy, run }: { lobby: Lobby | null; busy: boolean; run: (fn: () => Promise<TableView | void>) => void }) {
+  const s = useGameState();
+  return (
+    <div className="lobby">
+      <section className="lobby-card">
+        <h3>Mở bàn cờ caro</h3>
+        <p className="lobby-sub">15×15, 5 quân liên tiếp là thắng. Người thắng nhận cả 2 phần cược (nhà cái giữ 5%).</p>
+        <StakePicker busy={busy} onCreate={(stake) => run(() => games.create(stake))} />
       </section>
 
       <section className="lobby-card">

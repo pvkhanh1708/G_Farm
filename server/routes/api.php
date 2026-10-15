@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FarmController;
 use App\Http\Controllers\GameRoomController;
+use App\Http\Controllers\TienLenController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:auth')->group(function () {
@@ -34,4 +35,14 @@ Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {
     Route::post('/games/tables/{id}/cancel', [GameRoomController::class, 'cancel'])->whereNumber('id');
     Route::post('/games/tables/{id}/move', [GameRoomController::class, 'move'])->whereNumber('id');
     Route::post('/games/tables/{id}/resign', [GameRoomController::class, 'resign'])->whereNumber('id');
+
+    // tiến lên (up to 4 players, bots fill empty seats)
+    Route::get('/games/tienlen', [TienLenController::class, 'lobby']);
+    Route::post('/games/tienlen', [TienLenController::class, 'create']);
+    Route::get('/games/tienlen/{id}', [TienLenController::class, 'show'])->whereNumber('id');
+    Route::post('/games/tienlen/{id}/join', [TienLenController::class, 'join'])->whereNumber('id');
+    Route::post('/games/tienlen/{id}/leave', [TienLenController::class, 'leave'])->whereNumber('id');
+    Route::post('/games/tienlen/{id}/start', [TienLenController::class, 'start'])->whereNumber('id');
+    Route::post('/games/tienlen/{id}/play', [TienLenController::class, 'play'])->whereNumber('id');
+    Route::post('/games/tienlen/{id}/pass', [TienLenController::class, 'pass'])->whereNumber('id');
 });
