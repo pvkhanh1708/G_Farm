@@ -1,15 +1,20 @@
 import { Camera, Scene, TargetCamera, Vector3 } from '@babylonjs/core';
 
 const MIN_R = 8;
-/** The orthographic camera sits this far from its target; zoom only changes the view size. */
+/** The orthographic camera sits this far from its target. */
 const CAMERA_DISTANCE = 90;
+/** Classic 2:1 isometric: looking down 35.26 degrees, turned 45 degrees. */
+const PITCH = Math.asin(Math.tan(Math.PI / 6));
+const YAW = Math.PI / 4;
+/** Ground directions of screen-right and screen-up. */
+const RIGHT = new Vector3(Math.cos(YAW), 0, -Math.sin(YAW));
+const UP_GROUND = new Vector3(Math.sin(YAW), 0, Math.cos(YAW));
+const FORWARD = new Vector3(Math.sin(YAW) * Math.cos(PITCH), -Math.sin(PITCH), Math.cos(YAW) * Math.cos(PITCH));
 
 /**
- * Fixed top-down camera: drag to pan in 4 directions, wheel / pinch to zoom.
- * Orthographic, so the farm is seen from exactly the same angle wherever you pan or
- * zoom (a perspective camera skews tiles near the screen edges). Rotation is never
- * exposed. "Radius" stays the zoom unit: the view shows what a perspective camera
- * at that distance would, so framing maths elsewhere is unchanged.
+ * Fixed isometric camera: drag to pan in any direction. Orthographic, so the farm
+ * is seen from exactly the same angle everywhere; no rotation and no zoom.
+ * "Radius" stays the framing unit (what a perspective camera at that distance would show).
  */
 export class CameraRig {
   readonly camera: TargetCamera;
@@ -21,15 +26,14 @@ export class CameraRig {
   private pointers = new Map<number, { x: number; y: number }>();
   private downAt = { x: 0, y: 0, t: 0 };
   private dragging = false;
-  private pinchDist = 0;
 
   onTap: (x: number, y: number) => void = () => {};
   onHover: (x: number, y: number) => void = () => {};
 
   constructor(private scene: Scene, private canvas: HTMLCanvasElement) {
-    // looking straight down (pitch 90deg): +x is screen right, +z is screen up
-    this.camera = new TargetCamera('cam', new Vector3(this.target.x, CAMERA_DISTANCE, this.target.z), scene);
-    this.camera.rotation.set(Math.PI / 2, 0, 0);
+    this.camera = new TargetCamera('cam', Vector3.Zero(), scene);
+    this.camera.rotation.set(PITCH, YAW, 0);
+    this.place();
     this.camera.fov = 0.6;
     this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
     this.camera.minZ = 1;
@@ -41,22 +45,26 @@ export class CameraRig {
     scene.onBeforeRenderObservable.add(() => this.update(scene.getEngine().getDeltaTime() / 1000));
   }
 
-  /** Current zoom (in radius units), easing toward goalRadius. */
+  /** Current framing (in radius units). */
   private zoom = 24;
   private maxR = 40;
-  private fitWidth = 7;
   private bounds = { minX: -9, maxX: 9, minZ: -9, maxZ: 9 };
 
   /** Distance at which a ground span of `width` fills the screen. */
   fitRadius(width: number) {
-    this.fitWidth = width;
     const aspect = this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight);
     const r = width / 2 / (Math.tan(this.camera.fov / 2) * Math.min(aspect, 1.15));
     return Math.max(MIN_R, Math.min(this.maxR, r));
   }
 
+  /**
+   * Fixed framing by screen density: a world unit is ~1/8 of the shorter screen side
+   * (clamped), so a tile looks about the same size on a phone and on a desktop.
+   */
   adaptToAspect() {
-    this.goalRadius = this.fitRadius(this.fitWidth);
+    const w = this.canvas.clientWidth, h = Math.max(1, this.canvas.clientHeight);
+    const ppu = Math.max(40, Math.min(64, Math.min(w, h) / 8));
+    this.goalRadius = h / (ppu * 2 * Math.tan(this.camera.fov / 2));
   }
 
   /** Let the camera roam over the whole farm (and zoom out far enough to see it all). */
@@ -102,14 +110,9 @@ export class CameraRig {
       this.velocity.setAll(0);
     } else if (this.pointers.size === 2) {
       this.dragging = true;
-      this.pinchDist = this.spread();
     }
   };
 
-  private spread() {
-    const [a, b] = [...this.pointers.values()];
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
 
   private move = (e: PointerEvent) => {
     const p = this.local(e);
@@ -119,12 +122,8 @@ export class CameraRig {
       return;
     }
     this.pointers.set(e.pointerId, p);
-    if (this.pointers.size === 2) {
-      const d = this.spread();
-      if (this.pinchDist > 0) this.zoomBy(this.pinchDist / d);
-      this.pinchDist = d;
-      return;
-    }
+    // two fingers: no zoom, just ignore
+    if (this.pointers.size === 2) return;
     if (!this.dragging && Math.hypot(p.x - this.downAt.x, p.y - this.downAt.y) > 8) this.dragging = true;
     if (this.dragging) this.panBy(p.x - prev.x, p.y - prev.y);
   };
@@ -138,14 +137,8 @@ export class CameraRig {
     if (this.pointers.size === 0) this.dragging = false;
   };
 
-  private wheel = (e: WheelEvent) => {
-    e.preventDefault();
-    this.zoomBy(Math.exp(e.deltaY * 0.0012));
-  };
-
-  private zoomBy(factor: number) {
-    this.goalRadius = Math.max(MIN_R, Math.min(this.maxR, this.goalRadius * factor));
-  }
+  /** No zoom: the wheel only stops the page from scrolling. */
+  private wheel = (e: WheelEvent) => e.preventDefault();
 
   private worldPerPixel() {
     const h = Math.max(1, this.canvas.clientHeight);
@@ -173,8 +166,8 @@ export class CameraRig {
 
   private panBy(dx: number, dy: number) {
     const k = this.worldPerPixel();
-    // screen right = +x, screen up = +z; the ground follows the finger
-    const delta = new Vector3(-dx * k, 0, dy * k);
+    // the ground follows the finger; a vertical screen pixel covers more ground (1 / sin pitch)
+    const delta = RIGHT.scale(-dx * k).addInPlace(UP_GROUND.scale((dy * k) / Math.sin(PITCH)));
     this.goalTarget.addInPlace(delta);
     this.clampGoal();
     const dt = Math.max(1 / 120, this.scene.getEngine().getDeltaTime() / 1000);
@@ -202,21 +195,28 @@ export class CameraRig {
   }
 
   private place() {
-    this.camera.position.set(this.target.x, CAMERA_DISTANCE, this.target.z);
+    this.camera.position.copyFrom(this.target).subtractInPlace(FORWARD.scale(CAMERA_DISTANCE));
   }
+
+  /** Unit vectors spanning the screen plane in world space (for camera-facing sprites). */
+  static readonly screenRight = RIGHT;
+  /** Unit vector from the ground toward the camera. */
+  static readonly toCamera = FORWARD.scale(-1);
+  static readonly screenUp = new Vector3(Math.sin(YAW) * Math.sin(PITCH), Math.cos(PITCH), Math.cos(YAW) * Math.sin(PITCH));
 
   /** How far above the ground the camera sits (fog is measured from it). */
   get distance() {
     return CAMERA_DISTANCE;
   }
 
-  focus(target: Vector3, radius: number, immediate = false) {
+  /** Pan to `target`; the framing is fixed, so `_radius` is ignored. */
+  focus(target: Vector3, _radius?: number, immediate = false) {
     this.goalTarget.copyFrom(target);
-    this.goalRadius = radius;
+    this.clampGoal();
     if (immediate) {
-      this.target.copyFrom(target);
+      this.target.copyFrom(this.goalTarget);
       this.place();
-      this.zoom = radius;
+      this.zoom = this.goalRadius;
       this.applyZoom();
     }
   }

@@ -501,3 +501,16 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .kind-tag.coin { background: #fff2c8; color: #9a6a0a; }
 .kind-tag.xp { background: #e2f1ff; color: #1f5f99; }
 .seed-tip dd.best { color: #1f7a1a; background: #eaffd8; border-radius: 6px; padding: 0 4px; }
+
+/* tapped growing crop: progress + dig actions */
+.plot-anchor > .grow-card {
+  pointer-events: auto; display: flex; flex-direction: column; gap: 5px; padding: 7px 9px 8px; border-radius: 14px; min-width: 168px;
+  background: rgba(255, 252, 240, .97); border: 3px solid var(--wood); box-shadow: 0 3px 0 var(--wood-dark), 0 8px 16px rgba(0,0,0,.25);
+  animation: tipIn .14s ease-out;
+}
+.grow-card-head { display: flex; align-items: center; gap: 5px; font-size: 14px; }
+.grow-card-head b { flex: 1; }
+.grow-left { font-size: 12px; font-weight: 800; color: #1f6fb0; white-space: nowrap; }
+.grow-card .bar { width: 100%; }
+.grow-actions { display: flex; gap: 5px; }
+.grow-actions .btn { flex: 1; font-size: 12px; padding: 0 6px; min-height: 30px; white-space: nowrap; }

@@ -132,6 +132,25 @@ class FarmService
         });
     }
 
+    /**
+     * Dig up the crops on the given tiles (growing or ripe), with no refund and no harvest.
+     *
+     * @param  list<int>  $tiles
+     * @return list<int> tiles cleared
+     */
+    public function dig(User $user, array $tiles): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($tiles) {
+            $found = $farm->plantings()->whereIn('tile', $tiles)->pluck('tile')->all();
+            if (! $found) {
+                throw new GameException('Không có cây để đào');
+            }
+            $farm->plantings()->whereIn('tile', $found)->delete();
+
+            return array_values(array_map('intval', $found));
+        });
+    }
+
     /** @return int coins earned */
     public function sell(User $user, string $cropId, int $qty): int
     {

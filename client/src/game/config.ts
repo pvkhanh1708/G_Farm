@@ -42,20 +42,21 @@ export const CROPS = Object.fromEntries(economy.crops.map((c) => [c.id, c as Cro
 export const CROP_ORDER = economy.crops.map((c) => c.id as CropId);
 
 /**
- * The farm is a sequence of parcels (floating islands), each a 4x4 grid of
- * square tiles. Tiles are numbered globally (g = parcel * 16 + local) and are
- * unlocked strictly in that order, so a parcel fills up before the next opens.
+ * The farm is one block of square tiles laid edge to edge, filled column by
+ * column: a column ("parcel" in the code) holds TILES_PER_PARCEL tiles, and each
+ * new column is added on the left of the previous one. Tiles are numbered
+ * globally (g = column * 10 + row) and unlocked strictly in that order.
  */
-export const PARCEL_DIM = 4;
-export const TILES_PER_PARCEL = PARCEL_DIM * PARCEL_DIM;
+export const TILES_PER_PARCEL = 10;
 export const TILE_SIZE = 1.5;
-export const TILE_PITCH = 1.64;
-/** Height of a tile's top surface above the island grass. */
+/** Tiles touch: no gap between them. */
+export const TILE_PITCH = TILE_SIZE;
+/** Height of a tile's top surface above the meadow. */
 export const SOIL_TOP = 0.14;
-export const PARCEL_BORDER = 0.8;
-export const ISLAND_SIZE = PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE) + PARCEL_BORDER * 2;
-/** Parcels sit edge to edge on one continuous meadow. */
-export const PARCEL_PITCH = ISLAND_SIZE;
+/** Length of one column in world units. */
+export const COLUMN_LENGTH = TILES_PER_PARCEL * TILE_PITCH;
+/** Period of the meadow texture / decor grid. */
+export const ISLAND_SIZE = 8;
 
 export const START_UNLOCKED = economy.startUnlocked;
 export const STARTING_COINS = economy.startingCoins;
@@ -86,37 +87,15 @@ export function cropsUnlockedAt(level: number): CropId[] {
   return CROP_ORDER.filter((c) => CROPS[c].unlockLevel === level);
 }
 
-/** Square spiral around the first parcel: (0,0), (1,0), (1,1), (0,1), (-1,1), ... */
-export function parcelGrid(k: number): { gx: number; gz: number } {
-  let x = 0, z = 0, dx = 1, dz = 0, run = 1, step = 0, turns = 0;
-  for (let i = 0; i < k; i++) {
-    x += dx;
-    z += dz;
-    if (++step === run) {
-      step = 0;
-      [dx, dz] = [-dz, dx];
-      if (++turns % 2 === 0) run++;
-    }
-  }
-  return { gx: x, gz: z };
-}
-
+/** Centre of column k: column 0 sits at x = 0, each next column one tile further left (-x). */
 export function parcelCenter(k: number): { x: number; z: number } {
-  const { gx, gz } = parcelGrid(k);
-  return { x: gx * PARCEL_PITCH, z: gz * PARCEL_PITCH };
+  return { x: -k * TILE_PITCH, z: -(COLUMN_LENGTH - TILE_PITCH) / 2 };
 }
 
-/** Local tile order: rows from the far (top-left on screen) edge toward the camera. */
-export function tileLocal(local: number): { c: number; r: number } {
-  return { c: local % PARCEL_DIM, r: PARCEL_DIM - 1 - Math.floor(local / PARCEL_DIM) };
-}
-
+/** Row 0 of a column is at z = 0, later rows run toward -z. */
 export function tileWorldPos(g: number): { x: number; z: number } {
-  const parcel = Math.floor(g / TILES_PER_PARCEL);
-  const { c, r } = tileLocal(g % TILES_PER_PARCEL);
-  const pc = parcelCenter(parcel);
-  const off = (PARCEL_DIM - 1) / 2;
-  return { x: pc.x + (c - off) * TILE_PITCH, z: pc.z + (r - off) * TILE_PITCH };
+  const col = Math.floor(g / TILES_PER_PARCEL), row = g % TILES_PER_PARCEL;
+  return { x: -col * TILE_PITCH, z: -row * TILE_PITCH };
 }
 
 /**

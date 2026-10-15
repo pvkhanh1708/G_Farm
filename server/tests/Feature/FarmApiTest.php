@@ -137,6 +137,18 @@ class FarmApiTest extends TestCase
         $this->postJson('/auth/login', ['email' => 'lan@example.com', 'password' => 'wrong'])->assertStatus(422);
     }
 
+    public function test_dig_clears_tiles_without_refund(): void
+    {
+        $h = $this->guest();
+        $this->postJson('/farm/plant', ['tiles' => [0, 1, 2], 'crop' => 'carrot'], $h);
+        $this->postJson('/farm/dig', ['tiles' => [0, 2, 3]], $h)
+            ->assertOk()
+            ->assertJsonPath('result.dug', [0, 2])
+            ->assertJsonPath('state.coins', 50 - 3 * 7)
+            ->assertJsonPath('state.plantings.1.crop', 'carrot');
+        $this->postJson('/farm/dig', ['tiles' => [0]], $h)->assertStatus(422);
+    }
+
     public function test_reset(): void
     {
         $h = $this->guest();

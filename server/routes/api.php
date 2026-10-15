@@ -19,6 +19,7 @@ Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {
     Route::get('/farm', [FarmController::class, 'show']);
     Route::post('/farm/plant', [FarmController::class, 'plant']);
     Route::post('/farm/harvest', [FarmController::class, 'harvest']);
+    Route::post('/farm/dig', [FarmController::class, 'dig']);
     Route::post('/farm/sell', [FarmController::class, 'sell']);
     Route::post('/farm/unlock', [FarmController::class, 'unlock']);
     Route::post('/farm/reset', [FarmController::class, 'reset']);

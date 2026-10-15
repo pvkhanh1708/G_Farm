@@ -64,6 +64,13 @@ export function App() {
   const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
   const [levelUp, setLevelUp] = useState<number | null>(null);
+  /** Growing tile whose progress + dig actions are shown (hidden by default). */
+  const [revealed, setRevealed] = useState<number | null>(null);
+  useEffect(() => {
+    if (revealed === null) return;
+    const t = setTimeout(() => setRevealed(null), 6000);
+    return () => clearTimeout(t);
+  }, [revealed]);
   const [netReady, setNetReady] = useState(false);
   const seenLevel = useRef(s.level);
   useEffect(() => {
@@ -139,6 +146,7 @@ export function App() {
   useEffect(() => {
     if (!game) return;
     return game.on((e) => {
+      if (e.type === 'tileTap') setRevealed(null);
       if (e.type === 'tileTap') {
         // any wild tile buys the next one in order (tiles open strictly in sequence)
         if (e.kind === 'next' || e.kind === 'locked') {
@@ -153,8 +161,9 @@ export function App() {
             setPopup({ type: 'shop', tile: e.g });
           }
         } else {
-          const st = store.tile(e.g);
-          if (st?.crop) fxBus.toast(`${CROPS[st.crop].name}: còn ${Math.max(1, Math.ceil(CROPS[st.crop].growSeconds * (1 - growthProgress(st))))} giây`, 'info');
+          // growing: show this tile's progress and dig actions (tap again to hide)
+          setRevealed((r) => (r === e.g ? null : e.g));
+          return;
         }
       } else if (e.type === 'view') {
         setOverview(e.overview);
@@ -197,7 +206,17 @@ export function App() {
       <canvas ref={canvasRef} className="scene" />
       {game && !showcase && (
         <>
-          <TileOverlays game={game} onUnlock={() => (sfx.open(), setPopup({ type: 'unlock' }))} />
+          <TileOverlays
+            game={game}
+            revealed={revealed}
+            onUnlock={() => (sfx.open(), setPopup({ type: 'unlock' }))}
+            onDig={(tiles, label) => {
+              setRevealed(null);
+              const res = game.dig(tiles);
+              if (!res.ok) fxBus.toast(res.reason, 'bad');
+              else fxBus.toast(res.value.length > 1 ? `Đã đào ${res.value.length} ô ${label}` : `Đã đào ${label}`, 'info');
+            }}
+          />
           <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} onLevel={() => (sfx.open(), setPopup({ type: 'levels' }))} />
           <BottomBar
             readyCount={c.ready}

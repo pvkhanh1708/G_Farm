@@ -257,7 +257,8 @@ export class Game {
   }
 
   private updateFar() {
-    const far = this.rig.radius > this.parcelRadius * 1.6;
+    // the camera no longer zooms, so the far overview never applies
+    const far = false;
     if (far === this.far) return;
     this.far = far;
     this.batches.setFar(far);
@@ -458,6 +459,21 @@ export class Game {
     sfx.harvest();
     ready.forEach((g, i) => this.tweens.wait(i * 0.07, () => this.harvest(g, true)));
     return ready.length;
+  }
+
+  /** Dig up crops (no refund): a puff of soil on each tile, then the tiles are empty. */
+  dig(tiles: number[]) {
+    const res = store.dig(tiles);
+    if (!res.ok) {
+      sfx.error();
+      return res;
+    }
+    sfx.plant();
+    for (const g of res.value) {
+      const v = this.tiles.get(g);
+      if (v) this.fx.dustPuff(v.center.add(new Vector3(0, 0.1, 0)), 10);
+    }
+    return res;
   }
 
   unlockNext() {

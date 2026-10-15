@@ -45,7 +45,8 @@ const measure = (label) => p.evaluate(async (label) => {
    avg ${avg.toFixed(1)}ms (${(1000 / avg).toFixed(0)} fps) p90 ${frames[Math.floor(frames.length * 0.9)].toFixed(1)}ms | draws ${s.drawCalls} meshes ${s.activeMeshes} verts ${s.vertices} | nodes ${scene.transformNodes.length} meshes ${scene.meshes.length} particles ${scene.particleSystems.length} | dom ${document.querySelectorAll('.plot-anchor').length}`;
 }, label);
 console.log(await measure('farm view'));
-await p.click('.zoom-btn'); await wait(2500);
+// no zoom any more: the 'overview' measurement repeats the farm view
+await wait(500);
 console.log(await measure('overview  '));
 if (out) await p.screenshot({ path: out });
 await b.close();

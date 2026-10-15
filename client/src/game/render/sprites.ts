@@ -1,5 +1,6 @@
 import { Constants, DynamicTexture, Material, Mesh, Scene, StandardMaterial, Texture, VertexData } from '@babylonjs/core';
 import { CROP_ORDER, CropId, STAGE_COUNT } from '../config';
+import { CameraRig } from './camera';
 import { mulberry } from './geometry';
 import { artUrl, cropSheetUrl, loadImage, SHEET } from '../art';
 
@@ -989,8 +990,13 @@ export class SpriteLibrary {
     this.cropMaterial = mat('crop-sprites', true);
   }
 
-  /** Flat quad on the ground plane (y = 0), `size` world units square, showing one atlas cell. */
-  private quad(key: string, size: number, material: Material) {
+  /**
+   * Quad showing one atlas cell, `size` world units square. Flat on the ground (tiles), or
+   * `upright`: standing on the origin and facing the fixed isometric camera (crops), so
+   * plants read as standing up. Upright quads sit a little toward the camera so their own
+   * soil tile never hides the base of the plant.
+   */
+  private quad(key: string, size: number, material: Material, upright = false) {
     let mesh = this.cache.get(key);
     if (mesh) return mesh;
     const i = this.cells.get(key)!;
@@ -1000,10 +1006,21 @@ export class SpriteLibrary {
     const vTop = 1 - yTop, vBot = 1 - yBot;
     const h = size / 2;
     const vd = new VertexData();
-    // +z is "up" on screen in the top-down view
-    vd.positions = [-h, 0, -h, h, 0, -h, h, 0, h, -h, 0, h];
+    if (upright) {
+      const R = CameraRig.screenRight, U = CameraRig.screenUp;
+      const lift = CameraRig.toCamera.scale(0.4);
+      const corner = (sx: number, sy: number) => R.scale(sx).addInPlace(U.scale(sy)).addInPlace(lift).asArray();
+      // the plant's base sits a little below the cell's bottom edge in the art
+      const y0 = -size * 0.1;
+      vd.positions = [...corner(-h, y0), ...corner(h, y0), ...corner(h, y0 + size), ...corner(-h, y0 + size)];
+      const n = CameraRig.toCamera.asArray();
+      vd.normals = [...n, ...n, ...n, ...n];
+    } else {
+      // +z is "up" in the art
+      vd.positions = [-h, 0, -h, h, 0, -h, h, 0, h, -h, 0, h];
+      vd.normals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+    }
     vd.uvs = [x0, vBot, x1, vBot, x1, vTop, x0, vTop];
-    vd.normals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
     vd.indices = [0, 2, 1, 0, 3, 2];
     mesh = new Mesh(`sprite-${key}`, this.scene);
     vd.applyToMesh(mesh);
@@ -1023,6 +1040,6 @@ export class SpriteLibrary {
   }
 
   crop(crop: CropId, stage: number, size: number) {
-    return this.quad(`crop:${crop}:${Math.max(0, Math.min(STAGE_COUNT - 1, stage))}`, size, this.cropMaterial);
+    return this.quad(`crop:${crop}:${Math.max(0, Math.min(STAGE_COUNT - 1, stage))}`, size, this.cropMaterial, true);
   }
 }

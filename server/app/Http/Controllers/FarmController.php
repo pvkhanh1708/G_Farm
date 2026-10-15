@@ -44,6 +44,16 @@ class FarmController extends Controller
         return $this->respond($request, fn () => $this->farms->harvest($request->user(), $data['tiles']));
     }
 
+    public function dig(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'tiles' => ['required', 'array', 'min:1', 'max:500'],
+            'tiles.*' => ['integer', 'min:0'],
+        ]);
+
+        return $this->respond($request, fn () => ['dug' => $this->farms->dig($request->user(), $data['tiles'])]);
+    }
+
     public function sell(Request $request): JsonResponse
     {
         $data = $request->validate([

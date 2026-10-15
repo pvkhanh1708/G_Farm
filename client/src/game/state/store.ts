@@ -41,6 +41,7 @@ export type ActionResult<T = void> = { ok: true; value: T } | { ok: false; reaso
 export type GameAction =
   | { type: 'plant'; tiles: number[]; crop: CropId }
   | { type: 'harvest'; tiles: number[] }
+  | { type: 'dig'; tiles: number[] }
   | { type: 'sell'; crop: CropId; qty: number }
   | { type: 'unlock' }
   | { type: 'reset' };
@@ -195,6 +196,17 @@ class Store {
     this.set(this.withXp({ ...this.state, inventory: { ...this.state.inventory, [p.crop]: this.state.inventory[p.crop] + amount }, plantings }, xp));
     this.emit({ type: 'harvest', tiles: [g] });
     return { ok: true, value: { crop: p.crop, amount, xp, levelUp: this.state.level > before ? this.state.level : null } };
+  }
+
+  /** Dig up the crops on `tiles` (no refund, no harvest). Returns the tiles cleared. */
+  dig(tiles: number[]): ActionResult<number[]> {
+    const plantings = { ...this.state.plantings };
+    const dug = tiles.filter((g) => plantings[g]);
+    if (!dug.length) return { ok: false, reason: 'Không có cây để đào' };
+    dug.forEach((g) => delete plantings[g]);
+    this.set({ ...this.state, plantings });
+    this.emit({ type: 'dig', tiles: dug });
+    return { ok: true, value: dug };
   }
 
   sell(crop: CropId, qty: number): ActionResult<number> {

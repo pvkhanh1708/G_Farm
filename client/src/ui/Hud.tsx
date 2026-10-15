@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CROPS, CropId, xpToNext } from '../game/config';
 import type { Game } from '../game/Game';
 import { store } from '../game/state/store';
-import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, LevelStar, SeedBagIcon, SickleIcon, SproutIcon, ZoomIcon } from './icons';
+import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, LevelStar, SeedBagIcon, SickleIcon, SproutIcon } from './icons';
 import { formatNum } from './format';
 
 export function useGameState() {
@@ -81,9 +81,6 @@ export function BottomBar(p: BottomBarProps) {
   const total = Object.values(s.inventory).reduce((a, b) => a + b, 0);
   return (
     <>
-      <button className="round-btn small zoom-btn" onClick={p.onOverview} aria-label={p.overview ? 'Về mảnh đất hiện tại' : 'Xem tổng quan'}>
-        <ZoomIcon size={30} out={!p.overview} />
-      </button>
       <div className="bottombar">
         {/* left: storage + shop */}
         <div className="dock">

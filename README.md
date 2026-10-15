@@ -4,10 +4,9 @@ Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước 
 Phạm vi: nông trại nhìn từ trên xuống (ô đất và cây dạng 2D trên đảo 3D), 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
 trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp trên trình duyệt.
 
-Nông trại nằm trên một **đồng cỏ liền vô tận**, nhìn từ trên xuống: mỗi **mảnh đất** là lưới **4×4 ô** vuông, các mảnh
-nằm sát nhau (viền lối đất phân cách) và xếp theo vòng xoắn quanh mảnh đầu tiên, không giới hạn số mảnh. Ô mở theo thứ tự
-(ô kế tiếp có biển “Mở khóa”); mở hết 16 ô thì mảnh kế tiếp (đang um tùm bụi cây) được khai hoang. Có nút “Trồng tất cả”,
-“Thu tất cả”, và nút kính lúp để zoom ra xem tổng quan.
+Nông trại nhìn **chéo kiểu isometric, góc cố định, không zoom** (kéo để di chuyển). Ô đất nằm sát nhau thành một khối:
+mỗi **cột 10 ô**, mở theo thứ tự; hết một cột thì sang cột mới nằm **bên trái** cột cũ, không giới hạn số cột.
+Chạm ô cây đang lớn để xem thời gian còn lại và **đào cây** (một ô, hoặc mọi ô cùng loại cây đang lớn).
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
@@ -21,26 +20,26 @@ vào `shared/economy.json`).
 
 | Cây | Loại | Cấp mở | Hạt | Thời gian | Thu | Giá bán | XP | Lãi/ô |
 |---|---|---|---|---|---|---|---|---|
-| Cà rốt | Cày tiền | 1 | 7 | 20s | ×4 | 6 | 1 | +17 |
-| Lúa mì | Cày cấp | 2 | 12 | 30s | ×5 | 4 | 3 | +8 |
-| Cà chua | Cày tiền | 3 | 22 | 45s | ×6 | 11 | 1 | +44 |
-| Dâu tây | Cày cấp | 5 | 34 | 1 phút | ×5 | 12 | 7 | +26 |
-| Khoai tây | Cày cấp | 7 | 49 | 1p15s | ×6 | 15 | 10 | +41 |
-| Bắp cải | Cày cấp | 9 | 69 | 1p30s | ×3 | 41 | 13 | +54 |
-| Ngô | Cày tiền | 11 | 110 | 2 phút | ×4 | 85 | 5 | +230 |
-| Ớt | Cày cấp | 13 | 160 | 2p30s | ×8 | 35 | 26 | +120 |
-| Cà tím | Cày tiền | 15 | 220 | 3 phút | ×5 | 140 | 10 | +480 |
-| Dưa hấu | Cày tiền | 18 | 345 | 4 phút | ×2 | 540 | 14 | +735 |
-| Bí ngô | Cày tiền | 21 | 505 | 5 phút | ×2 | 795 | 19 | +1.085 |
-| Dứa | Cày tiền | 24 | 710 | 6 phút | ×2 | 1.115 | 26 | +1.520 |
-| Bông | Cày cấp | 27 | 1.105 | 8 phút | ×6 | 330 | 136 | +875 |
-| Oải hương | Cày cấp | 30 | 1.615 | 10 phút | ×5 | 575 | 186 | +1.260 |
-| Hướng dương | Cày tiền | 34 | 2.270 | 12 phút | ×3 | 2.380 | 68 | +4.870 |
-| Trà | Cày cấp | 36 | 3.100 | 14 phút | ×6 | 920 | 316 | +2.420 |
-| Nho | Cày tiền | 38 | 3.885 | 15 phút | ×6 | 2.035 | 103 | +8.325 |
-| Cà phê | Cày cấp | 41 | 5.455 | 18 phút | ×5 | 1.950 | 491 | +4.295 |
-| Thanh long | Cày tiền | 44 | 7.090 | 20 phút | ×3 | 7.425 | 167 | +15.185 |
-| Hoa hồng | Cày cấp | 47 | 10.350 | 25 phút | ×4 | 4.625 | 826 | +8.150 |
+x| Cà rốt | Cày tiền | 1 | 7 | 20s | ×4 | 6 | 1 | +17 |
+x| Lúa mì | Cày cấp | 2 | 12 | 30s | ×5 | 4 | 3 | +8 |
+x| Cà chua | Cày tiền | 3 | 22 | 45s | ×6 | 11 | 1 | +44 |
+x| Dâu tây | Cày cấp | 5 | 34 | 1 phút | ×5 | 12 | 7 | +26 |
+x| Khoai tây | Cày cấp | 7 | 49 | 1p15s | ×6 | 15 | 10 | +41 |
+x| Bắp cải | Cày cấp | 9 | 69 | 1p30s | ×3 | 41 | 13 | +54 |
+x| Ngô | Cày tiền | 11 | 110 | 2 phút | ×4 | 85 | 5 | +230 |
+x| Ớt | Cày cấp | 13 | 160 | 2p30s | ×8 | 35 | 26 | +120 |
+x| Cà tím | Cày tiền | 15 | 220 | 3 phút | ×5 | 140 | 10 | +480 |
+x| Dưa hấu | Cày tiền | 18 | 345 | 4 phút | ×2 | 540 | 14 | +735 |
+x| Bí ngô | Cày tiền | 21 | 505 | 5 phút | ×2 | 795 | 19 | +1.085 |
+x| Dứa | Cày tiền | 24 | 710 | 6 phút | ×2 | 1.115 | 26 | +1.520 |
+x| Bông | Cày cấp | 27 | 1.105 | 8 phút | ×6 | 330 | 136 | +875 |
+x| Oải hương | Cày cấp | 30 | 1.615 | 10 phút | ×5 | 575 | 186 | +1.260 |
+x| Hướng dương | Cày tiền | 34 | 2.270 | 12 phút | ×3 | 2.380 | 68 | +4.870 |
+x| Trà | Cày cấp | 36 | 3.100 | 14 phút | ×6 | 920 | 316 | +2.420 |
+x| Nho | Cày tiền | 38 | 3.885 | 15 phút | ×6 | 2.035 | 103 | +8.325 |
+x| Cà phê | Cày cấp | 41 | 5.455 | 18 phút | ×5 | 1.950 | 491 | +4.295 |
+x| Thanh long | Cày tiền | 44 | 7.090 | 20 phút | ×3 | 7.425 | 167 | +15.185 |
+x| Hoa hồng | Cày cấp | 47 | 10.350 | 25 phút | ×4 | 4.625 | 826 | +8.150 |
 | Sầu riêng | Cày tiền | 50 | 14.550 | 30 phút | ×1 | 45.750 | 303 | +31.200 |
 | Hoa lan | Cày cấp | 54 | 19.850 | 35 phút | ×3 | 11.800 | 1.399 | +15.550 |
 | Nhân sâm | Cày tiền | 58 | 26.550 | 40 phút | ×2 | 41.750 | 488 | +56.950 |
@@ -79,8 +78,8 @@ Sửa `client/` hoặc `shared/` thì **build lại và commit cả `game/`** tr
 Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chili` để lọc), `?offline` chơi không cần server.
 Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
 
-Điều khiển: kéo để di chuyển (4 hướng), cuộn chuột hoặc chụm 2 ngón để zoom, chạm vào ô đất để thao tác.
-Zoom ra tổng quan rồi chạm một mảnh đất để phóng to đúng mảnh đó. Chạm biển “Mở khóa” hoặc bất kỳ ô cỏ nào để mở đất.
+Điều khiển: kéo để di chuyển, chạm vào ô đất để thao tác (góc nhìn và mức zoom cố định).
+Chạm biển “Mở khóa” hoặc bất kỳ ô cỏ nào để mở đất.
 Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, cài lên màn hình chính, tài khoản, chơi lại từ đầu.
 
 **Chạy như app trên điện thoại (PWA):** thêm game vào màn hình chính (Android: Chrome → *Cài đặt ứng dụng*,
@@ -122,6 +121,7 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | GET | `/farm` | State nông trại |
 | POST | `/farm/plant` | `{tiles: number[], crop}` — gieo theo thứ tự đến khi hết xu |
 | POST | `/farm/harvest` | `{tiles: number[]}` — thu các ô đã chín, bỏ qua ô chưa chín |
+| POST | `/farm/dig` | `{tiles: number[]}` — đào cây trên các ô (không hoàn tiền) |
 | POST | `/farm/sell` | `{crop, qty}` |
 | POST | `/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
 | POST | `/farm/reset` | Chơi lại từ đầu |

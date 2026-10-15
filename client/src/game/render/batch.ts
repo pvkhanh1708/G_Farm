@@ -1,5 +1,5 @@
 import { BoundingInfo, Geometry, Matrix, Mesh, Scene, ShadowGenerator, Vector3 } from '@babylonjs/core';
-import { PARCEL_PITCH } from '../config';
+import { COLUMN_LENGTH, TILE_PITCH } from '../config';
 
 /**
  * Tiles draw through thin instances instead of one InstancedMesh (plus parent
@@ -141,9 +141,9 @@ export class TileBatches {
     return this.nextHandle++;
   }
 
-  /** Parcel cell that a world position belongs to (parcel centres sit on a PARCEL_PITCH grid). */
+  /** Group of 4 columns that a world position belongs to (columns sit on a TILE_PITCH grid along -x). */
   static cell(x: number, z: number) {
-    return `${Math.round(x / PARCEL_PITCH)},${Math.round(z / PARCEL_PITCH)}`;
+    return `${Math.floor(Math.round(-x / TILE_PITCH) / 4)},${Math.floor(Math.round(-z / TILE_PITCH) / 10)}`;
   }
 
   /**
@@ -163,11 +163,10 @@ export class TileBatches {
         this.farm.set(key, farm);
       }
       const [cx, cz] = cell.split(',').map(Number);
-      const half = PARCEL_PITCH / 2;
-      const bounds = new BoundingInfo(
-        new Vector3(cx * PARCEL_PITCH - half, -1, cz * PARCEL_PITCH - half),
-        new Vector3(cx * PARCEL_PITCH + half, 3, cz * PARCEL_PITCH + half),
-      );
+      // 4 columns wide, one column long; generous margins for crops spilling over their tile
+      const x1 = -cx * 4 * TILE_PITCH + TILE_PITCH, x0 = x1 - 5 * TILE_PITCH;
+      const z1 = -cz * COLUMN_LENGTH + TILE_PITCH, z0 = z1 - COLUMN_LENGTH - TILE_PITCH;
+      const bounds = new BoundingInfo(new Vector3(x0, -1, z0), new Vector3(x1, 4, z1));
       b = new ThinBatch(this.scene, `tiles|${id}`, detailed, bounds, this, farm);
       b.setVisible(!this.far);
       if (castShadows) {

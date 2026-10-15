@@ -1,26 +1,23 @@
 import { CreateGroundVertexData, DynamicTexture, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
-import { ISLAND_SIZE, PARCEL_DIM, parcelCenter, QualityPreset, TILE_PITCH, TILE_SIZE } from '../config';
+import { COLUMN_LENGTH, ISLAND_SIZE, QualityPreset, TILE_PITCH } from '../config';
 import { hex, mulberry } from './geometry';
 import { bushKit, buildButterflies, flowerKit, grassKit, rockKit, roundTree, pineTree } from './kits';
 import { MaterialLibrary } from './materials';
 import { artUrl } from '../art';
 
 /**
- * The farm lies on one endless meadow. Parcels (4x4 tiles each) sit edge to
- * edge on the parcel grid, each opened one on a pad of light earth so the 4x4
- * groups still read; the parcel to come is overgrown with bushes and
- * the wild land around the farm carries trees, bushes, flowers and rocks.
+ * The farm lies on one endless meadow: a block of tiles growing column by
+ * column toward -x. Grass tufts, flowers and rocks (and optionally trees and
+ * bushes) are scattered around the block, never on it.
  */
 
-const ISLAND_CORNER = 1.1;
-const TILES_HALF = (PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE)) / 2;
 /** Size of the meadow mesh; it follows the camera, snapped to the texture period. */
 const GROUND_SIZE = 1200;
-/** Wild parcels beyond the one to come that get scenery. */
-const WILD_RING = 16;
-/** Light-earth pad under opened parcels (off: tiles sit straight on the meadow). */
+/** How far around the farm block the meadow decor reaches. */
+const DECOR_MARGIN = 28;
+/** Light-earth pad under the farm block (off: tiles sit straight on the meadow). */
 const SHOW_PLOT_PAD = false;
-/** Trees and bushes on the wild land and the parcel to come (off: open meadow). */
+/** Trees and bushes around the farm (off: open meadow). */
 const SHOW_TREES = false;
 
 type Placement = { x: number; y: number; z: number; s: number; yaw: number };
@@ -164,7 +161,7 @@ export class World {
     this.flies = buildButterflies(scene, 5);
   }
 
-  /** Parcels 0..active-1 hold tiles; parcel `active` is the overgrown one to come. */
+  /** Columns 0..active-1 hold tiles (the last one being filled). */
   setParcels(active: number) {
     if (active === this.active) return;
     this.active = active;
@@ -178,44 +175,37 @@ export class World {
     const trees: Placement[][] = [[], [], []];
     const rocks: Placement[] = [];
     const pads: Placement[] = [];
-    const half = ISLAND_SIZE / 2 - 0.3;
-    const active = this.active;
-    for (let k = 0; k <= active + WILD_RING; k++) {
-      const { x: ox, z: oz } = parcelCenter(k);
-      const r = mulberry(1000 + k * 77);
-      const opened = k < active, next = k === active, wild = k > active;
-      if (opened && SHOW_PLOT_PAD) pads.push({ x: ox, y: 0, z: oz, s: 1, yaw: 0 });
-      const inBorder = (x: number, z: number) => Math.max(Math.abs(x), Math.abs(z)) > TILES_HALF + 0.12;
-      const inside = (x: number, z: number) => {
-        const [rx, rz] = roundCorner(x, z, half, ISLAND_CORNER - 0.3);
-        return Math.abs(rx - x) < 1e-6 && Math.abs(rz - z) < 1e-6;
-      };
-      // opened parcels keep their tiles clear: decor only on the grass border
-      const spot = () => {
-        for (let t = 0; t < 30; t++) {
-          const x = (r() * 2 - 1) * half, z = (r() * 2 - 1) * half;
-          if (!inside(x, z)) continue;
-          if (opened && !inBorder(x, z)) continue;
-          return [x, z] as const;
+    const cols = Math.max(1, this.active);
+    // the farm block (columns 0..cols-1, growing toward -x) stays clear of decor
+    const half = TILE_PITCH / 2 + 0.25;
+    const farm = { x0: -(cols - 1) * TILE_PITCH - half, x1: half, z0: -(COLUMN_LENGTH - TILE_PITCH) - half, z1: half };
+    if (SHOW_PLOT_PAD) pads.push({ x: (farm.x0 + farm.x1) / 2, y: 0, z: (farm.z0 + farm.z1) / 2, s: 1, yaw: 0 });
+    const M = DECOR_MARGIN;
+    const cell = ISLAND_SIZE;
+    for (let cx = Math.floor((farm.x0 - M) / cell); cx <= Math.ceil((farm.x1 + M) / cell); cx++)
+      for (let cz = Math.floor((farm.z0 - M) / cell); cz <= Math.ceil((farm.z1 + M) / cell); cz++) {
+        // seeded per meadow cell, so decor stays put as the farm grows
+        const r = mulberry(1000 + cx * 7919 + cz * 104729);
+        const spot = () => {
+          for (let t = 0; t < 20; t++) {
+            const x = (cx + r()) * cell, z = (cz + r()) * cell;
+            if (x > farm.x0 && x < farm.x1 && z > farm.z0 && z < farm.z1) continue;
+            return [x, z] as const;
+          }
+          return null;
+        };
+        const put = (list: Placement[], y: number, s: number) => {
+          const p = spot();
+          if (p) list.push({ x: p[0], y, z: p[1], s, yaw: r() * 6.28 });
+        };
+        for (let i = 0; i < 40; i++) put(grass[i % 2], 0, 0.5 + r() * 0.35);
+        for (let i = 0; i < 12; i++) put(flowers[Math.floor(r() * flowers.length)], 0, 0.9 + r() * 0.5);
+        for (let i = 0; i < 2; i++) put(rocks, -0.04, 0.2 + r() * 0.25);
+        if (SHOW_TREES) {
+          for (let i = 0; i < 3; i++) put(bushes[Math.floor(r() * bushes.length)], 0, 0.7 + r() * 0.5);
+          for (let i = 0; i < 2; i++) put(trees[Math.floor(r() * trees.length)], 0, 0.8 + r() * 0.5);
         }
-        return null;
-      };
-      const put = (list: Placement[], y: number, s: number, p = spot()) => p && list.push({ x: ox + p[0], y, z: oz + p[1], s, yaw: r() * 6.28 });
-      if (!opened) {
-        for (let i = 0; i < 60; i++) put(grass[i % 2], 0, 0.5 + r() * 0.35);
-        for (let i = 0; i < 20; i++) put(flowers[Math.floor(r() * flowers.length)], 0, 0.9 + r() * 0.5);
       }
-      for (let i = 0; i < (opened ? 2 : 3); i++) put(rocks, -0.04, (opened ? 0.18 : 0.25) + r() * 0.2);
-      if (next && SHOW_TREES) {
-        const bushSpots: Array<[number, number]> = [[half - 0.4, half - 0.4], [half - 0.3, 0.6], [-1.2, half - 0.3], [half - 0.5, -half + 0.6]];
-        for (let i = 0; i < 6; i++) bushSpots.push([(r() * 2 - 1) * (TILES_HALF - 0.4), (r() * 2 - 1) * (TILES_HALF - 0.4)]);
-        bushSpots.forEach(([bx, bz], i) => bushes[(i + k) % bushes.length].push({ x: ox + bx, y: 0, z: oz + bz, s: 0.75 + r() * 0.4, yaw: r() * 6.28 }));
-      }
-      if (wild && SHOW_TREES) {
-        for (let i = 0; i < 4; i++) put(bushes[Math.floor(r() * bushes.length)], 0, 0.7 + r() * 0.5);
-        for (let i = 0; i < 2 + Math.floor(r() * 3); i++) put(trees[Math.floor(r() * trees.length)], 0, 0.8 + r() * 0.5);
-      }
-    }
     this.scatter = [
       ...this.grassMeshes.map((mesh, i) => ({ mesh, items: grass[i], limit: () => Math.floor(this.quality.grassCount / 2) })),
       ...this.flowerMeshes.map((mesh, i) => ({ mesh, items: flowers[i], limit: () => Math.floor(this.quality.flowerCount / this.flowerMeshes.length) })),

@@ -10,12 +10,8 @@ const CORNER = 0.22;
 /** Heights of the flat layers: wild grass / soil, then the crop sprite above it. */
 const BED_Y = 0.02;
 const CROP_Y = 0.05;
-/**
- * Crop sprites are drawn larger than their tile and nudged up the screen, so tall
- * plants spill over the tile's top edge like in hand-drawn farm games.
- */
-const CROP_SPRITE = TILE_SIZE * 1.2;
-const CROP_NUDGE_Z = TILE_SIZE * 0.08;
+/** Crop sprites stand up facing the camera and may spill over neighbouring tiles. */
+const CROP_SPRITE = TILE_SIZE * 1.25;
 
 // ------------------------------------------------------------------ templates
 
@@ -85,6 +81,7 @@ export interface TileContext {
 const NO_ROTATION = Quaternion.Identity();
 const tmpMatrix = new Matrix();
 const tmpPos = new Vector3();
+const tmpScale = new Vector3();
 
 /**
  * Visual state of one tile; diffed against TileState every tick. Owns no scene
@@ -124,12 +121,13 @@ export class TileView {
   }
 
   private applyCrop() {
-    this.cropBatch?.set(this.cropHandle, this.compose(this.cropScale, this.cropY + this.cropBias, CROP_NUDGE_Z));
+    this.cropBatch?.set(this.cropHandle, this.composeCrop());
   }
 
-  /** Lower rows sit a hair higher, so a plant overlapping the tile above is drawn in front of it. */
-  private get cropBias() {
-    return -this.z * 0.0004;
+  /** Upright crop quads scale uniformly (squash effects use the x part of cropScale). */
+  private composeCrop() {
+    tmpScale.setAll(this.cropScale.x);
+    return this.compose(tmpScale, this.cropY);
   }
 
   dispose() {
@@ -186,7 +184,7 @@ export class TileView {
     if (crop) {
       const sprite = () => this.ctx.sprites.crop(crop, stage, CROP_SPRITE);
       this.cropBatch = this.ctx.batches.get(`crop:${crop}:${stage}`, this.x, this.z, () => ({ detailed: sprite(), simple: sprite() }), false);
-      this.cropBatch.add(this.cropHandle, this.compose(this.cropScale, this.cropY + this.cropBias, CROP_NUDGE_Z));
+      this.cropBatch.add(this.cropHandle, this.composeCrop());
     }
     const ripe = stage === 4 && crop !== null;
     this.ctx.sparkles.set(this.g, ripe ? this.center : null);

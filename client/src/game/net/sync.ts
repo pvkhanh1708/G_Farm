@@ -90,7 +90,8 @@ class Sync {
     const mergeable = last && (this.queue.length > 1 || !this.busy);
     if (mergeable && last.type === 'harvest' && a.type === 'harvest') last.tiles.push(...a.tiles);
     else if (mergeable && last.type === 'plant' && a.type === 'plant' && last.crop === a.crop) last.tiles.push(...a.tiles);
-    else this.queue.push(a.type === 'harvest' || a.type === 'plant' ? { ...a, tiles: [...a.tiles] } : a);
+    else if (mergeable && last.type === 'dig' && a.type === 'dig') last.tiles.push(...a.tiles);
+    else this.queue.push(a.type === 'harvest' || a.type === 'plant' || a.type === 'dig' ? { ...a, tiles: [...a.tiles] } : a);
     // let a burst of taps (harvest-all ripple, quick sowing) collect before sending
     setTimeout(() => void this.pump(), 120);
   }
@@ -101,6 +102,8 @@ class Sync {
         return api('POST', '/farm/plant', { tiles: a.tiles, crop: a.crop });
       case 'harvest':
         return api('POST', '/farm/harvest', { tiles: a.tiles });
+      case 'dig':
+        return api('POST', '/farm/dig', { tiles: a.tiles });
       case 'sell':
         return api('POST', '/farm/sell', { crop: a.crop, qty: a.qty });
       case 'unlock':
