@@ -54,12 +54,13 @@ php artisan serve                                   # API tại http://127.0.0.1
 cd client
 npm install
 npm run dev          # http://localhost:5173 — Vite chuyển /api/* sang 127.0.0.1:8000/*
-npm run build        # bản production -> client/dist
+npm run build        # bản production -> game/ (được commit vào git, xem DEPLOY.md)
 npm run preview      # chạy thử bản production tại http://localhost:4173 (cũng proxy /api)
 ```
 
 Triển khai lên server (nongtrai.io.vn + api.nongtrai.io.vn): xem **[DEPLOY.md](DEPLOY.md)**.
 `npm run build` nhúng địa chỉ API từ `client/.env.production`; khi chạy local bằng `npm run dev` thì dùng proxy `/api`.
+Sửa `client/` hoặc `shared/` thì **build lại và commit cả `game/`** trước khi push: hosting không có Node, `git pull` lấy luôn bản build.
 
 Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chili` để lọc), `?offline` chơi không cần server.
 Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
@@ -122,6 +123,10 @@ Kiểm thử: `cd server && php artisan test` (9 test API trên database MySQL r
 ## Cấu trúc
 
 ```
+.htaccess                (hosting) web chỉ thấy game/ và api/, chặn phần còn lại
+game/                    bản build của game (commit sẵn), thư mục web của nongtrai.io.vn
+api/                     thư mục public của Laravel, thư mục web của api.nongtrai.io.vn
+deploy.sh                cập nhật trên server (composer, migrate, cache; hook sau git pull)
 shared/economy.json      số liệu kinh tế dùng chung client + server
 server/                  Laravel 12
   app/Game/Economy.php     đọc economy.json + công thức cấp / giá đất

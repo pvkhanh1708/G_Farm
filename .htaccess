@@ -1,0 +1,20 @@
+# Repo root = document root of the game site (public_html). Only two things are served:
+#   /api/...  -> Laravel's public dir (also the api subdomain's own document root)
+#   anything else -> the committed game build in game/
+# Source code, server/.env, .git etc. are never reachable: their URLs map into game/ and 404.
+Options -Indexes
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^\.well-known/ - [L]
+  RewriteRule ^api(/|$) - [L]
+  RewriteCond %{REQUEST_URI} !^/game/
+  RewriteRule ^(.*)$ game/$1 [L]
+</IfModule>
+
+# belt and braces if mod_rewrite is ever off
+<IfModule !mod_rewrite.c>
+  Require all denied
+</IfModule>
+RedirectMatch 404 /\.(git|env)

@@ -1,1 +1,3 @@
 *.sh text eol=lf
+# committed build: keep bytes exactly as Vite wrote them
+game/** -text

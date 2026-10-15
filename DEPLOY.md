@@ -1,228 +1,147 @@
-# Triển khai lên Hostinger
+# Triển khai lên Hostinger (Web Hosting + SSH)
 
-| Site | Chứa gì | Thư mục web (`public_html`) trỏ tới |
-|---|---|---|
-| `nongtrai.io.vn` | Game (file tĩnh build từ `client/`) | bản build `client/dist`, upload từ máy bạn |
-| `api.nongtrai.io.vn` | Laravel API (`server/`) | `~/nongtrai/server/public` (symlink) |
+Hosting không có Node.js nên game được build sẵn trên máy dev và commit vào `game/`;
+server chỉ cần `php84`, `composer84`, MySQL và git.
 
-Code được clone vào `~/nongtrai`, **ngoài** `public_html`, để `.env`, `vendor/`, mã nguồn không bao giờ
-truy cập được từ web. Cả repo phải nằm chung một chỗ vì API đọc `shared/economy.json` cạnh thư mục `server/`.
+Cả repo được clone thẳng vào thư mục web của game. Sau đó **chỉ cần `git pull`** là cả game lẫn API được cập nhật.
 
-Hướng dẫn này cho gói **Web/Cloud Hosting dùng hPanel** (Premium, Business, Cloud — cần có SSH).
-Nếu bạn dùng **Hostinger VPS**, xem [Phụ lục: VPS](#phụ-lục-vps-ubuntu--nginx).
+```
+~/domains/api.nongtrai.io.vn/public_html/     ← thư mục web của nongtrai.io.vn = gốc repo
+├── .htaccess        chỉ cho web thấy game/ và api/, chặn mọi thứ khác (mã nguồn, .env, .git…)
+├── game/            bản build của game (đã build sẵn trong git, hosting không cần Node)
+├── api/             thư mục web của api.nongtrai.io.vn (index.php của Laravel)
+├── server/          mã Laravel + server/.env (không truy cập được từ web)
+├── shared/          economy.json dùng chung game + API
+└── client/          mã nguồn game (chỉ dùng trên máy dev)
+```
+
+| Domain | Thư mục web trong hPanel |
+|---|---|
+| `nongtrai.io.vn` | `~/domains/api.nongtrai.io.vn/public_html` (gốc repo) |
+| `api.nongtrai.io.vn` | `~/domains/api.nongtrai.io.vn/public_html/api` |
+
+> Đường dẫn trên lấy theo bạn mô tả. Nếu hPanel ghi khác (vd. `~/domains/nongtrai.io.vn/public_html`), cứ thay
+> đúng đường dẫn đó vào các lệnh bên dưới. Điều kiện duy nhất: thư mục của API phải là thư mục con `api/`
+> nằm trong thư mục web của game.
+
+Đã kiểm tra bố cục này trên Apache (LiteSpeed của Hostinger đọc `.htaccess` giống Apache): game chạy ở `/`,
+API chạy ở subdomain, còn `server/.env`, `.git/config`, `shared/`, `client/src/…`, `README.md`… đều trả 404.
 
 ---
 
-## 1. Thiết lập trong hPanel
+## Cài đặt lần đầu
 
-1. **PHP 8.4 cho site API:** Websites → `api.nongtrai.io.vn` → Advanced → **PHP Configuration** → chọn **8.4**.
-2. **Bật SSH:** Advanced → **SSH Access** → Enable. Ghi lại IP, port (thường là **65002**) và username (`u123456789`).
-3. **Database:** Databases → **Management** → tạo database + user. Hostinger tự thêm tiền tố, ví dụ
-   `u123456789_nongtrai` / `u123456789_nongtrai`. Ghi lại tên, user, mật khẩu.
-4. **SSL:** Security → **SSL** → cài SSL miễn phí cho **cả hai** site. Bắt buộc: trang game https không được gọi API http.
+### 1. hPanel
 
-## 2. Lấy code (qua SSH)
+1. **PHP 8.4:** Websites → Advanced → **PHP Configuration** → 8.4 (cho cả domain chính và subdomain `api`).
+2. **Subdomain:** Domains → **Subdomains** → `api.nongtrai.io.vn`, tick *Custom folder* → `public_html/api`.
+3. **SSH:** Advanced → **SSH Access** → Enable. Ghi lại IP, port (thường **65002**), username (`u123456789`).
+4. **Database:** Databases → **Management** → tạo database + user (vd. `u123456789_nongtrai`). Ghi lại mật khẩu.
+5. **SSL:** Security → **SSL** → cài SSL miễn phí cho **cả** `nongtrai.io.vn` và `api.nongtrai.io.vn`.
+
+### 2. Clone repo vào thư mục web
 
 ```bash
 ssh -p 65002 u123456789@IP_SERVER
-
-# PHP dòng lệnh có thể khác bản của website → kiểm tra
-php -v
-# nếu không phải 8.4, dùng đường dẫn đầy đủ (kiểm tra bằng: ls /opt/alt/php84/usr/bin/php)
-export PHP=/opt/alt/php84/usr/bin/php     # bỏ qua nếu `php -v` đã là 8.4
-alias php="${PHP:-php}"
 
 # deploy key cho repo private
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
 cat ~/.ssh/id_ed25519.pub
 ```
 
-GitHub → repo **G_Farm** → Settings → **Deploy keys** → Add deploy key → dán khóa trên (không cần quyền ghi).
+GitHub → repo **G_Farm** → Settings → **Deploy keys** → *Add deploy key* → dán khóa trên (không cần quyền ghi).
 
 ```bash
-git clone git@github.com:pvkhanh1708/G_Farm.git ~/nongtrai
+cd ~/domains/api.nongtrai.io.vn/public_html
+ls -A                       # xem có gì: thường là default.php của Hostinger, có thể có thư mục api/ trống
+rm -rf ./* ./.[!.]*         # git clone cần thư mục rỗng — chỉ chạy khi chắc chắn không còn gì cần giữ
+git clone git@github.com:pvkhanh1708/G_Farm.git .
 ```
 
-## 3. Cài API
+### 3. Cấu hình API
 
 ```bash
-cd ~/nongtrai/server
-php $(command -v composer) install --no-dev --optimize-autoloader
-cp .env.production.example .env
-nano .env
+cp server/.env.production.example server/.env
+nano server/.env
 ```
 
-Sửa trong `.env`:
+Sửa các dòng:
 
 ```dotenv
-DB_HOST=localhost              # đúng như hPanel ghi (thường là localhost)
+DB_HOST=localhost                    # như hPanel ghi
 DB_DATABASE=u123456789_nongtrai
 DB_USERNAME=u123456789_nongtrai
-DB_PASSWORD=mật_khẩu_database
+DB_PASSWORD=mat_khau_database
 CORS_ALLOWED_ORIGINS=https://nongtrai.io.vn,https://www.nongtrai.io.vn
 ```
 
-Các dòng khác giữ nguyên (`APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://api.nongtrai.io.vn`).
+Giữ nguyên `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://api.nongtrai.io.vn`.
+
+### 4. Cài đặt + bật tự cập nhật
 
 ```bash
-php artisan key:generate
-php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan event:cache
-chmod -R 775 storage bootstrap/cache
+./deploy.sh --after-pull                          # composer84 install, migrate, cache
+php84 server/artisan key:generate --force
+./deploy.sh --after-pull                          # cache lại config có APP_KEY
+./deploy.sh --install-hook                        # từ giờ `git pull` tự chạy phần cập nhật API
 ```
 
-## 4. Trỏ site API vào Laravel
+`deploy.sh` dùng `php84` và `composer84` (PHP 8.4 bạn đã cấu hình trên Hostinger).
 
-Kiểm tra thư mục của site API trong File Manager. Thường là `~/domains/api.nongtrai.io.vn/public_html`.
-Nếu bạn tạo API dạng *subdomain* thì có thể là `~/domains/nongtrai.io.vn/public_html/api`; khi đó dùng đường dẫn đó
-ở lệnh dưới, và **đổi thư mục của subdomain** trong hPanel ra ngoài `public_html` của trang game, vì bước 5 sẽ ghi đè thư mục đó.
+### 5. Kiểm tra
 
 ```bash
-cd ~/domains/api.nongtrai.io.vn
-mv public_html public_html.bak                 # trang mặc định của Hostinger
-ln -s ~/nongtrai/server/public public_html
+curl https://api.nongtrai.io.vn/up                                                  # 200
+curl -X POST -H "Accept: application/json" https://api.nongtrai.io.vn/auth/guest    # trả về token
+curl -o /dev/null -w "%{http_code}\n" https://nongtrai.io.vn/server/.env            # phải là 404
 ```
-
-Kiểm tra:
-
-```bash
-curl https://api.nongtrai.io.vn/up                                                     # 200
-curl -X POST -H "Accept: application/json" https://api.nongtrai.io.vn/auth/guest       # trả về token
-```
-
-<details>
-<summary>Nếu symlink không chạy (lỗi 403/404)</summary>
-
-Copy nội dung `public/` vào `public_html` và sửa đường dẫn trong `index.php`:
-
-```bash
-rm public_html && mkdir public_html
-cp -r ~/nongtrai/server/public/. public_html/
-sed -i "s#__DIR__.'/../#'$HOME/nongtrai/server/#g" public_html/index.php
-```
-
-Lặp lại 2 lệnh `cp` + `sed` sau mỗi lần cập nhật nếu `server/public` thay đổi (hiếm khi).
-</details>
-
-## 5. Upload game
-
-Server Hostinger không có Node, nên build ở **máy bạn**. Địa chỉ API đã được đặt sẵn trong
-`client/.env.production` (`VITE_API_URL=https://api.nongtrai.io.vn`).
-
-```bash
-cd client
-npm run package        # build + nén thành client/web.tgz (gồm cả .htaccess nén/cache)
-scp -P 65002 web.tgz u123456789@IP_SERVER:~/
-```
-
-Trên server:
-
-```bash
-cd ~/domains/nongtrai.io.vn/public_html
-rm -rf ./* ./.htaccess                       # xóa trang mặc định / bản cũ
-tar -xzf ~/web.tgz -C . && rm ~/web.tgz
-```
-
-(Không dùng SSH được thì: hPanel → File Manager → `public_html` → xóa file cũ → Upload `web.tgz` → Extract.)
 
 Mở **https://nongtrai.io.vn**: góc phải trên hiện **“Đã đồng bộ”** là xong.
 
-## 6. Cập nhật phiên bản mới
+---
 
-Trên máy bạn: `git push`. Sau đó:
+## Cập nhật phiên bản mới
 
-```bash
-# API (trên server)
-cd ~/nongtrai && PHP=/opt/alt/php84/usr/bin/php ./deploy.sh    # hoặc ./deploy.sh nếu `php` đã là 8.4
-```
-
-`deploy.sh`: `git pull` → `composer install` → `migrate --force` → cache config/route.
-
-Game có thay đổi thì làm lại **bước 5**. Người chơi chỉ cần tải lại trang (file `index.html` không bị cache,
-các file JS có hash trong tên nên luôn lấy đúng bản mới).
-
-Đổi giá / XP trong `shared/economy.json` thì phải làm **cả hai**: `deploy.sh` cho API và bước 5 cho game,
-để hai bên dùng cùng số liệu.
-
-## 7. Sự cố thường gặp
-
-| Hiện tượng | Nguyên nhân / cách sửa |
-|---|---|
-| Game hiện “Ngoại tuyến” | API không truy cập được: thử `curl https://api.nongtrai.io.vn/up`; mở F12 → Console/Network xem lỗi |
-| Console báo lỗi **CORS** | `CORS_ALLOWED_ORIGINS` thiếu đúng domain game (có `https://`, không có `/` cuối) → sửa `.env` → `php artisan config:cache` |
-| Console báo **Mixed Content** | Chưa bật SSL cho `api.nongtrai.io.vn` |
-| API trả **500** | Xem `~/nongtrai/server/storage/logs/laravel-*.log`. Hay gặp: thiếu `APP_KEY`, sai mật khẩu DB, quyền `storage/` |
-| API trả **401** dù đã có token | LiteSpeed không chuyển header `Authorization`: kiểm tra `public/.htaccess` còn dòng `HTTP_AUTHORIZATION` (có sẵn trong Laravel) |
-| `composer`/`artisan` báo cần PHP mới hơn | Đang dùng PHP dòng lệnh cũ → dùng `/opt/alt/php84/usr/bin/php` (bước 2) |
-| `Economy data not found` | Thiếu thư mục `shared/` cạnh `server/` → phải clone cả repo |
-| Sửa `.env` không có tác dụng | Chạy lại `php artisan config:cache` |
-
-## 8. Sao lưu
-
-Hostinger có sao lưu tự động (Files & Databases → Backups). Thêm bản sao lưu database riêng mỗi ngày:
-hPanel → Advanced → **Cron Jobs** → Custom, chạy lúc 3:00 mỗi ngày:
+**Trên máy dev:**
 
 ```bash
-mkdir -p ~/backups && mysqldump -u u123456789_nongtrai -p'MAT_KHAU' u123456789_nongtrai | gzip > ~/backups/nongtrai-$(date +\%F).sql.gz && find ~/backups -name 'nongtrai-*.sql.gz' -mtime +14 -delete
+cd client && npm run build        # chỉ cần khi sửa client/ hoặc shared/ — ghi bản build vào game/
+cd .. && git add -A && git commit -m "..." && git push
 ```
+
+**Trên server:**
+
+```bash
+cd ~/domains/api.nongtrai.io.vn/public_html && git pull
+```
+
+`git pull` cập nhật game ngay (file trong `game/`), rồi hook tự chạy: `composer install` → `migrate` → cache.
+Cuối cùng in ra phiên bản game / API đang chạy. Nếu bạn quên build, nó cảnh báo:
+`!! game/ is older than client/ or shared/` → build, commit, push rồi `git pull` lại.
+
+Người chơi chỉ cần tải lại trang (`index.html` không bị cache, file JS có hash trong tên nên luôn đúng bản mới).
+Không muốn dùng hook thì thay `git pull` bằng `./deploy.sh` (tự pull + cập nhật API).
 
 ---
 
-## Phụ lục: VPS (Ubuntu + Nginx)
+## Sự cố thường gặp
 
-Dùng khi chạy trên **Hostinger VPS** hoặc VPS khác (có quyền root).
+| Hiện tượng | Nguyên nhân / cách sửa |
+|---|---|
+| Game hiện “Ngoại tuyến” | API không truy cập được: `curl https://api.nongtrai.io.vn/up`; F12 → Console/Network xem lỗi |
+| Console báo lỗi **CORS** | `CORS_ALLOWED_ORIGINS` thiếu đúng domain game (có `https://`, không `/` cuối) → sửa `server/.env` → `./deploy.sh --after-pull` |
+| Console báo **Mixed Content** | Chưa bật SSL cho `api.nongtrai.io.vn` |
+| `api.nongtrai.io.vn` ra trang game hoặc 404 | Thư mục subdomain chưa phải `public_html/api` (hPanel → Subdomains) |
+| API trả **500** | Xem `server/storage/logs/laravel-*.log`. Hay gặp: thiếu `APP_KEY`, sai mật khẩu DB, quyền `storage/` |
+| API trả **401** dù có token | Kiểm tra `api/.htaccess` còn dòng `HTTP_AUTHORIZATION` (có sẵn) |
+| `git pull` báo *local changes would be overwritten* | Có file trên server bị sửa tay → `git status`, rồi `git checkout -- <file>` |
+| Sửa `server/.env` không có tác dụng | `./deploy.sh --after-pull` (cache lại config) |
 
-**Cài đặt:**
+## Sao lưu
 
-```bash
-sudo apt update
-sudo apt install -y software-properties-common git unzip nginx mysql-server
-sudo add-apt-repository -y ppa:ondrej/php && sudo apt update
-sudo apt install -y php8.4-fpm php8.4-cli php8.4-mysql php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-bcmath php8.4-intl
-curl -sS https://getcomposer.org/installer | php && sudo mv composer.phar /usr/local/bin/composer
-sudo mkdir -p /var/www/nongtrai && sudo chown $USER:www-data /var/www/nongtrai
-git clone git@github.com:pvkhanh1708/G_Farm.git /var/www/nongtrai
-```
-
-Database: `CREATE DATABASE nongtrai CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;` + user riêng.
-Cài API như bước 3 (thư mục `/var/www/nongtrai/server`, quyền `chown -R $USER:www-data storage bootstrap/cache`).
-Game: build như bước 5 rồi giải nén vào `/var/www/nongtrai/client/dist`.
-
-`/etc/nginx/sites-available/api.nongtrai.io.vn`:
-
-```nginx
-server {
-    listen 80;
-    server_name api.nongtrai.io.vn;
-    root /var/www/nongtrai/server/public;
-    index index.php;
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-    location ~ /\.(?!well-known).* { deny all; }
-}
-```
-
-`/etc/nginx/sites-available/nongtrai.io.vn`:
-
-```nginx
-server {
-    listen 80;
-    server_name nongtrai.io.vn www.nongtrai.io.vn;
-    root /var/www/nongtrai/client/dist;
-    gzip on;
-    gzip_types text/css application/javascript application/json image/svg+xml;
-    location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; }
-    location / { add_header Cache-Control "no-cache"; try_files $uri /index.html; }
-}
-```
+Hostinger có sao lưu tự động (Files → Backups). Thêm bản sao lưu database mỗi ngày:
+hPanel → Advanced → **Cron Jobs** → Custom, 3:00 hằng ngày:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/{api.nongtrai.io.vn,nongtrai.io.vn} /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d nongtrai.io.vn -d www.nongtrai.io.vn -d api.nongtrai.io.vn
+mkdir -p ~/backups && mysqldump -u u123456789_nongtrai -p'MAT_KHAU' u123456789_nongtrai | gzip > ~/backups/nongtrai-$(date +\%F).sql.gz && find ~/backups -name 'nongtrai-*.sql.gz' -mtime +14 -delete
 ```

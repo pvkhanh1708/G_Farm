@@ -1,0 +1,17 @@
+# Served by LiteSpeed/Apache on the game domain (copied into dist/ by Vite).
+Options -Indexes
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_headers.c>
+  # index.html: always revalidate so players get new builds right away
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # Vite output carries a content hash in the name (index-C5FnL_0g.js): cache forever
+  <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

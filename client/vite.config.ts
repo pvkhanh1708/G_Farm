@@ -18,6 +18,9 @@ export default defineConfig({
     proxy: apiProxy,
   },
   build: {
+    // committed to git at <repo>/game: the host has no Node, so `git pull` must bring a ready build
+    outDir: '../game',
+    emptyOutDir: true,
     target: 'es2020',
     chunkSizeWarningLimit: 4000,
     rollupOptions: {
