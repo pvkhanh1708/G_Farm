@@ -3,6 +3,7 @@ import { ISLAND_SIZE, PARCEL_DIM, parcelCenter, QualityPreset, TILE_PITCH, TILE_
 import { hex, mulberry } from './geometry';
 import { bushKit, buildButterflies, flowerKit, grassKit, rockKit, roundTree, pineTree } from './kits';
 import { MaterialLibrary } from './materials';
+import { artUrl } from '../art';
 
 /**
  * The farm lies on one endless meadow. Parcels (4x4 tiles each) sit edge to
@@ -54,7 +55,17 @@ function buildGround(scene: Scene, mats: MaterialLibrary) {
   vd.uvs = uvs;
   const m = new Mesh('meadow', scene);
   vd.applyToMesh(m);
-  m.material = mats.grassGround;
+  const url = artUrl('ground/meadow.png');
+  if (url) {
+    // hand-made tileable meadow: one repeat per 4 world units
+    const mat = new StandardMaterial('meadow-art', scene);
+    const tex = new Texture(url, scene);
+    tex.uScale = tex.vScale = ISLAND_SIZE / 4;
+    mat.diffuseTexture = tex;
+    mat.disableLighting = true;
+    mat.emissiveColor.set(1, 1, 1);
+    m.material = mat;
+  } else m.material = mats.grassGround;
   m.position.y = -0.01;
   m.receiveShadows = true;
   m.isPickable = false;
@@ -76,6 +87,19 @@ function buildPad(scene: Scene) {
   vd.uvs = uvs;
   const m = new Mesh('parcel-pad', scene);
   vd.applyToMesh(m);
+  const url = artUrl('ground/plot.png');
+  const mat = new StandardMaterial('pad-mat', scene);
+  mat.disableLighting = true;
+  mat.emissiveColor.set(1, 1, 1);
+  mat.backFaceCulling = false;
+  m.material = mat;
+  m.position.y = 0.002;
+  m.isPickable = false;
+  if (url) {
+    // hand-made tileable earth: one repeat per 3 world units (the pad UVs are world / 3)
+    mat.diffuseTexture = new Texture(url, scene);
+    return m;
+  }
   // speckled light earth, painted once and tiled
   const tex = new DynamicTexture('pad-tex', { width: 256, height: 256 }, scene, true);
   const ctx = tex.getContext() as unknown as CanvasRenderingContext2D;
@@ -96,15 +120,8 @@ function buildPad(scene: Scene) {
   }
   tex.update(true);
   tex.wrapU = tex.wrapV = Texture.WRAP_ADDRESSMODE;
-  const mat = new StandardMaterial('pad-mat', scene);
   // unlit: shows the texture as painted (same set-up as the tile sprites)
-  mat.disableLighting = true;
   mat.diffuseTexture = tex;
-  mat.emissiveColor.set(1, 1, 1);
-  mat.backFaceCulling = false;
-  m.material = mat;
-  m.position.y = 0.002;
-  m.isPickable = false;
   return m;
 }
 

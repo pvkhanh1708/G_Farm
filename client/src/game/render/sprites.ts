@@ -1,19 +1,24 @@
 import { Constants, DynamicTexture, Material, Mesh, Scene, StandardMaterial, Texture, VertexData } from '@babylonjs/core';
 import { CROP_ORDER, CropId, STAGE_COUNT } from '../config';
 import { mulberry } from './geometry';
+import { artUrl, loadImage } from '../art';
 
 /**
  * Top-down 2D art for the farm grid: soil tiles, wild-grass tiles and every
  * crop at every growth stage, painted procedurally with Canvas 2D into one
- * atlas texture (placeholder art, see ASSETS.md). Each sprite becomes a flat
+ * atlas texture (placeholder art, see ASSETS.md). A PNG in
+ * client/src/assets/sprites/ replaces its cell. Each sprite becomes a flat
  * quad template that tiles draw as thin instances.
  */
 
-const CELL = 160; // px per atlas cell (includes padding against mip bleeding)
+const CELL = 192; // px per atlas cell (includes padding against mip bleeding)
 const PAD = 8;
-const COLS = 12;
-const ATLAS = 2048;
-const S = CELL - PAD * 2; // drawable square
+const DRAW = CELL - PAD * 2; // drawable square in the atlas (176 px)
+const COLS = 21;
+const ATLAS_W = COLS * CELL; // 4032
+const ATLAS_H = 7 * CELL; // 1344: 4 tile cells + 25 crops x 5 stages = 129 cells
+/** Logical canvas units the procedural painters draw in (scaled to DRAW). */
+const S = 144;
 type Ctx = CanvasRenderingContext2D;
 
 // ------------------------------------------------------------------ paint helpers
@@ -904,33 +909,48 @@ export class SpriteLibrary {
   readonly cropMaterial: StandardMaterial;
 
   constructor(private scene: Scene) {
-    this.atlas = new DynamicTexture('farm-atlas', { width: ATLAS, height: ATLAS }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
+    this.atlas = new DynamicTexture('farm-atlas', { width: ATLAS_W, height: ATLAS_H }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
     this.atlas.hasAlpha = true;
     this.atlas.wrapU = this.atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
     const c = this.atlas.getContext() as unknown as Ctx;
-    c.clearRect(0, 0, ATLAS, ATLAS);
+    c.clearRect(0, 0, ATLAS_W, ATLAS_H);
     let i = 0;
-    const paint = (key: string, fn: (c: Ctx) => void) => {
+    const art: Array<[number, string]> = [];
+    const paint = (key: string, file: string, fn: (c: Ctx) => void) => {
       const x = (i % COLS) * CELL + PAD, y = Math.floor(i / COLS) * CELL + PAD;
       c.save();
       c.translate(x, y);
+      c.scale(DRAW / S, DRAW / S);
       c.beginPath();
       c.rect(-PAD / 2, -PAD / 2, S + PAD, S + PAD);
       c.clip();
       fn(c);
       c.restore();
+      const url = artUrl(file);
+      if (url) art.push([i, url]);
       this.cells.set(key, i++);
     };
-    paint('soil', paintSoil);
-    for (let v = 0; v < 3; v++) paint(`grass${v}`, (cc) => paintGrass(cc, v));
+    // file names: see client/src/assets/sprites/README.md
+    paint('soil', 'tiles/soil.png', paintSoil);
+    for (let v = 0; v < 3; v++) paint(`grass${v}`, `tiles/grass-${v + 1}.png`, (cc) => paintGrass(cc, v));
     for (const crop of CROP_ORDER)
       for (let s = 0; s < STAGE_COUNT; s++)
-        paint(`crop:${crop}:${s}`, (cc) => {
+        paint(`crop:${crop}:${s}`, `crops/${crop}/${crop}-${s}.png`, (cc) => {
           if (s === 0) paintSeeds(cc, SEED[crop]);
           else if (s === 1) paintSprout(cc, G.mid, G.light, 1);
           else PAINTERS[crop](cc, s);
         });
     this.atlas.update(true);
+    // hand-made PNGs replace their procedural cell as they load
+    void Promise.all(
+      art.map(async ([cell, url]) => {
+        const img = await loadImage(url);
+        if (!img) return;
+        const x = (cell % COLS) * CELL + PAD, y = Math.floor(cell / COLS) * CELL + PAD;
+        c.clearRect(x - PAD, y - PAD, CELL, CELL);
+        c.drawImage(img, x, y, DRAW, DRAW);
+      }),
+    ).then(() => art.length && this.atlas.update(true));
 
     const mat = (name: string, blend: boolean) => {
       const m = new StandardMaterial(name, scene);
@@ -960,8 +980,8 @@ export class SpriteLibrary {
     let mesh = this.cache.get(key);
     if (mesh) return mesh;
     const i = this.cells.get(key)!;
-    const x0 = ((i % COLS) * CELL + PAD) / ATLAS, x1 = x0 + S / ATLAS;
-    const yTop = (Math.floor(i / COLS) * CELL + PAD) / ATLAS, yBot = yTop + S / ATLAS;
+    const x0 = ((i % COLS) * CELL + PAD) / ATLAS_W, x1 = x0 + DRAW / ATLAS_W;
+    const yTop = (Math.floor(i / COLS) * CELL + PAD) / ATLAS_H, yBot = yTop + DRAW / ATLAS_H;
     // DynamicTexture is uploaded flipped: canvas top = v 1
     const vTop = 1 - yTop, vBot = 1 - yBot;
     const h = size / 2;

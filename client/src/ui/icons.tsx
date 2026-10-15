@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { CropId } from '../game/config';
+import { artUrl } from '../game/art';
 
 /** Hand-drawn vector icons in a chunky cartoon style (thick outline, gradients). */
 
@@ -721,6 +722,9 @@ const CROP_ICONS: Record<CropId, (p: P) => React.JSX.Element> = {
 };
 
 export function CropIcon({ crop, ...p }: P & { crop: CropId }) {
+  // a hand-made icon (assets/sprites/icons/<crop>.png) wins over the vector one
+  const url = artUrl(`icons/${crop}.png`);
+  if (url) return <img className={p.className} src={url} width={p.size ?? 48} height={p.size ?? 48} alt="" draggable={false} />;
   const Icon = CROP_ICONS[crop];
   return <Icon {...p} />;
 }

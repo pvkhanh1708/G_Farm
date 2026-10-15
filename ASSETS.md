@@ -13,9 +13,8 @@ Nông trại nhìn thẳng từ trên xuống. Ô đất, ô cỏ và cây trồ
 (`client/src/game/render/sprites.ts`) vào một atlas 2048 × 2048 dùng chung, mỗi hình một ô 160 × 160 px
 (vùng vẽ 144 × 144 px, viền 8 px chống lem). Mỗi hình hiển thị bằng một mặt phẳng 4 đỉnh.
 
-Thay bằng ảnh vẽ thật: vẽ mỗi giai đoạn cây thành ảnh PNG vuông, nền trong suốt, nhìn từ trên xuống, ô đất
-chiếm toàn khung, rồi ghép vào atlas theo đúng thứ tự trong `SpriteLibrary` (ô đất, 3 ô cỏ, rồi từng cây ×
-5 giai đoạn theo thứ tự cửa hàng). Có thể vẽ đè từng ô trong `SpriteLibrary` bằng `drawImage` thay cho hàm vẽ thủ tục.
+Thay bằng ảnh vẽ thật: thả PNG đúng tên vào `client/src/assets/sprites/` (quy tắc trong README ở thư mục đó), game tự dùng
+ảnh đó; thiếu file nào thì giữ hình tạm. Prompt để nhờ ChatGPT vẽ: [docs/ART-PROMPTS.md](docs/ART-PROMPTS.md).
 
 ## Danh sách
 
