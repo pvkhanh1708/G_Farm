@@ -9,7 +9,7 @@
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
   "orientation": "any",
-  "background_color": "#bfe8ff",
+  "background_color": "#a9daf3",
   "theme_color": "#7cc14f",
   "categories": ["games"],
   "icons": [

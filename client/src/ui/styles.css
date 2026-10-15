@@ -24,9 +24,14 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #cdebc9; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #a9daf3; } /* = scene sky colour */
 /* app-like: no pull-to-refresh / bounce, no long-press callouts or tap flashes */
 html, body { overscroll-behavior: none; position: fixed; inset: 0; }
+/* Home-screen app: iOS sizes 100% to the screen minus the (translucent) status bar while
+   still drawing from the very top, leaving a strip at the bottom. 100vh is the full screen there. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html, body, #root { height: 100vh; }
+}
 body { font-family: var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 input, textarea { user-select: text; -webkit-user-select: text; }
 button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
