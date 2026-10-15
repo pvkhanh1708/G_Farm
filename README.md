@@ -1,4 +1,4 @@
-# Farm Empire – Vertical Slice
+# Nông Trại Vui Vẻ
 
 Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước khi làm gameplay đầy đủ.
 Phạm vi: nông trại nhìn từ trên xuống (ô đất và cây dạng 2D trên đảo 3D), 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình

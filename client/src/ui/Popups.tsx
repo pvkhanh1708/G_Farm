@@ -567,7 +567,7 @@ export function InstallPopup({ onClose }: { onClose: () => void }) {
         <>
           Chọn <b>Thêm vào MH chính</b> <AddIcon />
         </>,
-        <>Bấm <b>Thêm</b>, rồi mở game từ biểu tượng Nông Trại</>,
+        <>Bấm <b>Thêm</b>, rồi mở game từ biểu tượng Nông Trại Vui Vẻ</>,
       ]
     : [
         <>Mở trang này bằng <b>Chrome</b></>,
@@ -575,7 +575,7 @@ export function InstallPopup({ onClose }: { onClose: () => void }) {
         <>
           Chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b>
         </>,
-        <>Mở game từ biểu tượng Nông Trại trên màn hình chính</>,
+        <>Mở game từ biểu tượng Nông Trại Vui Vẻ trên màn hình chính</>,
       ];
   return (
     <Modal title="Cài như ứng dụng" icon={<SproutIcon size={32} />} tone="green" onClose={onClose}>

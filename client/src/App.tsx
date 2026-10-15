@@ -386,7 +386,11 @@ export function App() {
         <div className={`loading ${progress.k >= 1 ? 'done' : ''}`}>
           <div className="loading-logo">
             <SproutIcon size={84} />
-            <h1>Farm Empire</h1>
+            <h1>
+              Nông Trại
+              <br />
+              Vui Vẻ
+            </h1>
           </div>
           <div className="loading-bar">
             <div className="loading-fill" style={{ width: `${Math.round(progress.k * 100)}%` }} />
