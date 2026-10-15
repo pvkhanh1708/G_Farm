@@ -922,16 +922,20 @@ export class SpriteLibrary {
   private sliced = new Set<string>();
   readonly tileMaterial: StandardMaterial;
   readonly cropMaterial: StandardMaterial;
+  /** Hand-made art still to draw into the atlas (see loadArt). */
+  private art: Array<{ key: string; cell: number; url: string; part?: number }> = [];
+  private ctx: Ctx;
 
   constructor(private scene: Scene) {
     this.atlas = new DynamicTexture('farm-atlas', { width: ATLAS_W, height: ATLAS_H }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
     this.atlas.hasAlpha = true;
     this.atlas.wrapU = this.atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
     const c = this.atlas.getContext() as unknown as Ctx;
+    this.ctx = c;
     c.clearRect(0, 0, ATLAS_W, ATLAS_H);
     let i = 0;
     /** atlas cell <- image url (+ which cell of a 3x2 crop sheet, if it is one) */
-    const art: Array<{ cell: number; url: string; part?: number }> = [];
+    const art = this.art;
     const paint = (key: string, file: string, fn: (c: Ctx) => void, sheet?: { url?: string; part: number; slice?: string }) => {
       const x = (i % COLS) * CELL + PAD, y = Math.floor(i / COLS) * CELL + PAD;
       c.save();
@@ -944,11 +948,11 @@ export class SpriteLibrary {
       c.restore();
       const url = artUrl(file);
       const slice = sheet?.slice ? artUrl(sheet.slice) : undefined;
-      if (url) art.push({ cell: i, url });
+      if (url) art.push({ key, cell: i, url });
       else if (slice) {
-        art.push({ cell: i, url: slice });
+        art.push({ key, cell: i, url: slice });
         this.sliced.add(key);
-      } else if (sheet?.url) art.push({ cell: i, url: sheet.url, part: sheet.part });
+      } else if (sheet?.url) art.push({ key, cell: i, url: sheet.url, part: sheet.part });
       this.cells.set(key, i++);
     };
     // file names: see client/src/assets/sprites/README.md
@@ -964,21 +968,6 @@ export class SpriteLibrary {
         }, { url: sheet, part: s, slice: `crops/${crop}/stage-${s}.png` });
     }
     this.atlas.update(true);
-    // hand-made PNGs replace their procedural cell as they load
-    void Promise.all(
-      art.map(async ({ cell, url, part }) => {
-        const img = await loadImage(url);
-        if (!img) return;
-        const x = (cell % COLS) * CELL + PAD, y = Math.floor(cell / COLS) * CELL + PAD;
-        c.clearRect(x - PAD, y - PAD, CELL, CELL);
-        if (part === undefined) c.drawImage(img, x, y, DRAW, DRAW);
-        else {
-          // one cell of a 3x2 crop sheet
-          const w = img.width / SHEET.cols, h = img.height / SHEET.rows;
-          c.drawImage(img, (part % SHEET.cols) * w, Math.floor(part / SHEET.cols) * h, w, h, x, y, DRAW, DRAW);
-        }
-      }),
-    ).then(() => art.length && this.atlas.update(true));
 
     const mat = (name: string, blend: boolean) => {
       const m = new StandardMaterial(name, scene);
@@ -1008,6 +997,43 @@ export class SpriteLibrary {
     // flat ground tiles never hide anything: crops dipping below the ground plane stay visible
     this.tileMaterial.disableDepthWrite = true;
     this.cropMaterial = mat('crop-sprites', true);
+  }
+
+  /**
+   * Draw the hand-made art over the procedural cells. `first` picks what the opening
+   * view needs (ground tiles + the crops already planted): awaited during loading. The
+   * rest is fetched afterwards, a few files at a time, so ~100 crop images do not hold
+   * up the first frame on a slow connection.
+   */
+  async loadArt(first: (key: string) => boolean, onlyFirst: boolean) {
+    const todo = this.art.filter((a) => first(a.key) === onlyFirst);
+    this.art = this.art.filter((a) => !todo.includes(a));
+    const c = this.ctx;
+    const draw = async ({ cell, url, part }: (typeof todo)[number]) => {
+      const img = await loadImage(url);
+      if (!img) return;
+      const x = (cell % COLS) * CELL + PAD, y = Math.floor(cell / COLS) * CELL + PAD;
+      c.clearRect(x - PAD, y - PAD, CELL, CELL);
+      if (part === undefined) c.drawImage(img, x, y, DRAW, DRAW);
+      else {
+        // one cell of a 3x2 crop sheet
+        const w = img.width / SHEET.cols, h = img.height / SHEET.rows;
+        c.drawImage(img, (part % SHEET.cols) * w, Math.floor(part / SHEET.cols) * h, w, h, x, y, DRAW, DRAW);
+      }
+    };
+    if (onlyFirst) await Promise.all(todo.map(draw));
+    else {
+      // background: 4 downloads at a time; re-upload the atlas every 20 cells (it is large)
+      let next = 0, done = 0;
+      const worker = async () => {
+        while (next < todo.length) {
+          await draw(todo[next++]);
+          if (++done % 20 === 0) this.atlas.update(true);
+        }
+      };
+      await Promise.all([0, 1, 2, 3].map(worker));
+    }
+    if (todo.length) this.atlas.update(true);
   }
 
   /**

@@ -178,6 +178,10 @@ export class Game {
 
     progress(0.65, 'Ươm cây trồng…');
     this.sprites = new SpriteLibrary(scene);
+    // art for the ground and the crops already planted now; the other crops after loading
+    const planted = new Set(Object.values(store.getState().plantings).map((p) => p.crop));
+    const firstArt = (key: string) => !key.startsWith('crop:') || planted.has(key.split(':')[1] as CropId);
+    await Promise.race([this.sprites.loadArt(firstArt, true), new Promise((r) => setTimeout(r, 4000))]);
     this.templates = buildTileTemplates(scene, this.sprites);
     this.templates.ring.setEnabled(false);
     this.batches = new TileBatches(scene);
@@ -199,7 +203,9 @@ export class Game {
 
     scene.onBeforeRenderObservable.add(() => this.beforeRender());
     scene.onAfterRenderObservable.add(() => this.frameListeners.forEach((f) => f()));
-    await scene.whenReadyAsync();
+    // never hang on the loading screen because one texture did not arrive
+    await Promise.race([scene.whenReadyAsync(), new Promise((r) => setTimeout(r, 6000))]);
+    void this.sprites.loadArt(firstArt, false);
     progress(1, 'Sẵn sàng!');
     this.engine.runRenderLoop(() => scene.render());
     window.addEventListener('resize', this.onResize);

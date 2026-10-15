@@ -38,9 +38,9 @@ client/src/assets/sprites/
 │   └── …
 └── ui/                     icon giao diện (thay icon vẽ bằng code)
     ├── barn.png            Kho          ├── coin.png        xu
-    ├── seeds.png           Hạt giống    ├── level-star.png  sao cấp độ / XP / bong bóng cây chín
+    ├── seeds.png           Hạt giống    ├── level-star.png  sao cấp độ / XP
     ├── plant.png           Trồng        ├── trophy.png      Xếp hạng
-    ├── harvest.png         Thu hoạch    ├── game-room.png   Phòng game
+    ├── harvest.png         Thu hoạch + bong bóng cây chín    ├── game-room.png   Phòng game
     ├── settings.png        Cài đặt      ├── egg.png, milk.png  trứng, sữa
     ├── quests.png, orders.png, upgrade.png  Nhiệm vụ, Đơn hàng, Nâng cấp
     └── chicken.png, cow.png  gà, bò (nút Chuồng, cửa sổ Chuồng trại)

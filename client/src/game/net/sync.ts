@@ -61,9 +61,13 @@ class Sync {
   private async ensureAccount() {
     if (token.get()) {
       try {
-        this.user = (await api<{ user: ApiUser }>('GET', '/me', undefined, 6000)).user;
+        // the farm is fetched alongside (see loadFarm) instead of after this answer
+        this.farmRequest = this.fetchFarm();
+        this.farmRequest.catch(() => {});
+        this.user = (await api<{ user: ApiUser }>('GET', '/me', undefined, 8000)).user;
         return;
       } catch (e) {
+        this.farmRequest = null;
         if (!(e instanceof ApiError && e.status === 401)) throw e;
         token.set(null); // revoked or from another database: start a new guest
       }
@@ -73,10 +77,19 @@ class Sync {
     this.user = res.user;
   }
 
-  private async loadFarm() {
+  private farmRequest: Promise<{ res: FarmResponse; rtt: number }> | null = null;
+
+  private async fetchFarm() {
     const t0 = performance.now();
-    const res = await api<FarmResponse>('GET', '/farm', undefined, 6000);
-    this.apply(res, performance.now() - t0);
+    const res = await api<FarmResponse>('GET', '/farm', undefined, 8000);
+    return { res, rtt: performance.now() - t0 };
+  }
+
+  private async loadFarm() {
+    const pending = this.farmRequest;
+    this.farmRequest = null;
+    const { res, rtt } = await (pending ?? this.fetchFarm());
+    this.apply(res, rtt);
   }
 
   /**
