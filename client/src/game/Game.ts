@@ -31,7 +31,7 @@ export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
 
 export type GameEvent =
   | { type: 'tileTap'; g: number; kind: TileKind }
-  | { type: 'harvested'; g: number; crop: CropId; amount: number; x: number; y: number; bulk: boolean }
+  | { type: 'harvested'; g: number; crop: CropId; amount: number; xp: number; x: number; y: number; bulk: boolean }
   | { type: 'ready'; g: number };
 
 export interface ScreenPoint {
@@ -378,7 +378,7 @@ export class Game {
       if (!res.ok) return;
       if (bulk) sfx.collect();
       const p = this.project(view.center.add(new Vector3(0, 0.8, 0)));
-      this.emit({ type: 'harvested', g, crop: res.value.crop, amount: res.value.amount, x: p.x, y: p.y, bulk });
+      this.emit({ type: 'harvested', g, crop: res.value.crop, amount: res.value.amount, xp: res.value.xp, x: p.x, y: p.y, bulk });
     });
     return true;
   }

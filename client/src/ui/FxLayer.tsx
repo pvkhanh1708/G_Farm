@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CropId } from '../game/config';
-import { CoinIcon, CropIcon } from './icons';
+import { CoinIcon, CropIcon, XpIcon } from './icons';
 
 /** Imperative bus so game events can trigger DOM effects without prop drilling. */
-type FlyKind = { type: 'crop'; crop: CropId } | { type: 'coin' };
+type FlyKind = { type: 'crop'; crop: CropId } | { type: 'coin' } | { type: 'xp' };
 
 interface FlyItem {
   id: number;
@@ -105,7 +105,7 @@ function Flyer({ item, done }: { item: FlyItem; done: (id: number) => void }) {
   }, [item, done]);
   return (
     <div ref={ref} className="fx-flyer">
-      {item.kind.type === 'coin' ? <CoinIcon size={34} /> : <CropIcon crop={item.kind.crop} size={40} />}
+      {item.kind.type === 'coin' ? <CoinIcon size={34} /> : item.kind.type === 'xp' ? <XpIcon size={30} /> : <CropIcon crop={item.kind.crop} size={40} />}
     </div>
   );
 }
@@ -130,6 +130,7 @@ function Floater({ item, done }: { item: FloatItem; done: (id: number) => void }
     <div ref={ref} className="fx-float">
       {item.kind?.type === 'coin' && <CoinIcon size={28} />}
       {item.kind?.type === 'crop' && <CropIcon crop={item.kind.crop} size={30} />}
+      {item.kind?.type === 'xp' && <XpIcon size={26} />}
       <span>{item.text}</span>
     </div>
   );

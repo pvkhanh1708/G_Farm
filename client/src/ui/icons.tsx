@@ -210,6 +210,140 @@ export function SunflowerIcon(p: P) {
   );
 }
 
+export function PotatoIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}p`} cx="0.4" cy="0.35" r="0.8">
+          <stop stopColor="#f0c890" />
+          <stop offset=".6" stopColor="#c9915a" />
+          <stop offset="1" stopColor="#8a5a2e" />
+        </radialGradient>
+      </defs>
+      <path d="M12 36c-3-12 8-22 22-22 13 0 21 8 19 19-2 12-13 18-24 18-9 0-15-6-17-15z" fill={`url(#${id}p)`} stroke={OUT} strokeWidth="3" />
+      <circle cx="24" cy="30" r="1.8" fill="#6b4220" />
+      <circle cx="38" cy="24" r="1.8" fill="#6b4220" />
+      <circle cx="42" cy="38" r="1.8" fill="#6b4220" />
+      <circle cx="28" cy="43" r="1.8" fill="#6b4220" />
+      <path d="M20 24c3-4 8-6 13-6" stroke="#fff" strokeOpacity=".6" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function ChiliIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <linearGradient id={`${id}c`} x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#ff7a5a" />
+          <stop offset=".5" stopColor="#f2281a" />
+          <stop offset="1" stopColor="#a80f0f" />
+        </linearGradient>
+      </defs>
+      <path d="M40 16c8 3 9 12 4 20C37 48 24 56 11 57c-3 0-3-3-1-4 12-5 19-13 22-24 2-8 3-14 8-13z" fill={`url(#${id}c)`} stroke={OUT} strokeWidth="3" />
+      <path d="M33 18c4-4 10-4 12-1l-3 4c-3-2-6-2-9-3z" fill="#5cb83a" stroke={OUT} strokeWidth="2.4" />
+      <path d="M41 16c0-5 2-9 6-10" stroke={OUT} strokeWidth="3.5" />
+      <path d="M41 16c0-5 2-9 6-10" stroke="#5cb83a" strokeWidth="1.6" />
+      <path d="M38 26c-1 6-4 12-9 17" stroke="#fff" strokeOpacity=".6" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function WatermelonIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M6 26h52c0 15-12 28-26 28S6 41 6 26z" fill="#3f8a2a" stroke={OUT} strokeWidth="3" />
+      <path d="M10 26h44c0 12-10 23-22 23S10 38 10 26z" fill="#f2f7d8" />
+      <path d="M13 26h38c0 10-8 20-19 20S13 36 13 26z" fill="#ff4a5a" />
+      {[[22, 32], [32, 36], [42, 32], [27, 40], [37, 40], [32, 30]].map(([x, y], i) => (
+        <ellipse key={i} cx={x} cy={y} rx="1.4" ry="2.2" fill="#2a1a12" />
+      ))}
+      <path d="M6 26h52" stroke={OUT} strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function PineappleIcon(p: P) {
+  const id = useId();
+  return (
+    <Svg {...p}>
+      <defs>
+        <radialGradient id={`${id}a`} cx="0.4" cy="0.4" r="0.7">
+          <stop stopColor="#ffe27a" />
+          <stop offset="1" stopColor="#e0901a" />
+        </radialGradient>
+      </defs>
+      <path d="M32 24c-3-8-9-12-14-12 4 3 7 7 9 13M32 24c3-8 9-12 14-12-4 3-7 7-9 13M32 24c0-8 1-14 0-20-3 6-4 13-2 20" fill="#5cb83a" stroke={OUT} strokeWidth="2.6" />
+      <ellipse cx="32" cy="42" rx="14" ry="18" fill={`url(#${id}a)`} stroke={OUT} strokeWidth="3" />
+      <path d="M21 32l20 20M19 42l14 14M27 26l18 18M43 32L23 52M45 42L31 56M37 26L19 44" stroke="#b8701a" strokeWidth="1.8" />
+    </Svg>
+  );
+}
+
+export function CottonIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M32 60V40" stroke={OUT} strokeWidth="5" />
+      <path d="M32 60V40" stroke="#8a5a2e" strokeWidth="2.4" />
+      <path d="M18 44l14-6 14 6-6 6H24z" fill="#8a5a2e" stroke={OUT} strokeWidth="2.6" />
+      <circle cx="22" cy="32" r="11" fill="#fff" stroke={OUT} strokeWidth="2.8" />
+      <circle cx="42" cy="32" r="11" fill="#fff" stroke={OUT} strokeWidth="2.8" />
+      <circle cx="32" cy="22" r="12" fill="#fff" stroke={OUT} strokeWidth="2.8" />
+      <circle cx="32" cy="35" r="10" fill="#f6f3ec" stroke={OUT} strokeWidth="2.4" />
+      <path d="M25 18c2-3 5-4 8-4" stroke="#d8d4cc" strokeWidth="2.4" />
+    </Svg>
+  );
+}
+
+export function LavenderIcon(p: P) {
+  const spike = (x: number, rot: number) => (
+    <g transform={`rotate(${rot} 32 58)`}>
+      <path d={`M${x} 58V24`} stroke="#5f8a4a" strokeWidth="2.6" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <ellipse key={i} cx={x} cy={10 + i * 5.5} rx={4.2 - i * 0.2} ry="3.6" fill={i % 2 ? '#8a5ad8' : '#a87ae8'} stroke={OUT} strokeWidth="1.8" />
+      ))}
+    </g>
+  );
+  return (
+    <Svg {...p}>
+      {spike(32, -22)}
+      {spike(32, 22)}
+      {spike(32, 0)}
+      <rect x="25" y="46" width="14" height="6" rx="3" fill="#b07ae8" stroke={OUT} strokeWidth="2.2" />
+    </Svg>
+  );
+}
+
+export function XpIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M32 5l7.6 15.4 17 2.5-12.3 12 2.9 16.9L32 43.8l-15.2 8 2.9-16.9-12.3-12 17-2.5z" fill="#5ec8ff" stroke="#1a4f80" strokeWidth="3.4" />
+      <path d="M24 22l5-1 3-6" stroke="#fff" strokeOpacity=".8" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+/** Level badge: star with the number inside. */
+export function LevelStar({ level, size = 54 }: { level: number; size?: number }) {
+  const id = useId();
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
+      <defs>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="0" y2="1">
+          <stop stopColor="#8fe0ff" />
+          <stop offset="1" stopColor="#2f8ad8" />
+        </linearGradient>
+      </defs>
+      <path d="M32 3l7.8 15.8 17.4 2.5-12.6 12.3 3 17.4L32 42.8l-15.6 8.2 3-17.4L6.8 21.3l17.4-2.5z" fill={`url(#${id}l)`} stroke="#1a4f80" strokeWidth="3.2" strokeLinejoin="round" />
+      <text x="32" y="33" textAnchor="middle" dominantBaseline="middle" fontSize={level >= 100 ? 15 : level >= 10 ? 19 : 22} fontWeight="900" fill="#fff" stroke="#1a4f80" strokeWidth="3" paintOrder="stroke">
+        {level}
+      </text>
+    </svg>
+  );
+}
+
 export function CoinIcon(p: P) {
   const id = useId();
   return (
@@ -380,6 +514,12 @@ const CROP_ICONS: Record<CropId, (p: P) => React.JSX.Element> = {
   eggplant: EggplantIcon,
   pumpkin: PumpkinIcon,
   sunflower: SunflowerIcon,
+  potato: PotatoIcon,
+  chili: ChiliIcon,
+  watermelon: WatermelonIcon,
+  pineapple: PineappleIcon,
+  cotton: CottonIcon,
+  lavender: LavenderIcon,
 };
 
 export function CropIcon({ crop, ...p }: P & { crop: CropId }) {

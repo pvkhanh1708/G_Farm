@@ -6,10 +6,10 @@ import { growthProgress, store, TileState } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
 import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './ui/Hud';
 import { SproutIcon } from './ui/icons';
-import { Inventory, SeedShop, Settings, UnlockPopup } from './ui/Popups';
+import { Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { TileOverlays } from './ui/TileOverlays';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -38,7 +38,7 @@ function hintFor(tiles: TileState[], coins: number, inv: number, tool: CropId | 
   const c = counts(tiles);
   if (c.ready) return c.ready > 1 ? `${c.ready} ô đã chín — bấm “Thu tất cả” hoặc chạm từng cây.` : 'Cây đã chín! Chạm vào cây để thu hoạch.';
   if (tool) return null;
-  if (!c.growing && coins >= store.nextUnlockCost()) return 'Bạn đủ xu để mở ô đất mới — chạm vào ô có biển “Mở khóa”.';
+  if (!c.growing && store.canUnlockByLevel() && coins >= store.nextUnlockCost()) return 'Bạn đủ xu để mở ô đất mới — chạm vào ô có biển “Mở khóa”.';
   if (c.empty && coins >= CROPS.carrot.seedPrice) return c.empty > 1 ? 'Chạm ô đất trống để gieo, hoặc bấm “Trồng tất cả”.' : 'Chạm vào ô đất trống để gieo hạt.';
   if (inv > 0) return 'Mở Kho để bán nông sản lấy xu.';
   if (c.growing) return 'Cây đang lớn… chờ một chút nhé!';
@@ -58,6 +58,16 @@ export function App() {
   const s = useGameState();
   const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
+  const [levelUp, setLevelUp] = useState<number | null>(null);
+  const seenLevel = useRef(s.level);
+  useEffect(() => {
+    // celebrate once per new level (several at once show the highest); a reset drops the level silently
+    if (s.level > seenLevel.current) {
+      sfx.unlock();
+      setLevelUp(s.level);
+    }
+    seenLevel.current = s.level;
+  }, [s.level]);
 
   useEffect(() => {
     try {
@@ -136,6 +146,8 @@ export function App() {
         }
       } else if (e.type === 'harvested') {
         fxBus.float(e.x, e.y - 20, `+${e.amount}`, { type: 'crop', crop: e.crop });
+        fxBus.float(e.x + 46, e.y + 14, `+${e.xp} XP`, { type: 'xp' });
+        if (!e.bulk) fxBus.fly({ type: 'xp' }, { x: e.x, y: e.y }, 'level', 2, () => bump('level'));
         fxBus.fly({ type: 'crop', crop: e.crop }, { x: e.x, y: e.y }, 'inventory', e.bulk ? 2 : Math.min(e.amount, 6), () => {
           if (!e.bulk) sfx.collect();
           bump('inventory');
@@ -172,7 +184,7 @@ export function App() {
       {game && !showcase && (
         <>
           <TileOverlays game={game} />
-          <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} />
+          <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} onLevel={() => (sfx.open(), setPopup({ type: 'levels' }))} />
           <BottomBar
             readyCount={c.ready}
             emptyCount={c.empty}
@@ -190,7 +202,7 @@ export function App() {
             onOverview={() => (sfx.tap(), setOverview(game.toggleOverview()))}
           />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
-          <Hint text={popup ? null : hintFor(tiles, s.coins, inv, tool)} />
+          <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}
           <div className="build-tag">Vertical Slice · đồ họa tạm</div>
         </>
@@ -216,6 +228,7 @@ export function App() {
         />
       )}
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
+      {popup?.type === 'levels' && <LevelsPopup onClose={close} />}
       {popup?.type === 'unlock' && (
         <UnlockPopup
           onClose={close}
@@ -245,6 +258,16 @@ export function App() {
             game.focusCurrent();
           }}
           onClose={close}
+        />
+      )}
+
+      {levelUp !== null && !showcase && (
+        <LevelUpPopup
+          level={levelUp}
+          onClose={() => {
+            sfx.close();
+            setLevelUp(null);
+          }}
         />
       )}
 

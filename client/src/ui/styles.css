@@ -346,3 +346,48 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .build-tag { display: none; }
   .fps { top: calc(140px + var(--safe-top)); }
 }
+
+/* ------------------------------------------------------------ level / xp */
+.level-badge {
+  position: relative; display: flex; align-items: center; gap: 4px; padding: 3px 14px 3px 2px; border-radius: 40px; cursor: pointer; font: inherit; color: inherit;
+  background: linear-gradient(#fffaf0, #ffe7b8); border: 3px solid var(--wood); box-shadow: 0 4px 0 var(--wood-dark), 0 8px 18px rgba(40, 60, 10, .25);
+}
+.level-badge > svg { margin: -10px -2px -10px -8px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
+.level-info { display: flex; flex-direction: column; gap: 4px; min-width: 176px; align-items: flex-start; }
+.level-info .xp-bar { align-self: stretch; }
+.level-info b { font-size: 18px; font-weight: 800; color: #1f5f99; line-height: 1; }
+.xp-bar { position: relative; height: 20px; border-radius: 10px; background: #5a3a1c; border: 2px solid #2a170a; overflow: hidden; }
+.xp-fill { position: absolute; inset: 0 auto 0 0; border-radius: 8px; background: linear-gradient(#9fe8ff, #34a0e8); box-shadow: inset 0 2px 0 rgba(255,255,255,.5); transition: width .5s ease-out; }
+.xp-bar span { position: relative; display: block; text-align: center; font-size: 12px; font-weight: 800; color: #fff; line-height: 16px; text-shadow: 0 1px 0 #1a3a5a, 1px 0 0 #1a3a5a, -1px 0 0 #1a3a5a, 0 -1px 0 #1a3a5a; }
+
+.seed-card.locked { background: #f1ece2; border-color: #d2c4a8; box-shadow: 0 4px 0 #bfae8c; }
+.seed-card.locked .seed-art { filter: grayscale(.85) brightness(1.05); opacity: .7; }
+.seed-card.locked .seed-name { color: #8a7a62; }
+.seed-lock { display: inline-flex; align-items: center; gap: 4px; justify-content: center; }
+.seed-xp { display: inline-flex; align-items: center; gap: 2px; color: #1f6fb0; }
+
+.sign.level { background: linear-gradient(#e6f3ff, #b8dcff); border-color: #2f6fb0; }
+.sign.level .sign-title, .sign.level .sign-price { color: #1a4f80; }
+
+.lvl-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: -4px 0 8px; }
+.lvl-hero svg { animation: lvlPop .7s cubic-bezier(.3,1.6,.5,1) both; filter: drop-shadow(0 6px 4px rgba(0,0,0,.2)); }
+.lvl-hero b { font-size: 30px; font-weight: 900; color: #1f5f99; }
+@keyframes lvlPop { from { transform: scale(.2) rotate(-40deg); opacity: 0; } }
+.lvl-rewards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.lvl-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 16px; background: #fffdf5; border: 3px solid #e4c48f; font-weight: 700; }
+.lvl-row .lvl-crops { display: flex; gap: 6px; flex-wrap: wrap; }
+.lvl-row small { display: block; font-size: 13px; color: var(--wood); font-weight: 600; }
+.lvl-table { width: 100%; border-collapse: collapse; font-size: 14px; font-weight: 700; }
+.lvl-table td { padding: 5px 6px; border-bottom: 2px dashed #ecd9b4; vertical-align: middle; }
+.lvl-table th { text-align: left; font-size: 12px; color: var(--wood); padding: 0 6px 4px; }
+.lvl-num { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 15px; background: linear-gradient(#8fe0ff, #2f8ad8); border: 2px solid #1a4f80; color: #fff; font-weight: 900; text-shadow: 0 1px 0 #1a4f80; }
+.lvl-table tr.done { opacity: .55; }
+.lvl-table tr.now td { background: #e6f3ff; }
+.lvl-table .crop-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; }
+
+@media (max-width: 560px) {
+  .level-info { min-width: 104px; }
+  .level-info b { font-size: 15px; }
+  .level-badge > svg { width: 48px; height: 48px; }
+  .xp-bar span { font-size: 10px; }
+}

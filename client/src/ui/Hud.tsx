@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { CROPS, CropId } from '../game/config';
+import { CROPS, CropId, xpToNext } from '../game/config';
 import type { Game } from '../game/Game';
 import { store } from '../game/state/store';
-import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, SeedBagIcon, SickleIcon, SproutIcon, ZoomIcon } from './icons';
+import { BarnIcon, CloseIcon, CoinIcon, CropIcon, GearIcon, LevelStar, SeedBagIcon, SickleIcon, SproutIcon, ZoomIcon } from './icons';
 
 export function useGameState() {
   return useSyncExternalStore(store.subscribe, store.getState);
@@ -34,19 +34,23 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span className="num">{shown.toLocaleString('vi-VN')}</span>;
 }
 
-export function TopBar({ onSettings }: { onSettings: () => void }) {
+export function TopBar({ onSettings, onLevel }: { onSettings: () => void; onLevel: () => void }) {
   const s = useGameState();
+  const need = xpToNext(s.level);
   return (
     <div className="topbar">
-      <div className="badge-farm">
-        <div className="badge-farm-icon">
-          <SproutIcon size={38} />
+      <button className="level-badge" onClick={onLevel} data-fx-target="level" aria-label={`Cấp ${s.level}`}>
+        <LevelStar level={s.level} size={58} />
+        <div className="level-info">
+          <b>Cấp {s.level}</b>
+          <div className="xp-bar">
+            <div className="xp-fill" style={{ width: `${Math.min(100, (s.xp / need) * 100)}%` }} />
+            <span>
+              {s.xp.toLocaleString('vi-VN')} / {need.toLocaleString('vi-VN')} XP
+            </span>
+          </div>
         </div>
-        <div className="badge-farm-text">
-          <b>Farm Empire</b>
-          <small>Nông trại của bạn</small>
-        </div>
-      </div>
+      </button>
       <div className="topbar-right">
         <div className="coinbar" data-fx-target="coins">
           <CoinIcon size={48} className="coinbar-icon" />

@@ -1,33 +1,51 @@
-export type CropId = 'carrot' | 'wheat' | 'tomato' | 'strawberry' | 'cabbage' | 'corn' | 'eggplant' | 'pumpkin' | 'sunflower';
+export type CropId =
+  | 'carrot' | 'wheat' | 'tomato' | 'strawberry' | 'potato' | 'cabbage' | 'corn' | 'chili'
+  | 'eggplant' | 'watermelon' | 'pumpkin' | 'pineapple' | 'cotton' | 'lavender' | 'sunflower';
 
 export interface CropDef {
   id: CropId;
   name: string;
   seedName: string;
+  /** Player level needed to buy the seed. */
+  unlockLevel: number;
   seedPrice: number;
   growSeconds: number;
   yield: number;
   sellPrice: number;
+  /** Experience per harvested tile. */
+  xp: number;
 }
 
 /** Growth stages: 0 seeded, 1 sprout, 2 young leaves, 3 mature leaves, 4 harvestable. */
 export const STAGE_COUNT = 5;
 export const STAGE_NAMES = ['Vừa gieo hạt', 'Nảy mầm', 'Lá non', 'Lá trưởng thành', 'Có thể thu hoạch'];
 
+/**
+ * Balanced with scratch economy sim (greedy active player): each newer crop
+ * earns ~17% more profit per minute and ~10% more XP per minute than the one
+ * before, but grows longer, so unlocks feel worth it without making fast
+ * crops useless for active play.
+ */
 export const CROPS: Record<CropId, CropDef> = {
-  carrot: { id: 'carrot', name: 'Cà rốt', seedName: 'Hạt cà rốt', seedPrice: 10, growSeconds: 20, yield: 4, sellPrice: 5 },
-  wheat: { id: 'wheat', name: 'Lúa mì', seedName: 'Hạt lúa mì', seedPrice: 18, growSeconds: 30, yield: 5, sellPrice: 6 },
-  tomato: { id: 'tomato', name: 'Cà chua', seedName: 'Hạt cà chua', seedPrice: 30, growSeconds: 45, yield: 6, sellPrice: 9 },
-  strawberry: { id: 'strawberry', name: 'Dâu tây', seedName: 'Hạt dâu tây', seedPrice: 40, growSeconds: 60, yield: 5, sellPrice: 14 },
-  cabbage: { id: 'cabbage', name: 'Bắp cải', seedName: 'Hạt bắp cải', seedPrice: 55, growSeconds: 75, yield: 3, sellPrice: 32 },
-  corn: { id: 'corn', name: 'Ngô', seedName: 'Hạt ngô', seedPrice: 70, growSeconds: 90, yield: 4, sellPrice: 30 },
-  eggplant: { id: 'eggplant', name: 'Cà tím', seedName: 'Hạt cà tím', seedPrice: 90, growSeconds: 120, yield: 5, sellPrice: 30 },
-  pumpkin: { id: 'pumpkin', name: 'Bí ngô', seedName: 'Hạt bí ngô', seedPrice: 150, growSeconds: 180, yield: 2, sellPrice: 130 },
-  sunflower: { id: 'sunflower', name: 'Hướng dương', seedName: 'Hạt hướng dương', seedPrice: 200, growSeconds: 240, yield: 3, sellPrice: 120 },
+  carrot: { id: 'carrot', name: 'Cà rốt', seedName: 'Hạt cà rốt', unlockLevel: 1, seedPrice: 7, growSeconds: 20, yield: 4, sellPrice: 4, xp: 1 },
+  wheat: { id: 'wheat', name: 'Lúa mì', seedName: 'Hạt lúa mì', unlockLevel: 2, seedPrice: 12, growSeconds: 30, yield: 5, sellPrice: 6, xp: 2 },
+  tomato: { id: 'tomato', name: 'Cà chua', seedName: 'Hạt cà chua', unlockLevel: 3, seedPrice: 22, growSeconds: 45, yield: 6, sellPrice: 9, xp: 3 },
+  strawberry: { id: 'strawberry', name: 'Dâu tây', seedName: 'Hạt dâu tây', unlockLevel: 5, seedPrice: 34, growSeconds: 60, yield: 5, sellPrice: 16, xp: 4 },
+  potato: { id: 'potato', name: 'Khoai tây', seedName: 'Hạt khoai tây', unlockLevel: 7, seedPrice: 49, growSeconds: 75, yield: 6, sellPrice: 20, xp: 5 },
+  cabbage: { id: 'cabbage', name: 'Bắp cải', seedName: 'Hạt bắp cải', unlockLevel: 9, seedPrice: 69, growSeconds: 90, yield: 3, sellPrice: 56, xp: 7 },
+  corn: { id: 'corn', name: 'Ngô', seedName: 'Hạt ngô', unlockLevel: 11, seedPrice: 110, growSeconds: 120, yield: 4, sellPrice: 66, xp: 11 },
+  chili: { id: 'chili', name: 'Ớt', seedName: 'Hạt ớt', unlockLevel: 13, seedPrice: 160, growSeconds: 150, yield: 8, sellPrice: 48, xp: 15 },
+  eggplant: { id: 'eggplant', name: 'Cà tím', seedName: 'Hạt cà tím', unlockLevel: 15, seedPrice: 220, growSeconds: 180, yield: 5, sellPrice: 107, xp: 19 },
+  watermelon: { id: 'watermelon', name: 'Dưa hấu', seedName: 'Hạt dưa hấu', unlockLevel: 18, seedPrice: 345, growSeconds: 240, yield: 2, sellPrice: 419, xp: 28 },
+  pumpkin: { id: 'pumpkin', name: 'Bí ngô', seedName: 'Hạt bí ngô', unlockLevel: 21, seedPrice: 505, growSeconds: 300, yield: 2, sellPrice: 613, xp: 39 },
+  pineapple: { id: 'pineapple', name: 'Dứa', seedName: 'Hạt dứa', unlockLevel: 24, seedPrice: 710, growSeconds: 360, yield: 2, sellPrice: 861, xp: 51 },
+  cotton: { id: 'cotton', name: 'Bông', seedName: 'Hạt bông', unlockLevel: 27, seedPrice: 1105, growSeconds: 480, yield: 6, sellPrice: 447, xp: 75 },
+  lavender: { id: 'lavender', name: 'Oải hương', seedName: 'Hạt oải hương', unlockLevel: 30, seedPrice: 1615, growSeconds: 600, yield: 5, sellPrice: 785, xp: 104 },
+  sunflower: { id: 'sunflower', name: 'Hướng dương', seedName: 'Hạt hướng dương', unlockLevel: 34, seedPrice: 2270, growSeconds: 720, yield: 3, sellPrice: 1838, xp: 137 },
 };
 
-/** Cheapest/fastest first; later crops earn more per minute but tie up the tile longer. */
-export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato', 'strawberry', 'cabbage', 'corn', 'eggplant', 'pumpkin', 'sunflower'];
+/** Unlock order (also shop order). */
+export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato', 'strawberry', 'potato', 'cabbage', 'corn', 'chili', 'eggplant', 'watermelon', 'pumpkin', 'pineapple', 'cotton', 'lavender', 'sunflower'];
 
 /**
  * The farm is a sequence of parcels (floating islands), each a 4x4 grid of
@@ -46,6 +64,32 @@ export const PARCEL_PITCH = ISLAND_SIZE + 1.5;
 
 export const START_UNLOCKED = 4;
 export const STARTING_COINS = 50;
+
+// ------------------------------------------------------------------ levels
+
+/** XP needed to go from `level` to `level + 1`. No level cap. */
+export function xpToNext(level: number): number {
+  return Math.round(10 * Math.pow(level, 2.35));
+}
+
+/** Tiles a player of this level may own: land opens up 4 tiles per level, forever. */
+export function tileCap(level: number): number {
+  return 6 + 4 * (level - 1);
+}
+
+/** Lowest level that allows owning `count` tiles. */
+export function levelForTiles(count: number): number {
+  return Math.max(1, Math.ceil((count - 6) / 4) + 1);
+}
+
+/** Coins granted on reaching `level`. */
+export function levelReward(level: number): number {
+  return 20 * level;
+}
+
+export function cropsUnlockedAt(level: number): CropId[] {
+  return CROP_ORDER.filter((c) => CROPS[c].unlockLevel === level);
+}
 
 /** Square spiral around the first parcel: (0,0), (1,0), (1,1), (0,1), (-1,1), ... */
 export function parcelGrid(k: number): { gx: number; gz: number } {
@@ -80,10 +124,10 @@ export function tileWorldPos(g: number): { x: number; z: number } {
   return { x: pc.x + (c - off) * TILE_PITCH, z: pc.z + (r - off) * TILE_PITCH };
 }
 
-/** Price of the next tile grows gently with the number already owned. */
+/** Price of the next tile: polynomial in tiles owned, so it keeps pace with income from bigger farms. */
 export function unlockCost(unlockedCount: number): number {
   const extra = Math.max(0, unlockedCount - START_UNLOCKED);
-  return Math.round((30 * Math.pow(1.09, extra)) / 10) * 10;
+  return Math.round((40 + 6 * Math.pow(extra, 2.15)) / 10) * 10;
 }
 
 export type Quality = 'low' | 'medium' | 'high';

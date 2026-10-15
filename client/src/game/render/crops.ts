@@ -37,6 +37,7 @@ const PAL = {
 const SEED_COLOR: Record<CropId, Color3> = {
   carrot: hex('#e8c48c'), wheat: hex('#f5cf5a'), tomato: hex('#fff0b8'), strawberry: hex('#ffe9a8'), cabbage: hex('#c9a46a'),
   corn: hex('#ffd23a'), eggplant: hex('#f2e2b0'), pumpkin: hex('#fff3d0'), sunflower: hex('#4a3a2a'),
+  potato: hex('#c9915a'), chili: hex('#fff0c0'), watermelon: hex('#3a2a1a'), pineapple: hex('#8a6a3a'), cotton: hex('#5a4a3a'), lavender: hex('#3a3040'),
 };
 
 const ico = (sub: number) => weld(CreateIcoSphereVertexData({ radius: 1, subdivisions: sub }));
@@ -571,10 +572,221 @@ function buildSunflower(g: GeoBuilder, stage: number) {
   SUN_SPOTS.forEach(([x, z, h], i) => sunPlant(g, x, z, h, stage, mulberry(910 + i * 31)));
 }
 
+// ------------------------------------------------------------------ potato
+
+const POTATO = { skin: hex('#c9915a'), skinDeep: hex('#8a5a2e'), eye: hex('#6b4220'), leafDeep: hex('#3f8a3a'), leafLight: hex('#9fd872') };
+
+function potatoTuber(g: GeoBuilder, x: number, z: number, rad: number, r: () => number) {
+  g.add(blob(1, 0.18, r() * 50, 2), tf([x, rad * 0.25, z], r() * 6, [rad * 1.3, rad * 0.85, rad], 0, (r() - 0.5) * 0.5), (l) => {
+    const eye = Math.sin(l.x * 9 + l.z * 4) * Math.sin(l.y * 8 - l.z * 6) > 0.85;
+    return eye ? POTATO.eye : mix(POTATO.skinDeep, POTATO.skin, Math.max(0, l.y) * 0.8 + 0.35);
+  });
+}
+
+function buildPotato(g: GeoBuilder, stage: number) {
+  if (early(g, stage, 'potato', [[-0.15, -0.08, 1.1], [0.18, 0.12, 1]], 1000)) return;
+  const r = mulberry(1010 + stage);
+  const ripe = stage === 4;
+  const deep = ripe ? mix(POTATO.leafDeep, hex('#8a9a3a'), 0.35) : POTATO.leafDeep;
+  if (stage === 2) return tomatoBush(g, 0.16, 2, 5, 0.2, r, deep, POTATO.leafLight);
+  tomatoBush(g, 0.36, 3, 6, 0.29, r, deep, ripe ? hex('#c8d878') : POTATO.leafLight);
+  if (stage === 3) {
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.6 + 0.3;
+      flower(g, Math.cos(a) * 0.17, 0.38 + (i % 2) * 0.04, Math.sin(a) * 0.17, r, hex('#e8d8ff'), hex('#ffffff'), hex('#ffd23a'), 1.1);
+    }
+    return;
+  }
+  const spots: Array<[number, number, number]> = [[0.34, -0.12, 0.11], [-0.32, 0.2, 0.1], [0.1, 0.38, 0.1], [-0.2, -0.34, 0.105], [0.38, 0.26, 0.085]];
+  spots.forEach(([x, z, rad]) => potatoTuber(g, x, z, rad, r));
+}
+
+// ------------------------------------------------------------------ chili
+
+function chiliPod(g: GeoBuilder, x: number, y: number, z: number, len: number, ripe: number, r: () => number) {
+  const vd = ico(2);
+  const p = vd.positions as number[];
+  for (let i = 0; i < p.length; i += 3) {
+    const t = (p[i + 1] + 1) / 2; // 0 tip, 1 shoulder
+    const k = 0.15 + 0.85 * Math.pow(t, 0.6);
+    p[i] = p[i] * k + 0.35 * (1 - t) * (1 - t); // hooked tip
+    p[i + 2] *= k;
+  }
+  const deep = mix(hex('#3f7f2a'), hex('#a80f0f'), ripe), base = mix(hex('#7cc04a'), hex('#ff2a1a'), ripe), hi = mix(hex('#d8f5a0'), hex('#ffb0a0'), ripe);
+  g.add(vd, tf([x, y - len, z], r() * 6, [len * 0.28, len, len * 0.28], (r() - 0.5) * 0.4, (r() - 0.5) * 0.4), glossy(deep, base, hi, 3));
+  g.add(lathe([[len * 0.09, 0], [len * 0.06, len * 0.25]], 5, true), tf([x, y - len * 0.08, z]), PAL.leafDeep);
+}
+
+function buildChili(g: GeoBuilder, stage: number) {
+  if (early(g, stage, 'chili', [[-0.16, -0.12, 1], [0.17, 0.14, 1]], 1100)) return;
+  const r = mulberry(1110);
+  if (stage === 2) return tomatoBush(g, 0.18, 2, 4, 0.17, r);
+  tomatoBush(g, stage === 4 ? 0.46 : 0.42, 3, 6, 0.24, r, hex('#2f7a2a'), hex('#9ee070'));
+  const pods: Array<[number, number, number]> = [[0.26, 0.36, -0.06], [-0.22, 0.4, 0.12], [0.04, 0.3, 0.27], [-0.1, 0.44, -0.24], [0.2, 0.46, 0.18], [-0.27, 0.3, -0.1], [0.12, 0.38, -0.25], [-0.05, 0.28, 0.02]];
+  if (stage === 3) {
+    for (let i = 0; i < 3; i++) flower(g, pods[i][0] * 0.9, pods[i][1] + 0.04, pods[i][2] * 0.9, r, hex('#ffffff'), hex('#f4fff0'), hex('#c8e070'), 1);
+    pods.slice(3, 6).forEach(([x, y, z]) => chiliPod(g, x, y, z, 0.1, 0, r));
+    return;
+  }
+  pods.forEach(([x, y, z], i) => chiliPod(g, x, y, z, 0.15, i === 7 ? 0.55 : 1, r));
+}
+
+// ------------------------------------------------------------------ watermelon
+
+function melon(g: GeoBuilder, x: number, z: number, rad: number, r: () => number) {
+  const yaw = r() * 6;
+  g.add(ico(3), tf([x, rad * 0.78, z], yaw, [rad * 1.25, rad * 0.9, rad]), (l) => {
+    const a = Math.atan2(l.y, l.z); // stripes run along the long (x) axis
+    const stripe = Math.sin(a * 5 + l.x * 0.8) > 0.2;
+    const c = stripe ? hex('#2f6e2a') : hex('#8fd068');
+    const spec = Math.max(0, l.y * 0.8 - 0.45);
+    return mix(l.y < -0.4 ? mix(c, hex('#e8e0a0'), 0.35) : c, Color3.White(), spec * 0.5);
+  });
+  g.add(lathe([[rad * 0.07, 0], [rad * 0.05, rad * 0.22]], 5, true), tf([x + Math.cos(yaw) * rad * 1.2, rad * 0.9, z - Math.sin(yaw) * rad * 1.2], 0, 1, 0.6), PAL.stem);
+}
+
+function buildWatermelon(g: GeoBuilder, stage: number) {
+  if (early(g, stage, 'watermelon', [[0, 0, 1.3]], 1200)) return;
+  const r = mulberry(1210);
+  if (stage === 2) return pumpkinVines(g, 4, 0.15, r);
+  pumpkinVines(g, 7, 0.19, r);
+  if (stage === 3) {
+    flower(g, -0.24, 0.1, 0.15, r, hex('#ffd21a'), hex('#fff27a'), hex('#e0a00a'), 1.3);
+    flower(g, 0.22, 0.1, -0.22, r, hex('#ffd21a'), hex('#fff27a'), hex('#e0a00a'), 1.2);
+    melon(g, 0.05, 0, 0.1, r);
+    return;
+  }
+  melon(g, 0.02, -0.02, 0.26, r);
+}
+
+// ------------------------------------------------------------------ pineapple
+
+function pineRosette(g: GeoBuilder, n: number, len: number, r: () => number, y = 0) {
+  for (let i = 0; i < n; i++) {
+    const yaw = (i / n) * Math.PI * 2 + (r() - 0.5) * 0.3;
+    const inner = i % 2;
+    g.add(
+      blade({ length: len * (inner ? 0.8 : 1) * (0.9 + r() * 0.2), width: 0.075, bend: 0.5, lean: inner ? 0.35 : 0.75, shape: 'taper', segments: 5, fold: 0.5, base: hex('#3f7a4a'), tip: hex('#a8d880') }),
+      tf([Math.sin(yaw) * 0.02, y, Math.cos(yaw) * 0.02], yaw),
+    );
+  }
+}
+
+function pineFruit(g: GeoBuilder, rad: number, y: number, ripe: number) {
+  const deep = mix(hex('#4f8a3a'), hex('#b8701a'), ripe), base = mix(hex('#9ccf5a'), hex('#ffc23a'), ripe);
+  g.add(ico(3), tf([0, y + rad * 1.3, 0], 0, [rad, rad * 1.35, rad]), (l) => {
+    const a = Math.atan2(l.z, l.x);
+    const u = a * 3 + l.y * 6, v = a * 3 - l.y * 6; // diamond lattice
+    const groove = Math.abs(Math.sin(u)) < 0.22 || Math.abs(Math.sin(v)) < 0.22;
+    const c = mix(base, hex('#fff2a0'), Math.max(0, -l.x * 0.4 + l.y * 0.2));
+    return groove ? deep : c;
+  });
+  // crown
+  for (let i = 0; i < 9; i++) {
+    const yaw = (i / 9) * Math.PI * 2;
+    g.add(blade({ length: rad * (1.1 + (i % 3) * 0.25), width: 0.035, bend: 0.3, lean: 0.15 + (i % 2) * 0.25, shape: 'taper', segments: 4, fold: 0.5, base: hex('#3f8a4a'), tip: hex('#b8e890') }), tf([0, y + rad * 2.5, 0], yaw));
+  }
+}
+
+function buildPineapple(g: GeoBuilder, stage: number) {
+  if (early(g, stage, 'pineapple', [[0, 0, 1.3]], 1300)) return;
+  const r = mulberry(1310);
+  if (stage === 2) return pineRosette(g, 10, 0.24, r);
+  pineRosette(g, 16, 0.38, r);
+  if (stage === 3) {
+    g.add(ico(2), tf([0, 0.16, 0], 0, [0.05, 0.07, 0.05]), hex('#e0567a'));
+    for (let i = 0; i < 6; i++) g.add(blade({ length: 0.06, width: 0.02, bend: 0.3, lean: 0.3, shape: 'taper', segments: 3, fold: 0.4, base: hex('#5f9a4a'), tip: hex('#c0e890') }), tf([0, 0.22, 0], i));
+    return;
+  }
+  pineFruit(g, 0.145, 0.06, 1);
+}
+
+// ------------------------------------------------------------------ cotton
+
+function cottonBoll(g: GeoBuilder, x: number, y: number, z: number, open: number, r: () => number) {
+  if (!open) {
+    g.add(ico(2), tf([x, y, z], r() * 6, [0.045, 0.055, 0.045]), hex('#7fb04a'));
+    return;
+  }
+  for (let i = 0; i < 4; i++) g.add(puffLeaf(0.05, 0.04, -0.3, hex('#6b4220'), hex('#a8743a')), aim(x, y - 0.01, z, (i / 4) * Math.PI * 2, -0.3));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    g.add(blob(1, 0.18, r() * 30, 2), tf([x + Math.cos(a) * 0.03, y + 0.035 + (i === 3 ? 0.03 : 0), z + Math.sin(a) * 0.03], r() * 6, 0.045), (l) => mix(hex('#e8e4dc'), Color3.White(), Math.max(0, l.y) * 0.8 + 0.2));
+  }
+}
+
+function cottonShrub(g: GeoBuilder, x: number, z: number, stage: number, r: () => number) {
+  const h = stage === 2 ? 0.16 : 0.42;
+  g.add(lathe([[0.028, 0], [0.02, h * 0.6], [0.012, h]], 6, true), tf([x, 0, z]), (l) => mix(hex('#7a4a2a'), hex('#5f8a3a'), l.y / h));
+  const n = stage === 2 ? 4 : 7;
+  for (let i = 0; i < n; i++) {
+    const yaw = i * 2.4 + r();
+    const y = h * (stage === 2 ? 0.8 : 0.3 + 0.6 * (i / n));
+    g.add(puffLeaf(0.13, 0.12, 0.15, hex('#2f7a3a'), jitter(hex('#8fd070'), 0.05, r)), aim(x + Math.sin(yaw) * 0.02, y, z + Math.cos(yaw) * 0.02, yaw, 0.3));
+  }
+  if (stage < 3) return;
+  const bolls: Array<[number, number, number]> = [[0.12, h * 0.95, 0.02], [-0.1, h * 0.8, 0.08], [0.03, h * 1.08, -0.09], [-0.06, h * 0.65, -0.12], [0.1, h * 0.6, 0.12]];
+  bolls.forEach(([bx, by, bz], i) => {
+    if (stage === 3 && i % 2) flower(g, x + bx, by, z + bz, r, hex('#fff4c8'), hex('#ffffff'), hex('#e8b0c8'), 1.2);
+    else cottonBoll(g, x + bx, by, z + bz, stage === 4 ? 1 : 0, r);
+  });
+}
+
+function buildCotton(g: GeoBuilder, stage: number) {
+  const spots: Array<[number, number]> = [[-0.2, 0.14], [0.2, -0.14]];
+  if (early(g, stage, 'cotton', spots.map(([x, z]) => [x, z, 1.1]), 1400)) return;
+  spots.forEach(([x, z], i) => cottonShrub(g, x, z, stage, mulberry(1410 + i * 7)));
+}
+
+// ------------------------------------------------------------------ lavender
+
+function lavSpike(len: number, rad: number, bloom: number): VertexData {
+  const vd = ico(2);
+  const p = vd.positions as number[];
+  const colors: number[] = [];
+  const base = mix(hex('#8aa070'), hex('#8a5ad8'), bloom), hi = mix(hex('#c0d8a0'), hex('#c8a8ff'), bloom), deep = mix(hex('#5f7a4a'), hex('#5a2ea0'), bloom);
+  for (let i = 0; i < p.length; i += 3) {
+    const t = (p[i + 1] + 1) / 2;
+    const whorl = 1 + 0.35 * Math.max(0, Math.sin(t * Math.PI * 7));
+    const taper = Math.sin(Math.PI * Math.min(1, 0.1 + t * 0.9)) ** 0.5;
+    p[i] *= rad * whorl * taper;
+    p[i + 2] *= rad * whorl * taper;
+    p[i + 1] = t * len;
+    const c = whorl > 1.2 ? mix(base, hi, p[i] < 0 ? 0.6 : 0.2) : deep;
+    colors.push(c.r, c.g, c.b, 1);
+  }
+  vd.colors = colors;
+  return vd;
+}
+
+function lavClump(g: GeoBuilder, x: number, z: number, stage: number, r: () => number) {
+  const yaw0 = r() * 6.28;
+  const n = stage === 2 ? 5 : 8;
+  for (let i = 0; i < n; i++)
+    g.add(blade({ length: (stage === 2 ? 0.13 : 0.17) * (0.8 + r() * 0.4), width: 0.03, bend: 0.7, lean: 0.35 + r() * 0.3, shape: 'taper', segments: 4, fold: 0.3, base: hex('#5f8a5a'), tip: hex('#b8d0a8') }), tf([x, 0, z], yaw0 + (i / n) * 6.28));
+  if (stage < 3) return;
+  const stalks = 5;
+  for (let s = 0; s < stalks; s++) {
+    const yaw = yaw0 + (s / stalks) * 6.28 + r() * 0.4;
+    const L = (stage === 3 ? 0.3 : 0.36) * (0.85 + r() * 0.3);
+    const lean = 0.08 + r() * 0.18, bend = 0.15;
+    g.add(blade({ length: L, width: 0.016, bend, lean, shape: 'strap', segments: 4, fold: 0, base: hex('#6f9a5a'), tip: hex('#8fb070') }), tf([x, 0, z], yaw));
+    const k = L / bend;
+    const ty = k * (Math.sin(lean + bend) - Math.sin(lean)), td = k * (Math.cos(lean) - Math.cos(lean + bend));
+    g.add(lavSpike(stage === 3 ? 0.1 : 0.14, 0.024, stage === 4 ? 1 : 0.25), chain(Matrix.RotationX(lean + bend), Matrix.RotationY(yaw), Matrix.Translation(x + Math.sin(yaw) * td, ty - 0.01, z + Math.cos(yaw) * td)));
+  }
+}
+
+function buildLavender(g: GeoBuilder, stage: number) {
+  const spots: Array<[number, number]> = [[0, 0], [-0.3, -0.24], [0.3, -0.2], [-0.26, 0.28], [0.28, 0.26]];
+  if (early(g, stage, 'lavender', spots.slice(1).map(([x, z]) => [x, z, 0.85]), 1500)) return;
+  spots.forEach(([x, z], i) => lavClump(g, x, z, stage, mulberry(1510 + i * 11)));
+}
+
 // ------------------------------------------------------------------ library
 
 /** Oversized on purpose: each tile should read as one chunky, juicy crop. */
-const CROP_SCALE: Record<CropId, number> = { carrot: 1.5, wheat: 1.35, tomato: 1.5, strawberry: 1.5, cabbage: 1.45, corn: 1.3, eggplant: 1.45, pumpkin: 1.4, sunflower: 1.3 };
+const CROP_SCALE: Record<CropId, number> = { carrot: 1.5, wheat: 1.35, tomato: 1.5, strawberry: 1.5, cabbage: 1.45, corn: 1.3, eggplant: 1.45, pumpkin: 1.4, sunflower: 1.3, potato: 1.45, chili: 1.45, watermelon: 1.4, pineapple: 1.4, cotton: 1.4, lavender: 1.4 };
 
 const BUILDERS: Record<CropId, (g: GeoBuilder, stage: number) => void> = {
   carrot: buildCarrot,
@@ -586,6 +798,12 @@ const BUILDERS: Record<CropId, (g: GeoBuilder, stage: number) => void> = {
   eggplant: buildEggplant,
   pumpkin: buildPumpkin,
   sunflower: buildSunflower,
+  potato: buildPotato,
+  chili: buildChili,
+  watermelon: buildWatermelon,
+  pineapple: buildPineapple,
+  cotton: buildCotton,
+  lavender: buildLavender,
 };
 
 export class CropLibrary {

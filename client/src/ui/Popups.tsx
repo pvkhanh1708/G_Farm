@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { CROP_ORDER, CROPS, CropId, Quality } from '../game/config';
+import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
 import { assetSummary } from '../game/assets/registry';
 import { useGameState } from './Hud';
-import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon } from './icons';
+import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
 
 function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title: string; icon: React.ReactNode; tone?: 'green' | 'orange' | 'blue'; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -30,6 +30,7 @@ function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title
 const CROP_BG: Record<CropId, string> = {
   carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf', strawberry: '#ffd9e0', cabbage: '#dcf5cf',
   corn: '#fff3b0', eggplant: '#ecdcff', pumpkin: '#ffe0c0', sunflower: '#fff6c2',
+  potato: '#f3e2c8', chili: '#ffd8d0', watermelon: '#d8f5d0', pineapple: '#fff0b8', cotton: '#eef0f4', lavender: '#e8dcff',
 };
 
 export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | null; bulkCount: number; onPick: (c: CropId) => void; onClose: () => void }) {
@@ -40,9 +41,10 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
       <div className="seed-grid">
         {CROP_ORDER.map((id) => {
           const c = CROPS[id];
-          const can = s.coins >= c.seedPrice;
+          const locked = c.unlockLevel > s.level;
+          const can = !locked && s.coins >= c.seedPrice;
           return (
-            <div className="seed-card" key={id}>
+            <div className={`seed-card ${locked ? 'locked' : ''}`} key={id}>
               <div className="seed-art" style={{ background: CROP_BG[id] }}>
                 <CropIcon crop={id} size={64} />
               </div>
@@ -54,13 +56,22 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
                 <span>
                   Thu ×{c.yield}
                 </span>
+                <span className="seed-xp">
+                  <XpIcon size={14} /> {c.xp}
+                </span>
               </div>
               <div className="seed-sell">
                 Bán <CoinIcon size={14} /> {c.sellPrice}/cái
               </div>
-              <button className={`btn ${can ? 'btn-green' : 'btn-disabled'}`} onClick={() => can && onPick(id)}>
-                <CoinIcon size={22} /> {c.seedPrice}
-              </button>
+              {locked ? (
+                <button className="btn btn-disabled seed-lock" disabled>
+                  <LockIcon size={18} /> Cấp {c.unlockLevel}
+                </button>
+              ) : (
+                <button className={`btn ${can ? 'btn-green' : 'btn-disabled'}`} onClick={() => can && onPick(id)}>
+                  <CoinIcon size={22} /> {c.seedPrice}
+                </button>
+              )}
             </div>
           );
         })}
@@ -118,7 +129,8 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
 export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onClose: () => void }) {
   const s = useGameState();
   const cost = store.nextUnlockCost();
-  const can = s.coins >= cost;
+  const levelOk = store.canUnlockByLevel();
+  const can = levelOk && s.coins >= cost;
   return (
     <Modal title="Mở rộng đất" icon={<LockIcon size={32} />} tone="blue" onClose={onClose}>
       <div className="unlock-art">
@@ -139,7 +151,104 @@ export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onC
           Mở khóa <CoinIcon size={22} /> {cost}
         </button>
       </div>
-      {!can && <p className="warn">Cần thêm {cost - s.coins} xu — hãy bán nông sản!</p>}
+      {!levelOk ? (
+        <p className="warn">
+          Cấp {s.level} được sở hữu tối đa {tileCap(s.level)} ô. Lên cấp {store.nextUnlockLevel()} để mở thêm — thu hoạch để nhận XP!
+        </p>
+      ) : (
+        !can && <p className="warn">Cần thêm {cost - s.coins} xu — hãy bán nông sản!</p>
+      )}
+    </Modal>
+  );
+}
+
+function LevelGains({ level }: { level: number }) {
+  const crops = cropsUnlockedAt(level);
+  return (
+    <div className="lvl-rewards">
+      <div className="lvl-row">
+        <CoinIcon size={34} />
+        <div>
+          +{levelReward(level)} xu<small>Phần thưởng lên cấp</small>
+        </div>
+      </div>
+      <div className="lvl-row">
+        <SproutIcon size={34} />
+        <div>
+          Tối đa {tileCap(level)} ô đất<small>+{tileCap(level) - tileCap(level - 1)} ô có thể mở thêm</small>
+        </div>
+      </div>
+      {crops.length > 0 && (
+        <div className="lvl-row">
+          <div className="lvl-crops">
+            {crops.map((c) => (
+              <CropIcon key={c} crop={c} size={38} />
+            ))}
+          </div>
+          <div>
+            Hạt giống mới: {crops.map((c) => CROPS[c].name).join(', ')}
+            <small>Đã có trong cửa hàng hạt giống</small>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LevelUpPopup({ level, onClose }: { level: number; onClose: () => void }) {
+  return (
+    <Modal title="Lên cấp!" icon={<XpIcon size={32} />} tone="blue" onClose={onClose}>
+      <div className="lvl-hero">
+        <LevelStar level={level} size={110} />
+        <b>Cấp {level}</b>
+      </div>
+      <LevelGains level={level} />
+      <div className="row-center">
+        <button className="btn btn-green" onClick={onClose}>
+          Tuyệt vời!
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Roadmap: what the next levels unlock. */
+export function LevelsPopup({ onClose }: { onClose: () => void }) {
+  const s = useGameState();
+  const rows = Array.from({ length: 12 }, (_, i) => s.level - 1 + i).filter((l) => l >= 1);
+  return (
+    <Modal title={`Cấp ${s.level}`} icon={<XpIcon size={32} />} tone="blue" onClose={onClose}>
+      <p className="panel-sub">
+        Thu hoạch để nhận XP. Còn {(xpToNext(s.level) - s.xp).toLocaleString('vi-VN')} XP nữa lên cấp {s.level + 1}.
+      </p>
+      <table className="lvl-table">
+        <thead>
+          <tr>
+            <th>Cấp</th>
+            <th>Đất tối đa</th>
+            <th>Hạt giống mới</th>
+            <th>Thưởng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((l) => (
+            <tr key={l} className={l < s.level ? 'done' : l === s.level ? 'now' : ''}>
+              <td>
+                <span className="lvl-num">{l}</span>
+              </td>
+              <td>{tileCap(l)} ô</td>
+              <td>
+                {cropsUnlockedAt(l).map((c) => (
+                  <span className="crop-chip" key={c}>
+                    <CropIcon crop={c} size={24} /> {CROPS[c].name}
+                  </span>
+                ))}
+              </td>
+              <td>{l > 1 && <>+{levelReward(l)} xu</>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Modal>
   );
 }

@@ -21,7 +21,7 @@ await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => {
   const now = Date.now();
   localStorage.setItem('farm-empire:vs3', JSON.stringify({
-    coins: 60, inventory: { carrot: 0, wheat: 0, tomato: 6 }, unlocked: 4,
+    coins: 60, level: 3, xp: 0, inventory: { carrot: 0, wheat: 0, tomato: 6 }, unlocked: 4,
     plantings: { 0: { crop: 'carrot', plantedAt: now - 60000 }, 1: { crop: 'wheat', plantedAt: now - 120000 }, 2: { crop: 'tomato', plantedAt: now - 30000 } },
   }));
   localStorage.setItem('farm-empire:prefs', JSON.stringify({ quality: 'high', sound: false, fps: true }));
@@ -63,7 +63,7 @@ await shot('after-harvest');
 await tapPlot(0); // now empty -> seed shop
 await wait(500);
 await shot('seed-shop');
-await click('.seed-card .btn', '10');
+await click('.seed-card .btn', '7');
 await wait(350);
 await shot('planted');
 await click('.round-btn.barn');
@@ -88,7 +88,7 @@ await shot('unlocked');
 await click('.round-btn.plant');
 await wait(500);
 await shot('plant-all-shop');
-await click('.seed-card .btn', '10');
+await click('.seed-card .btn', '7');
 await wait(700);
 await shot('planted-all');
 await page.evaluate(() => {

@@ -3,7 +3,7 @@ import { TILES_PER_PARCEL } from '../game/config';
 import type { Game } from '../game/Game';
 import { growthProgress, store, TileState } from '../game/state/store';
 import { useGameState } from './Hud';
-import { CoinIcon, CropIcon, LockIcon } from './icons';
+import { CoinIcon, CropIcon, LockIcon, XpIcon } from './icons';
 
 function useNow(ms: number) {
   const [now, setNow] = useState(Date.now());
@@ -17,7 +17,19 @@ function useNow(ms: number) {
 /** Progress bars only make sense when zoomed in; hide them in the overview. */
 const CLOSE_RADIUS = 20;
 
-function Tag({ tile, now, coins, cost, close }: { tile: TileState; now: number; coins: number; cost: number; close: boolean }) {
+function Tag({ tile, now, coins, cost, close, needLevel }: { tile: TileState; now: number; coins: number; cost: number; close: boolean; needLevel: number | null }) {
+  if (tile.next && needLevel) {
+    return (
+      <div className="sign level">
+        <span className="sign-title">
+          <LockIcon size={16} /> Cần cấp
+        </span>
+        <span className="sign-price">
+          <XpIcon size={16} /> {needLevel}
+        </span>
+      </div>
+    );
+  }
   if (tile.next) {
     return (
       <div className={`sign ${coins >= cost ? 'affordable' : ''}`}>
@@ -63,6 +75,7 @@ export function TileOverlays({ game }: { game: Game }) {
     });
   }, [game, preview, s.unlocked]);
   const cost = store.nextUnlockCost();
+  const needLevel = store.canUnlockByLevel() ? null : store.nextUnlockLevel();
   const bind = (key: string) => (el: HTMLDivElement | null) => {
     if (el) refs.current.set(key, el);
     else refs.current.delete(key);
@@ -71,7 +84,7 @@ export function TileOverlays({ game }: { game: Game }) {
     <div className="plot-overlays">
       {tiles.map((t) => (
         <div key={t.g} className="plot-anchor" ref={bind(String(t.g))}>
-          <Tag tile={t} now={now} coins={s.coins} cost={cost} close={close} />
+          <Tag tile={t} now={now} coins={s.coins} cost={cost} close={close} needLevel={needLevel} />
         </div>
       ))}
       <div className="plot-anchor" ref={bind('parcel')}>

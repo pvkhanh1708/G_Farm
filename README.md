@@ -1,13 +1,38 @@
 # Farm Empire – Vertical Slice (Bước 1: đồ họa 3D)
 
 Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước khi làm gameplay đầy đủ.
-Phạm vi: 1 bản đồ nông trại 3D, 3 loại cây × 5 giai đoạn, và chu trình
+Phạm vi: 1 bản đồ nông trại 3D, 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
 trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp trên trình duyệt.
 
 Bố cục theo kiểu đảo nổi: mỗi **mảnh đất** là một đảo cỏ với lưới **4×4 ô** vuông. Ô mở theo thứ tự
 (ô kế tiếp có biển “Mở khóa”); mở hết 16 ô thì mảnh kế tiếp xuất hiện. Các mảnh xếp theo vòng xoắn quanh
-mảnh đầu tiên, số mảnh không giới hạn. Mỗi ô mở thêm đắt hơn ô trước 9%. Có nút “Trồng tất cả”, “Thu tất cả”,
+mảnh đầu tiên, số mảnh không giới hạn. Có nút “Trồng tất cả”, “Thu tất cả”,
 và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
+
+**Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Lên cấp được thưởng `20 × cấp` xu,
+được sở hữu thêm 4 ô đất (`6 + 4 × (cấp − 1)` ô) và mở khóa hạt giống mới. XP cần để lên cấp kế tiếp:
+`10 × cấp^2.35`. Giá ô đất thứ n: `40 + 6 × (n − 4)^2.15` xu. Toàn bộ số liệu nằm trong
+`client/src/game/config.ts`; nhịp độ được cân bằng bằng mô phỏng người chơi tích cực
+(cấp 10 ≈ 1 giờ, cấp 20 ≈ 4 giờ, cấp 30 ≈ 8 giờ).
+
+| Cây | Cấp mở | Hạt | Thời gian | Thu | Giá bán | XP | Lãi/ô |
+|---|---|---|---|---|---|---|---|
+| Cà rốt | 1 | 7 | 20s | ×4 | 4 | 1 | +9 |
+| Lúa mì | 2 | 12 | 30s | ×5 | 6 | 2 | +18 |
+| Cà chua | 3 | 22 | 45s | ×6 | 9 | 3 | +32 |
+| Dâu tây | 5 | 34 | 60s | ×5 | 16 | 4 | +46 |
+| Khoai tây | 7 | 49 | 75s | ×6 | 20 | 5 | +71 |
+| Bắp cải | 9 | 69 | 90s | ×3 | 56 | 7 | +99 |
+| Ngô | 11 | 110 | 120s | ×4 | 66 | 11 | +154 |
+| Ớt | 13 | 160 | 150s | ×8 | 48 | 15 | +224 |
+| Cà tím | 15 | 220 | 180s | ×5 | 107 | 19 | +315 |
+| Dưa hấu | 18 | 345 | 240s | ×2 | 419 | 28 | +493 |
+| Bí ngô | 21 | 505 | 300s | ×2 | 613 | 39 | +721 |
+| Dứa | 24 | 710 | 360s | ×2 | 861 | 51 | +1012 |
+| Bông | 27 | 1105 | 480s | ×6 | 447 | 75 | +1577 |
+| Oải hương | 30 | 1615 | 600s | ×5 | 785 | 104 | +2310 |
+| Hướng dương | 34 | 2270 | 720s | ×3 | 1838 | 137 | +3244 |
+
 
 > Đồ họa **chưa hoàn thiện**: mọi model 3D đều là placeholder thủ tục. Xem [ASSETS.md](ASSETS.md).
 > Ảnh chụp màn hình nằm trong [docs/screenshots/](docs/screenshots/).
@@ -17,7 +42,7 @@ và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
 ```bash
 cd client
 npm install
-npm run dev          # http://localhost:5173  (thêm ?showcase để xem 3 cây × 5 giai đoạn)
+npm run dev          # http://localhost:5173  (thêm ?showcase để xem mọi cây × 5 giai đoạn, ?showcase=corn,chili để lọc)
 npm run build        # bản production -> client/dist
 npm run preview      # chạy thử bản production tại http://localhost:4173
 ```
