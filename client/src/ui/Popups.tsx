@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { CROP_ORDER, CROPS, CropId, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
+import { ApiError } from '../game/net/api';
+import { sync } from '../game/net/sync';
 import { assetSummary } from '../game/assets/registry';
 import { useGameState } from './Hud';
 import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
@@ -253,6 +255,78 @@ export function LevelsPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Guest -> register (keeps this farm), or log in to load another farm on this device. */
+export function AccountPopup({ onClose, onSwitched }: { onClose: () => void; onSwitched: () => void }) {
+  const user = useSyncExternalStore(sync.subscribe, () => sync.user);
+  const [tab, setTab] = useState<'register' | 'login'>(user?.isGuest === false ? 'login' : 'register');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>, switched: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      if (switched) onSwitched();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.firstError : 'Không kết nối được máy chủ');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const registered = user && !user.isGuest;
+  return (
+    <Modal title="Tài khoản" icon={<SproutIcon size={32} />} tone="blue" onClose={onClose}>
+      {registered ? (
+        <>
+          <p className="panel-sub">
+            Đang chơi bằng tài khoản <b>{user.name}</b> ({user.email}). Đăng nhập email này trên máy khác để chơi tiếp nông trại.
+          </p>
+          <div className="row-center">
+            <button className="btn btn-ghost" disabled={busy} onClick={() => run(() => sync.logout(), true)}>
+              Đăng xuất
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="segmented account-tabs">
+            <button className={tab === 'register' ? 'on' : ''} onClick={() => setTab('register')}>
+              Lưu nông trại
+            </button>
+            <button className={tab === 'login' ? 'on' : ''} onClick={() => setTab('login')}>
+              Đăng nhập
+            </button>
+          </div>
+          <p className="panel-sub">
+            {tab === 'register'
+              ? `Bạn đang chơi với tư cách khách (${user?.name ?? ''}). Đặt email và mật khẩu để giữ nông trại này và chơi trên máy khác.`
+              : 'Đăng nhập để tải nông trại đã lưu. Nông trại khách hiện tại sẽ được thay thế trên máy này.'}
+          </p>
+          <form
+            className="account-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (tab === 'register') void run(() => sync.register(name, email, password), false);
+              else void run(() => sync.login(email, password), true);
+            }}
+          >
+            {tab === 'register' && <input placeholder="Tên nông trại" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required />}
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            <input type="password" placeholder="Mật khẩu (ít nhất 6 ký tự)" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={tab === 'register' ? 'new-password' : 'current-password'} minLength={6} required />
+            {error && <p className="warn">{error}</p>}
+            <button className="btn btn-green" disabled={busy} type="submit">
+              {busy ? 'Đang gửi…' : tab === 'register' ? 'Lưu tài khoản' : 'Đăng nhập'}
+            </button>
+          </form>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 export function Settings({
   quality,
   onQuality,
@@ -261,6 +335,7 @@ export function Settings({
   fps,
   onFps,
   onReset,
+  onAccount,
   onClose,
 }: {
   quality: Quality;
@@ -270,9 +345,11 @@ export function Settings({
   fps: boolean;
   onFps: (on: boolean) => void;
   onReset: () => void;
+  onAccount: () => void;
   onClose: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
+  useSyncExternalStore(sync.subscribe, () => sync.user);
   const a = assetSummary();
   return (
     <Modal title="Cài đặt" icon={<GearIcon size={32} />} tone="blue" onClose={onClose}>
@@ -297,6 +374,16 @@ export function Settings({
         <button className={`toggle ${fps ? 'on' : ''}`} onClick={() => onFps(!fps)}>
           {fps ? 'Bật' : 'Tắt'}
         </button>
+      </div>
+      <div className="set-row">
+        <span>Tài khoản</span>
+        {sync.status === 'offline' ? (
+          <span className="muted">Ngoại tuyến</span>
+        ) : (
+          <button className="btn btn-blue small" onClick={onAccount}>
+            {sync.user?.isGuest === false ? sync.user.name : 'Khách · Lưu tài khoản'}
+          </button>
+        )}
       </div>
       <div className="set-row">
         <span>Tiến trình</span>

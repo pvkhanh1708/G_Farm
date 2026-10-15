@@ -1,3 +1,5 @@
+import economy from '../../../shared/economy.json';
+
 export type CropId =
   | 'carrot' | 'wheat' | 'tomato' | 'strawberry' | 'potato' | 'cabbage' | 'corn' | 'chili'
   | 'eggplant' | 'watermelon' | 'pumpkin' | 'pineapple' | 'cotton' | 'lavender' | 'sunflower';
@@ -21,31 +23,17 @@ export const STAGE_COUNT = 5;
 export const STAGE_NAMES = ['Vừa gieo hạt', 'Nảy mầm', 'Lá non', 'Lá trưởng thành', 'Có thể thu hoạch'];
 
 /**
- * Balanced with scratch economy sim (greedy active player): each newer crop
- * earns ~17% more profit per minute and ~10% more XP per minute than the one
- * before, but grows longer, so unlocks feel worth it without making fast
- * crops useless for active play.
+ * Prices, yields, XP and level formulas live in shared/economy.json so the
+ * Laravel server validates actions with exactly the same numbers. Balanced
+ * with an economy sim (greedy active player): each newer crop earns ~17% more
+ * profit per minute and ~10% more XP per minute than the one before.
  */
-export const CROPS: Record<CropId, CropDef> = {
-  carrot: { id: 'carrot', name: 'Cà rốt', seedName: 'Hạt cà rốt', unlockLevel: 1, seedPrice: 7, growSeconds: 20, yield: 4, sellPrice: 4, xp: 1 },
-  wheat: { id: 'wheat', name: 'Lúa mì', seedName: 'Hạt lúa mì', unlockLevel: 2, seedPrice: 12, growSeconds: 30, yield: 5, sellPrice: 6, xp: 2 },
-  tomato: { id: 'tomato', name: 'Cà chua', seedName: 'Hạt cà chua', unlockLevel: 3, seedPrice: 22, growSeconds: 45, yield: 6, sellPrice: 9, xp: 3 },
-  strawberry: { id: 'strawberry', name: 'Dâu tây', seedName: 'Hạt dâu tây', unlockLevel: 5, seedPrice: 34, growSeconds: 60, yield: 5, sellPrice: 16, xp: 4 },
-  potato: { id: 'potato', name: 'Khoai tây', seedName: 'Hạt khoai tây', unlockLevel: 7, seedPrice: 49, growSeconds: 75, yield: 6, sellPrice: 20, xp: 5 },
-  cabbage: { id: 'cabbage', name: 'Bắp cải', seedName: 'Hạt bắp cải', unlockLevel: 9, seedPrice: 69, growSeconds: 90, yield: 3, sellPrice: 56, xp: 7 },
-  corn: { id: 'corn', name: 'Ngô', seedName: 'Hạt ngô', unlockLevel: 11, seedPrice: 110, growSeconds: 120, yield: 4, sellPrice: 66, xp: 11 },
-  chili: { id: 'chili', name: 'Ớt', seedName: 'Hạt ớt', unlockLevel: 13, seedPrice: 160, growSeconds: 150, yield: 8, sellPrice: 48, xp: 15 },
-  eggplant: { id: 'eggplant', name: 'Cà tím', seedName: 'Hạt cà tím', unlockLevel: 15, seedPrice: 220, growSeconds: 180, yield: 5, sellPrice: 107, xp: 19 },
-  watermelon: { id: 'watermelon', name: 'Dưa hấu', seedName: 'Hạt dưa hấu', unlockLevel: 18, seedPrice: 345, growSeconds: 240, yield: 2, sellPrice: 419, xp: 28 },
-  pumpkin: { id: 'pumpkin', name: 'Bí ngô', seedName: 'Hạt bí ngô', unlockLevel: 21, seedPrice: 505, growSeconds: 300, yield: 2, sellPrice: 613, xp: 39 },
-  pineapple: { id: 'pineapple', name: 'Dứa', seedName: 'Hạt dứa', unlockLevel: 24, seedPrice: 710, growSeconds: 360, yield: 2, sellPrice: 861, xp: 51 },
-  cotton: { id: 'cotton', name: 'Bông', seedName: 'Hạt bông', unlockLevel: 27, seedPrice: 1105, growSeconds: 480, yield: 6, sellPrice: 447, xp: 75 },
-  lavender: { id: 'lavender', name: 'Oải hương', seedName: 'Hạt oải hương', unlockLevel: 30, seedPrice: 1615, growSeconds: 600, yield: 5, sellPrice: 785, xp: 104 },
-  sunflower: { id: 'sunflower', name: 'Hướng dương', seedName: 'Hạt hướng dương', unlockLevel: 34, seedPrice: 2270, growSeconds: 720, yield: 3, sellPrice: 1838, xp: 137 },
-};
+export const ECONOMY = economy;
+
+export const CROPS = Object.fromEntries(economy.crops.map((c) => [c.id, c as CropDef])) as Record<CropId, CropDef>;
 
 /** Unlock order (also shop order). */
-export const CROP_ORDER: CropId[] = ['carrot', 'wheat', 'tomato', 'strawberry', 'potato', 'cabbage', 'corn', 'chili', 'eggplant', 'watermelon', 'pumpkin', 'pineapple', 'cotton', 'lavender', 'sunflower'];
+export const CROP_ORDER = economy.crops.map((c) => c.id as CropId);
 
 /**
  * The farm is a sequence of parcels (floating islands), each a 4x4 grid of
@@ -62,14 +50,14 @@ export const PARCEL_BORDER = 0.8;
 export const ISLAND_SIZE = PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE) + PARCEL_BORDER * 2;
 export const PARCEL_PITCH = ISLAND_SIZE + 1.5;
 
-export const START_UNLOCKED = 4;
-export const STARTING_COINS = 50;
+export const START_UNLOCKED = economy.startUnlocked;
+export const STARTING_COINS = economy.startingCoins;
 
 // ------------------------------------------------------------------ levels
 
 /** XP needed to go from `level` to `level + 1`. No level cap. */
 export function xpToNext(level: number): number {
-  return Math.round(5 * Math.pow(level, 2.1));
+  return Math.round(economy.xp.base * Math.pow(level, economy.xp.exponent));
 }
 
 /** Tiles a player of this level may own: each level (from level 1) allows one more tile, forever. */
@@ -84,7 +72,7 @@ export function levelForTiles(count: number): number {
 
 /** Coins granted on reaching `level`. */
 export function levelReward(level: number): number {
-  return 20 * level;
+  return economy.levelRewardPerLevel * level;
 }
 
 export function cropsUnlockedAt(level: number): CropId[] {
@@ -130,7 +118,7 @@ export function tileWorldPos(g: number): { x: number; z: number } {
  */
 export function unlockCost(unlockedCount: number): number {
   const extra = Math.max(0, unlockedCount - START_UNLOCKED);
-  return Math.round((40 + 20 * Math.pow(extra, 2.4)) / 10) * 10;
+  return Math.round((economy.tileCost.base + economy.tileCost.factor * Math.pow(extra, economy.tileCost.exponent)) / 10) * 10;
 }
 
 export type Quality = 'low' | 'medium' | 'high';

@@ -25,6 +25,7 @@ import { buildTileTemplates, TileContext, TileTemplates, TileView } from './rend
 import { grainTexture, grassTexture, soilTexture } from './render/textures';
 import { Tweens } from './render/tween';
 import { World } from './render/world';
+import { serverNow } from './net/clock';
 import { growthProgress, store } from './state/store';
 
 export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
@@ -247,7 +248,7 @@ export class Game {
         v.dispose();
         this.tiles.delete(g);
       }
-    const now = Date.now();
+    const now = serverNow();
     for (const t of tiles) {
       let v = this.tiles.get(t.g);
       if (!v) {
@@ -385,7 +386,7 @@ export class Game {
 
   /** Harvest every ripe tile in a quick ripple. Returns how many were started. */
   harvestAll() {
-    const now = Date.now();
+    const now = serverNow();
     const ready = store.tiles().filter((t) => t.crop && growthProgress(t, now) >= 1).map((t) => t.g);
     if (!ready.length) return 0;
     sfx.harvest();

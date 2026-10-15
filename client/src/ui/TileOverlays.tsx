@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TILES_PER_PARCEL } from '../game/config';
 import type { Game } from '../game/Game';
+import { serverNow } from '../game/net/clock';
 import { growthProgress, store, TileState } from '../game/state/store';
 import { useGameState } from './Hud';
 import { CoinIcon, CropIcon, LockIcon, XpIcon } from './icons';
 
 function useNow(ms: number) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), ms);
+    const t = setInterval(() => setNow(serverNow()), ms);
     return () => clearInterval(t);
   }, [ms]);
   return now;

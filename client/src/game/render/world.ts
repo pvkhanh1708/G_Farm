@@ -183,6 +183,13 @@ export class World {
 
   /** Parcels 0..active-1 hold tiles; parcel `active` is shown as a wild island to come. */
   setParcels(active: number) {
+    // a reset or switching account can shrink the farm
+    for (const [k, isl] of this.islands)
+      if (k > active) {
+        isl.top.dispose();
+        isl.cliff.dispose();
+        this.islands.delete(k);
+      }
     for (let k = 0; k <= active; k++) {
       const wild = k === active;
       const cur = this.islands.get(k);

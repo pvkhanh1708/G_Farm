@@ -1,4 +1,5 @@
 import { CROP_ORDER, CROPS, CropId, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
+import { serverNow } from '../net/clock';
 
 /**
  * Pure game state + rules. No rendering here, so the same rules can later be
@@ -36,6 +37,14 @@ export interface TileState {
 
 export type ActionResult<T = void> = { ok: true; value: T } | { ok: false; reason: string };
 
+/** Successful local actions, replayed to the server by game/net/sync.ts. */
+export type GameAction =
+  | { type: 'plant'; tiles: number[]; crop: CropId }
+  | { type: 'harvest'; tiles: number[] }
+  | { type: 'sell'; crop: CropId; qty: number }
+  | { type: 'unlock' }
+  | { type: 'reset' };
+
 const SAVE_KEY = 'farm-empire:vs3';
 
 function emptyInventory() {
@@ -65,6 +74,9 @@ type Listener = () => void;
 class Store {
   private state: GameState = load();
   private listeners = new Set<Listener>();
+  private actionListeners = new Set<(a: GameAction) => void>();
+  /** What produced the current state: a player action, or a snapshot from the server. */
+  lastChange: 'action' | 'hydrate' = 'action';
   private tilesCache: { state: GameState | null; tiles: TileState[] } = { state: null, tiles: [] };
 
   getState = (): GameState => this.state;
@@ -120,7 +132,22 @@ class Store {
     return { ...s, level, xp, coins };
   }
 
-  private set(next: GameState) {
+  onAction(fn: (a: GameAction) => void): () => void {
+    this.actionListeners.add(fn);
+    return () => void this.actionListeners.delete(fn);
+  }
+
+  /** Replace the whole state with the server's authoritative copy. */
+  hydrate(next: GameState) {
+    this.set({ ...next, inventory: { ...emptyInventory(), ...next.inventory }, plantings: { ...next.plantings } }, 'hydrate');
+  }
+
+  private emit(a: GameAction) {
+    this.actionListeners.forEach((l) => l(a));
+  }
+
+  private set(next: GameState, change: 'action' | 'hydrate' = 'action') {
+    this.lastChange = change;
     this.state = next;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(next));
@@ -130,18 +157,19 @@ class Store {
     this.listeners.forEach((l) => l());
   }
 
-  plant(g: number, crop: CropId, now = Date.now()): ActionResult {
+  plant(g: number, crop: CropId, now = serverNow()): ActionResult {
     const def = CROPS[crop];
     if (g >= this.state.unlocked) return { ok: false, reason: 'Ô đất chưa mở khóa' };
     if (def.unlockLevel > this.state.level) return { ok: false, reason: `${def.name} mở ở cấp ${def.unlockLevel}` };
     if (this.state.plantings[g]) return { ok: false, reason: 'Ô đất đã có cây' };
     if (this.state.coins < def.seedPrice) return { ok: false, reason: 'Không đủ xu!' };
     this.set({ ...this.state, coins: this.state.coins - def.seedPrice, plantings: { ...this.state.plantings, [g]: { crop, plantedAt: now } } });
+    this.emit({ type: 'plant', tiles: [g], crop });
     return { ok: true, value: undefined };
   }
 
   /** Sow one crop on every empty owned tile the wallet can pay for. Returns the tiles planted. */
-  plantAll(crop: CropId, now = Date.now()): ActionResult<number[]> {
+  plantAll(crop: CropId, now = serverNow()): ActionResult<number[]> {
     const price = CROPS[crop].seedPrice;
     if (CROPS[crop].unlockLevel > this.state.level) return { ok: false, reason: `${CROPS[crop].name} mở ở cấp ${CROPS[crop].unlockLevel}` };
     const empty = [...Array(this.state.unlocked).keys()].filter((g) => !this.state.plantings[g]);
@@ -152,18 +180,21 @@ class Store {
     const plantings = { ...this.state.plantings };
     sown.forEach((g, i) => (plantings[g] = { crop, plantedAt: now + i * 40 }));
     this.set({ ...this.state, coins: this.state.coins - n * price, plantings });
+    this.emit({ type: 'plant', tiles: sown, crop });
     return { ok: true, value: sown };
   }
 
-  harvest(g: number, now = Date.now()): ActionResult<{ crop: CropId; amount: number; xp: number }> {
+  harvest(g: number, now = serverNow()): ActionResult<{ crop: CropId; amount: number; xp: number; levelUp: number | null }> {
     const p = this.state.plantings[g];
     if (!p) return { ok: false, reason: 'Không có cây để thu hoạch' };
     if (growthProgress(p, now) < 1) return { ok: false, reason: 'Cây chưa chín' };
     const { yield: amount, xp } = CROPS[p.crop];
     const plantings = { ...this.state.plantings };
     delete plantings[g];
+    const before = this.state.level;
     this.set(this.withXp({ ...this.state, inventory: { ...this.state.inventory, [p.crop]: this.state.inventory[p.crop] + amount }, plantings }, xp));
-    return { ok: true, value: { crop: p.crop, amount, xp } };
+    this.emit({ type: 'harvest', tiles: [g] });
+    return { ok: true, value: { crop: p.crop, amount, xp, levelUp: this.state.level > before ? this.state.level : null } };
   }
 
   sell(crop: CropId, qty: number): ActionResult<number> {
@@ -172,6 +203,7 @@ class Store {
     if (n <= 0) return { ok: false, reason: 'Kho không còn nông sản này' };
     const earned = n * CROPS[crop].sellPrice;
     this.set({ ...this.state, coins: this.state.coins + earned, inventory: { ...this.state.inventory, [crop]: have - n } });
+    this.emit({ type: 'sell', crop, qty: n });
     return { ok: true, value: earned };
   }
 
@@ -182,26 +214,28 @@ class Store {
     if (this.state.coins < cost) return { ok: false, reason: 'Không đủ xu!' };
     const g = this.state.unlocked;
     this.set({ ...this.state, coins: this.state.coins - cost, unlocked: g + 1 });
+    this.emit({ type: 'unlock' });
     return { ok: true, value: g };
   }
 
   reset() {
     this.set(initialState());
+    this.emit({ type: 'reset' });
   }
 }
 
-export function growthProgress(p: { crop: CropId | null; plantedAt: number | null }, now = Date.now()): number {
+export function growthProgress(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
   return Math.max(0, Math.min(1, (now - p.plantedAt) / (CROPS[p.crop].growSeconds * 1000)));
 }
 
-export function growthStage(p: { crop: CropId | null; plantedAt: number | null }, now = Date.now()): number {
+export function growthStage(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
   const k = growthProgress(p, now);
   if (k >= 1) return STAGE_COUNT - 1;
   return Math.min(STAGE_COUNT - 2, Math.floor(k * (STAGE_COUNT - 1)));
 }
 
-export function secondsLeft(p: { crop: CropId | null; plantedAt: number | null }, now = Date.now()): number {
+export function secondsLeft(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
   return Math.max(0, Math.ceil(CROPS[p.crop].growSeconds - (now - p.plantedAt) / 1000));
 }

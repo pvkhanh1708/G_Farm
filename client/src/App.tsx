@@ -2,14 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { sfx } from './game/audio/sfx';
 import { CROP_ORDER, CROPS, CropId, Quality } from './game/config';
 import { Game } from './game/Game';
+import { serverNow } from './game/net/clock';
+import { sync } from './game/net/sync';
 import { growthProgress, store, TileState } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
 import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './ui/Hud';
 import { SproutIcon } from './ui/icons';
-import { Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
+import { AccountPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
+import { NetBadge } from './ui/NetBadge';
 import { TileOverlays } from './ui/TileOverlays';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -23,7 +26,7 @@ function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
 }
 
 function counts(tiles: TileState[]) {
-  const now = Date.now();
+  const now = serverNow();
   let ready = 0, empty = 0, growing = 0;
   for (const t of tiles) {
     if (!t.unlocked) continue;
@@ -59,10 +62,12 @@ export function App() {
   const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
   const [levelUp, setLevelUp] = useState<number | null>(null);
+  const [netReady, setNetReady] = useState(false);
   const seenLevel = useRef(s.level);
   useEffect(() => {
-    // celebrate once per new level (several at once show the highest); a reset drops the level silently
-    if (s.level > seenLevel.current) {
+    // celebrate once per new level reached by playing (several at once show the highest);
+    // server snapshots and resets move the level silently
+    if (s.level > seenLevel.current && store.lastChange === 'action') {
       sfx.unlock();
       setLevelUp(s.level);
     }
@@ -77,6 +82,13 @@ export function App() {
     }
     sfx.setEnabled(prefs.sound);
   }, [prefs]);
+
+  useEffect(() => {
+    sync.onReject = (msg) => fxBus.toast(msg, 'bad');
+    if (showcase) setNetReady(true);
+    else void sync.boot().then(() => setNetReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let g: Game | null = null;
@@ -174,7 +186,7 @@ export function App() {
     setPopup(null);
   };
 
-  const loading = progress.k < 1 || !game;
+  const loading = progress.k < 1 || !game || !netReady;
   const c = counts(tiles);
   const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
 
@@ -204,7 +216,7 @@ export function App() {
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
           <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}
-          <div className="build-tag">Vertical Slice · đồ họa tạm</div>
+          <NetBadge />
         </>
       )}
       {game && showcase && <div className="showcase-legend">{CROP_ORDER.filter((k) => !location.search.includes('showcase=') || location.search.includes(k)).map((k) => CROPS[k].name).join(' / ')} · giai đoạn 0 → 4</div>}
@@ -229,6 +241,16 @@ export function App() {
       )}
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
       {popup?.type === 'levels' && <LevelsPopup onClose={close} />}
+      {popup?.type === 'account' && (
+        <AccountPopup
+          onClose={close}
+          onSwitched={() => {
+            setTool(null);
+            setPopup(null);
+            game?.focusCurrent();
+          }}
+        />
+      )}
       {popup?.type === 'unlock' && (
         <UnlockPopup
           onClose={close}
@@ -251,6 +273,7 @@ export function App() {
           onSound={(on) => setPrefs({ ...prefs, sound: on })}
           fps={prefs.fps}
           onFps={(on) => setPrefs({ ...prefs, fps: on })}
+          onAccount={() => setPopup({ type: 'account' })}
           onReset={() => {
             store.reset();
             setTool(null);
@@ -280,7 +303,7 @@ export function App() {
           <div className="loading-bar">
             <div className="loading-fill" style={{ width: `${Math.round(progress.k * 100)}%` }} />
           </div>
-          <p>{progress.label}</p>
+          <p>{progress.k >= 1 && !netReady ? 'Đang kết nối máy chủ…' : progress.label}</p>
         </div>
       )}
     </div>

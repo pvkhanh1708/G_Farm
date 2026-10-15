@@ -391,3 +391,22 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .level-badge > svg { width: 48px; height: 48px; }
   .xp-bar span { font-size: 10px; }
 }
+
+/* ------------------------------------------------------------ net / account */
+.build-tag.net-online::before, .build-tag.net-retrying::before, .build-tag.net-offline::before {
+  content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: #5fd13a;
+}
+.build-tag.net-retrying::before { background: #ffb020; }
+.build-tag.net-offline::before { background: #b8b8b8; }
+.muted { color: #9a8a72; font-weight: 700; }
+.account-tabs { display: flex; margin: 0 auto 8px; width: fit-content; }
+.account-form { display: flex; flex-direction: column; gap: 8px; }
+.account-form input {
+  font: inherit; font-size: 16px; font-weight: 600; padding: 10px 14px; border-radius: 14px; border: 3px solid #e4c48f; background: #fffdf5; color: var(--ink); outline: none;
+}
+.account-form input:focus { border-color: var(--green); }
+.account-form .btn { margin-top: 4px; }
+
+@media (max-width: 560px) {
+  .build-tag.net-retrying, .build-tag.net-offline { display: block; }
+}

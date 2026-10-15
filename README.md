@@ -1,4 +1,4 @@
-# Farm Empire – Vertical Slice (Bước 1: đồ họa 3D)
+# Farm Empire – Vertical Slice
 
 Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước khi làm gameplay đầy đủ.
 Phạm vi: 1 bản đồ nông trại 3D, 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
@@ -39,32 +39,96 @@ và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
 
 ## Chạy thử
 
+Cần PHP 8.2+ (đang dùng 8.4), Composer, MySQL 8, Node 20+. Với Laragon: bật MySQL bằng “Start All”.
+
 ```bash
+# 1. Backend (Laravel 12) — lần đầu
+cd server
+composer install
+cp .env.example .env && php artisan key:generate   # .env đã trỏ MySQL farm_empire, user root, không mật khẩu
+mysql -uroot -e "create database if not exists farm_empire character set utf8mb4 collate utf8mb4_unicode_ci"
+php artisan migrate
+php artisan serve                                   # API tại http://127.0.0.1:8000/api
+
+# 2. Client
 cd client
 npm install
-npm run dev          # http://localhost:5173  (thêm ?showcase để xem mọi cây × 5 giai đoạn, ?showcase=corn,chili để lọc)
+npm run dev          # http://localhost:5173 — Vite chuyển /api sang 127.0.0.1:8000
 npm run build        # bản production -> client/dist
-npm run preview      # chạy thử bản production tại http://localhost:4173
+npm run preview      # chạy thử bản production tại http://localhost:4173 (cũng proxy /api)
 ```
 
+Tham số URL: `?showcase` xem mọi cây × 5 giai đoạn (`?showcase=corn,chili` để lọc), `?offline` chơi không cần server.
+Nếu không kết nối được API khi mở game, game tự chuyển sang chơi ngoại tuyến (lưu trên máy) và hiện nhãn “Ngoại tuyến”.
+
 Điều khiển: kéo để di chuyển camera, cuộn chuột hoặc chụm 2 ngón để zoom, chạm vào ô đất để thao tác.
-Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, chơi lại từ đầu.
+Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hiện FPS, tài khoản, chơi lại từ đầu.
+
+## Backend
+
+Server giữ quyền quyết định; client chỉ là bản sao để thao tác mượt:
+
+1. Người chơi chạm → `store.ts` áp dụng ngay (hiệu ứng, xu, XP hiện tức thì).
+2. `game/net/sync.ts` gửi hành động lên API theo đúng thứ tự. Các lần thu hoạch / gieo cùng loại liên tiếp
+   (vd. “Thu tất cả”) được gộp thành một request.
+3. Server kiểm tra lại bằng cùng luật chơi (`server/app/Game/FarmService.php`) và trả về **toàn bộ state**.
+   Khi không còn hành động nào chờ gửi, client thay state của mình bằng state server.
+4. Nếu server từ chối (vd. cây chưa chín theo đồng hồ server, không đủ xu, chưa đủ cấp), client hiện thông báo
+   và quay về state server. Mất mạng thì giữ hàng đợi và thử lại (1s → 15s).
+
+Thời gian trồng tính bằng đồng hồ server (ms); client bù lệch giờ qua `serverTime` trong mỗi phản hồi.
+Thu hoạch được chấp nhận sớm tối đa 2 giây (`GAME_HARVEST_GRACE_MS`) để bù độ trễ mạng.
+
+Số liệu kinh tế nằm ở **`shared/economy.json`**, được cả client (`config.ts`) và server (`app/Game/Economy.php`)
+đọc, nên không bao giờ lệch nhau. Sửa giá / XP / thời gian chỉ cần sửa file này.
+
+**Tài khoản:** lần đầu mở game, server tự tạo tài khoản khách (token Sanctum lưu ở máy). Trong Cài đặt → Tài khoản,
+người chơi đặt email + mật khẩu để giữ nông trại, hoặc đăng nhập để tải nông trại trên máy khác.
+
+| Method | Đường dẫn | Mô tả |
+|---|---|---|
+| POST | `/api/auth/guest` | Tạo tài khoản khách + nông trại mới, trả token |
+| POST | `/api/auth/login` | `{email, password}` → token |
+| POST | `/api/auth/register` | (đã có token) gắn `{name, email, password}` cho tài khoản khách |
+| POST | `/api/auth/logout` | Thu hồi token hiện tại |
+| GET | `/api/me` | Thông tin người chơi |
+| GET | `/api/farm` | State nông trại |
+| POST | `/api/farm/plant` | `{tiles: number[], crop}` — gieo theo thứ tự đến khi hết xu |
+| POST | `/api/farm/harvest` | `{tiles: number[]}` — thu các ô đã chín, bỏ qua ô chưa chín |
+| POST | `/api/farm/sell` | `{crop, qty}` |
+| POST | `/api/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
+| POST | `/api/farm/reset` | Chơi lại từ đầu |
+
+Mọi API `/farm/*` trả `{ok, message, result, state, serverTime}`; bị từ chối thì HTTP 422 kèm `message` và `state`.
+Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập / tạo khách.
+
+Bảng dữ liệu: `users` (thêm `is_guest`, email/mật khẩu cho phép trống), `farms` (xu, cấp, XP, số ô, kho dạng JSON),
+`plantings` (ô, cây, `planted_at` ms; duy nhất theo nông trại + ô), `personal_access_tokens` (Sanctum).
+
+Kiểm thử: `cd server && php artisan test` (9 test API trên SQLite trong bộ nhớ);
+`cd client && node scripts/online.mjs` chạy thật qua trình duyệt với API (gieo, chặn thu hoạch gian lận, thu, tải lại từ server).
 
 ## Công nghệ
 
 - React 18 + TypeScript + Vite 6 (UI dạng DOM phủ lên canvas)
 - Babylon.js 8 (WebGL2): PBR, directional light + shadow map (PCF), thin instances, particle system
-- Chưa có backend ở bước này. Logic game nằm trong `src/game/state/store.ts`, tách khỏi phần render,
-  để sau này chuyển sang Laravel 12 + MySQL 8 + Sanctum (server giữ quyền quyết định, client làm cache).
+- Laravel 12 (PHP 8.4) + MySQL 8 + Sanctum (token API) — xem phần Backend.
   Capacitor được thêm khi đóng gói Android/iOS.
 
 ## Cấu trúc
 
 ```
+shared/economy.json      số liệu kinh tế dùng chung client + server
+server/                  Laravel 12
+  app/Game/Economy.php     đọc economy.json + công thức cấp / giá đất
+  app/Game/FarmService.php luật chơi phía server (khóa dòng farm khi xử lý)
+  app/Http/Controllers/    AuthController (khách / đăng ký / đăng nhập), FarmController
+  routes/api.php, database/migrations/, tests/Feature/FarmApiTest.php
 client/src/
   game/
-    config.ts            cây trồng, giá, preset chất lượng
-    state/store.ts       luật chơi thuần (trồng, thu, bán, mở đất) + lưu localStorage
+    config.ts            cây trồng (từ economy.json), công thức cấp, preset chất lượng
+    state/store.ts       luật chơi phía client (áp dụng ngay) + cache localStorage
+    net/                 api.ts (fetch + token), sync.ts (hàng đợi, đối chiếu state server), clock.ts
     Game.ts              khởi tạo scene, ánh sáng, bóng, input, cầu nối sang UI
     assets/registry.ts   danh mục asset; GLB thay thế placeholder khi có
     render/
@@ -77,7 +141,8 @@ client/src/
       camera.ts          camera isometric cố định góc 40°, kéo / zoom / pinch
     audio/sfx.ts         âm thanh tổng hợp WebAudio (tạm)
   ui/                    HUD, popup, nhãn bám ô đất, hiệu ứng bay về kho / thanh xu
-scripts/shot.mjs, flow.mjs   chụp ảnh và chạy tự động cả chu trình (puppeteer-core + Chrome)
+scripts/shot.mjs, flow.mjs   chụp ảnh và chạy tự động cả chu trình (puppeteer-core + Chrome; dùng ?offline)
+scripts/online.mjs           kiểm thử end-to-end với API thật
 ```
 
 ## Hiệu năng (đo trên desktop, Chrome headless)

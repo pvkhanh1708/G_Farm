@@ -1,0 +1,184 @@
+{
+  "_comment": "Single source of truth for the game economy. Read by the client (client/src/game/config.ts) and the server (server/app/Game/Economy.php). Formulas: xpToNext(L)=round(xp.base*L^xp.exponent); tileCap(L)=startUnlocked+L; unlockCost(n)=round10(tileCost.base+tileCost.factor*(n-startUnlocked)^tileCost.exponent); levelReward(L)=levelRewardPerLevel*L.",
+  "startingCoins": 50,
+  "startUnlocked": 4,
+  "tilesPerParcel": 16,
+  "xp": {
+    "base": 5,
+    "exponent": 2.1
+  },
+  "tileCost": {
+    "base": 40,
+    "factor": 20,
+    "exponent": 2.4
+  },
+  "levelRewardPerLevel": 20,
+  "plantStaggerMs": 40,
+  "crops": [
+    {
+      "id": "carrot",
+      "name": "Cà rốt",
+      "seedName": "Hạt cà rốt",
+      "unlockLevel": 1,
+      "seedPrice": 7,
+      "growSeconds": 20,
+      "yield": 4,
+      "sellPrice": 4,
+      "xp": 1
+    },
+    {
+      "id": "wheat",
+      "name": "Lúa mì",
+      "seedName": "Hạt lúa mì",
+      "unlockLevel": 2,
+      "seedPrice": 12,
+      "growSeconds": 30,
+      "yield": 5,
+      "sellPrice": 6,
+      "xp": 2
+    },
+    {
+      "id": "tomato",
+      "name": "Cà chua",
+      "seedName": "Hạt cà chua",
+      "unlockLevel": 3,
+      "seedPrice": 22,
+      "growSeconds": 45,
+      "yield": 6,
+      "sellPrice": 9,
+      "xp": 3
+    },
+    {
+      "id": "strawberry",
+      "name": "Dâu tây",
+      "seedName": "Hạt dâu tây",
+      "unlockLevel": 5,
+      "seedPrice": 34,
+      "growSeconds": 60,
+      "yield": 5,
+      "sellPrice": 16,
+      "xp": 4
+    },
+    {
+      "id": "potato",
+      "name": "Khoai tây",
+      "seedName": "Hạt khoai tây",
+      "unlockLevel": 7,
+      "seedPrice": 49,
+      "growSeconds": 75,
+      "yield": 6,
+      "sellPrice": 20,
+      "xp": 5
+    },
+    {
+      "id": "cabbage",
+      "name": "Bắp cải",
+      "seedName": "Hạt bắp cải",
+      "unlockLevel": 9,
+      "seedPrice": 69,
+      "growSeconds": 90,
+      "yield": 3,
+      "sellPrice": 56,
+      "xp": 7
+    },
+    {
+      "id": "corn",
+      "name": "Ngô",
+      "seedName": "Hạt ngô",
+      "unlockLevel": 11,
+      "seedPrice": 110,
+      "growSeconds": 120,
+      "yield": 4,
+      "sellPrice": 66,
+      "xp": 11
+    },
+    {
+      "id": "chili",
+      "name": "Ớt",
+      "seedName": "Hạt ớt",
+      "unlockLevel": 13,
+      "seedPrice": 160,
+      "growSeconds": 150,
+      "yield": 8,
+      "sellPrice": 48,
+      "xp": 15
+    },
+    {
+      "id": "eggplant",
+      "name": "Cà tím",
+      "seedName": "Hạt cà tím",
+      "unlockLevel": 15,
+      "seedPrice": 220,
+      "growSeconds": 180,
+      "yield": 5,
+      "sellPrice": 107,
+      "xp": 19
+    },
+    {
+      "id": "watermelon",
+      "name": "Dưa hấu",
+      "seedName": "Hạt dưa hấu",
+      "unlockLevel": 18,
+      "seedPrice": 345,
+      "growSeconds": 240,
+      "yield": 2,
+      "sellPrice": 419,
+      "xp": 28
+    },
+    {
+      "id": "pumpkin",
+      "name": "Bí ngô",
+      "seedName": "Hạt bí ngô",
+      "unlockLevel": 21,
+      "seedPrice": 505,
+      "growSeconds": 300,
+      "yield": 2,
+      "sellPrice": 613,
+      "xp": 39
+    },
+    {
+      "id": "pineapple",
+      "name": "Dứa",
+      "seedName": "Hạt dứa",
+      "unlockLevel": 24,
+      "seedPrice": 710,
+      "growSeconds": 360,
+      "yield": 2,
+      "sellPrice": 861,
+      "xp": 51
+    },
+    {
+      "id": "cotton",
+      "name": "Bông",
+      "seedName": "Hạt bông",
+      "unlockLevel": 27,
+      "seedPrice": 1105,
+      "growSeconds": 480,
+      "yield": 6,
+      "sellPrice": 447,
+      "xp": 75
+    },
+    {
+      "id": "lavender",
+      "name": "Oải hương",
+      "seedName": "Hạt oải hương",
+      "unlockLevel": 30,
+      "seedPrice": 1615,
+      "growSeconds": 600,
+      "yield": 5,
+      "sellPrice": 785,
+      "xp": 104
+    },
+    {
+      "id": "sunflower",
+      "name": "Hướng dương",
+      "seedName": "Hạt hướng dương",
+      "unlockLevel": 34,
+      "seedPrice": 2270,
+      "growSeconds": 720,
+      "yield": 3,
+      "sellPrice": 1838,
+      "xp": 137
+    }
+  ]
+}
