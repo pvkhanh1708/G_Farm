@@ -199,35 +199,37 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
           </button>
         ))}
       </div>
-      <div className="seed-grid">
-        {CROP_ORDER.filter((id) => filter === 'all' || CROPS[id].kind === filter).map((id) => {
-          const c = CROPS[id];
-          const locked = c.unlockLevel > s.level;
-          const can = !locked && s.coins >= c.seedPrice;
-          return (
-            <div className={`seed-card ${locked ? 'locked' : ''} ${tip?.id === id ? 'holding' : ''}`} key={id} {...press(id)} onClick={() => buy(id, can)}>
-              <div className="seed-art" style={{ background: CROP_BG[id] }}>
-                <CropIcon crop={id} size={52} />
-                <span className={`seed-kind ${c.kind}`} title={KIND_LABEL[c.kind]}>
-                  {c.kind === 'coin' ? <CoinIcon size={14} /> : <XpIcon size={14} />}
-                </span>
-                {locked && (
-                  <span className="seed-lock-badge">
-                    <LockIcon size={14} />
+      <div className="panel-scroll" onScroll={() => setTip(null)}>
+        <div className="seed-grid">
+          {CROP_ORDER.filter((id) => filter === 'all' || CROPS[id].kind === filter).map((id) => {
+            const c = CROPS[id];
+            const locked = c.unlockLevel > s.level;
+            const can = !locked && s.coins >= c.seedPrice;
+            return (
+              <div className={`seed-card ${locked ? 'locked' : ''} ${tip?.id === id ? 'holding' : ''}`} key={id} {...press(id)} onClick={() => buy(id, can)}>
+                <div className="seed-art" style={{ background: CROP_BG[id] }}>
+                  <CropIcon crop={id} size={52} />
+                  <span className={`seed-kind ${c.kind}`} title={KIND_LABEL[c.kind]}>
+                    {c.kind === 'coin' ? <CoinIcon size={14} /> : <XpIcon size={14} />}
+                  </span>
+                  {locked && (
+                    <span className="seed-lock-badge">
+                      <LockIcon size={14} />
+                    </span>
+                  )}
+                </div>
+                <b className="seed-name">{c.name}</b>
+                {locked ? (
+                  <span className="seed-price locked">Cấp {c.unlockLevel}</span>
+                ) : (
+                  <span className={`seed-price ${can ? '' : 'poor'}`}>
+                    <CoinIcon size={18} /> {formatNum(c.seedPrice)}
                   </span>
                 )}
               </div>
-              <b className="seed-name">{c.name}</b>
-              {locked ? (
-                <span className="seed-price locked">Cấp {c.unlockLevel}</span>
-              ) : (
-                <span className={`seed-price ${can ? '' : 'poor'}`}>
-                  <CoinIcon size={18} /> {formatNum(c.seedPrice)}
-                </span>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       {tip && <SeedTip id={tip.id} rect={tip.rect} level={s.level} />}
     </Modal>
