@@ -98,7 +98,7 @@ Cài đặt (nút bánh răng): chất lượng Thấp/Vừa/Cao, âm thanh, hi�
 **Chạy như app trên điện thoại (PWA):** thêm game vào màn hình chính (Android: Chrome → *Cài đặt ứng dụng*,
 hoặc nút trong Cài đặt; iPhone/iPad: Safari → Chia sẻ → *Thêm vào MH chính*) thì game mở toàn màn hình, có
 biểu tượng riêng, không thanh địa chỉ. Gồm `client/public/manifest.webmanifest`, `sw.js` (không cache gì, để
-luôn chạy bản mới nhất), icon trong `public/icons/` (tạo lại bằng `node scripts/icons.mjs`) và các thẻ
+luôn chạy bản mới nhất), icon trong `public/icons/` và favicon (tạo lại từ ảnh `client/icon-source.png` bằng `node scripts/icons.mjs`; ảnh gốc không lên git) và các thẻ
 `apple-mobile-web-app-*` trong `index.html`. Cần HTTPS (đã có trên nongtrai.io.vn).
 
 ## Backend
