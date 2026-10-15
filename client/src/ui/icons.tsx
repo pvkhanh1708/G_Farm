@@ -7,6 +7,18 @@ import { artUrl, cropSheetUrl, SHEET } from '../game/art';
 const OUT = '#5a3214';
 type P = { size?: number; className?: string };
 
+/**
+ * Hand-drawn UI icons (assets/sprites/ui/<name>.png) replace the vector ones
+ * when the file is provided; the vector icon stays as the fallback.
+ */
+function withArt(name: string, Fallback: (p: P) => React.JSX.Element) {
+  const url = artUrl(`ui/${name}.png`);
+  if (!url) return Fallback;
+  return function ArtIcon({ size = 48, className }: P) {
+    return <img className={`ui-art ${className ?? ''}`} src={url} width={size} height={size} alt="" draggable={false} />;
+  };
+}
+
 function Svg({ size = 48, className, children }: P & { children: React.ReactNode }) {
   return (
     <svg className={className} width={size} height={size} viewBox="0 0 64 64" fill="none" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
@@ -317,7 +329,7 @@ export function LavenderIcon(p: P) {
   );
 }
 
-export function XpIcon(p: P) {
+function XpSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M32 5l7.6 15.4 17 2.5-12.3 12 2.9 16.9L32 43.8l-15.2 8 2.9-16.9-12.3-12 17-2.5z" fill="#5ec8ff" stroke="#1a4f80" strokeWidth="3.4" />
@@ -328,6 +340,18 @@ export function XpIcon(p: P) {
 
 /** Level badge: star with the number inside. */
 export function LevelStar({ level, size = 54 }: { level: number; size?: number }) {
+  const url = artUrl('ui/level-star.png');
+  if (url)
+    return (
+      <span className="ui-art level-star" style={{ width: size, height: size }}>
+        <img src={url} alt="" draggable={false} />
+        <b style={{ fontSize: size * (level >= 100 ? 0.26 : level >= 10 ? 0.34 : 0.4) }}>{level}</b>
+      </span>
+    );
+  return <LevelStarSvg level={level} size={size} />;
+}
+
+function LevelStarSvg({ level, size }: { level: number; size: number }) {
   const id = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
@@ -533,7 +557,7 @@ export function CantaloupeIcon(p: P) {
   );
 }
 
-export function CardsIcon(p: P) {
+function CardsSvg(p: P) {
   return (
     <Svg {...p}>
       <rect x="8" y="14" width="26" height="36" rx="5" fill="#fff" stroke={OUT} strokeWidth="3" transform="rotate(-14 21 32)" />
@@ -544,7 +568,7 @@ export function CardsIcon(p: P) {
   );
 }
 
-export function CoinIcon(p: P) {
+function CoinSvg(p: P) {
   const id = useId();
   return (
     <Svg {...p}>
@@ -563,7 +587,7 @@ export function CoinIcon(p: P) {
   );
 }
 
-export function SeedBagIcon(p: P) {
+function SeedBagSvg(p: P) {
   const id = useId();
   return (
     <Svg {...p}>
@@ -584,7 +608,7 @@ export function SeedBagIcon(p: P) {
   );
 }
 
-export function BarnIcon(p: P) {
+function BarnSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M8 30L32 10l24 20v26H8z" fill="#e2483a" stroke={OUT} strokeWidth="3" />
@@ -617,7 +641,7 @@ export function LockIcon(p: P) {
   );
 }
 
-export function GearIcon(p: P) {
+function GearSvg(p: P) {
   return (
     <Svg {...p}>
       <path
@@ -631,7 +655,7 @@ export function GearIcon(p: P) {
   );
 }
 
-export function SickleIcon(p: P) {
+function SickleSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M14 52l12-12" stroke={OUT} strokeWidth="10" />
@@ -652,7 +676,7 @@ export function ClockIcon(p: P) {
   );
 }
 
-export function SproutIcon(p: P) {
+function SproutSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M32 58V32" stroke={OUT} strokeWidth="6" />
@@ -752,7 +776,7 @@ export function CropIcon({ crop, ...p }: P & { crop: CropId }) {
 
 // ------------------------------------------------------------------ animals, products, progression
 
-export function EggIcon(p: P) {
+function EggSvg(p: P) {
   return (
     <Svg {...p}>
       <ellipse cx="32" cy="36" rx="17" ry="21" fill="#fff4dc" stroke={OUT} strokeWidth="3" />
@@ -762,7 +786,7 @@ export function EggIcon(p: P) {
   );
 }
 
-export function MilkIcon(p: P) {
+function MilkSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M24 10h16v8l6 9v25a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V27l6-9z" fill="#fdfdfd" stroke={OUT} strokeWidth="3" />
@@ -832,7 +856,7 @@ export function UpgradeIcon(p: P) {
   );
 }
 
-export function TrophyIcon(p: P) {
+function TrophySvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M18 14h-8c0 10 4 16 12 17M46 14h8c0 10-4 16-12 17" stroke={OUT} strokeWidth="4" />
@@ -885,7 +909,7 @@ export function MusicIcon({ on, ...p }: P & { on: boolean }) {
   );
 }
 
-const PRODUCT_ICONS: Record<ProductId, (p: P) => React.JSX.Element> = { egg: EggIcon, milk: MilkIcon };
+const PRODUCTS: ProductId[] = ['egg', 'milk'];
 
 export function AnimalIcon({ type, ...p }: P & { type: AnimalId }) {
   return type === 'chicken' ? <ChickenIcon {...p} /> : <CowIcon {...p} />;
@@ -893,9 +917,23 @@ export function AnimalIcon({ type, ...p }: P & { type: AnimalId }) {
 
 /** Icon of anything in the barn: a crop or an animal product. */
 export function ItemIcon({ item, ...p }: P & { item: ItemId }) {
-  if (item in PRODUCT_ICONS) {
-    const Icon = PRODUCT_ICONS[item as ProductId];
+  if (PRODUCTS.includes(item as ProductId)) {
+    const Icon = item === 'egg' ? EggIcon : MilkIcon;
     return <Icon {...p} />;
   }
   return <CropIcon crop={item as CropId} {...p} />;
 }
+
+// ------------------------------------------------------------------ hand-drawn UI art
+
+export const BarnIcon = withArt('barn', BarnSvg);
+export const TrophyIcon = withArt('trophy', TrophySvg);
+export const MilkIcon = withArt('milk', MilkSvg);
+export const EggIcon = withArt('egg', EggSvg);
+export const CoinIcon = withArt('coin', CoinSvg);
+export const CardsIcon = withArt('game-room', CardsSvg);
+export const GearIcon = withArt('settings', GearSvg);
+export const SickleIcon = withArt('harvest', SickleSvg);
+export const SproutIcon = withArt('plant', SproutSvg);
+export const SeedBagIcon = withArt('seeds', SeedBagSvg);
+export const XpIcon = withArt('level-star', XpSvg);

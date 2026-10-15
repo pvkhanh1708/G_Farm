@@ -6,6 +6,7 @@ import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
 import { Scene } from '@babylonjs/core/scene.js';
+import { artUrl, loadImage } from '../art';
 import { CameraRig } from './camera';
 
 /**
@@ -18,6 +19,8 @@ export type BillboardKey = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk';
 const KEYS: BillboardKey[] = ['ripe', 'chicken', 'cow', 'egg', 'milk'];
 const CELL = 256;
 const OUT = '#5a3214';
+/** Bubbles whose picture comes from the hand-drawn UI art when it is provided. */
+const BUBBLE_ART: Partial<Record<BillboardKey, string>> = { ripe: 'ui/level-star.png', egg: 'ui/egg.png', milk: 'ui/milk.png' };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -250,6 +253,21 @@ export class Billboards {
       c.restore();
     });
     this.tex.update(true);
+    // repaint those bubbles around the drawn picture once it loads
+    KEYS.forEach((k, i) => {
+      const url = BUBBLE_ART[k] && artUrl(BUBBLE_ART[k]!);
+      if (!url) return;
+      void loadImage(url).then((img) => {
+        if (!img) return;
+        c.clearRect(i * CELL, 0, CELL, CELL);
+        c.save();
+        c.translate(i * CELL + CELL * 0.03, CELL * 0.03);
+        c.scale(0.94, 0.94);
+        bubble(c, (c) => c.drawImage(img, 128 - 66, 108 - 66, 132, 132));
+        c.restore();
+        this.tex.update(true);
+      });
+    });
     const m = new StandardMaterial('billboard-mat', scene);
     m.diffuseTexture = this.tex;
     m.emissiveTexture = this.tex;

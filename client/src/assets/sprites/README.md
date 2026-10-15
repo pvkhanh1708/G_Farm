@@ -33,9 +33,15 @@ client/src/assets/sprites/
 │   ├── wheat/
 │   │   └── wheat-0.png … wheat-4.png
 │   └── … (mỗi cây một thư mục, tên = mã cây)
-└── icons/
-    ├── carrot.png          icon cây trong cửa hàng / kho
-    └── …
+├── icons/
+│   ├── carrot.png          icon cây trong cửa hàng / kho
+│   └── …
+└── ui/                     icon giao diện (thay icon vẽ bằng code)
+    ├── barn.png            Kho          ├── coin.png        xu
+    ├── seeds.png           Hạt giống    ├── level-star.png  sao cấp độ / XP / bong bóng cây chín
+    ├── plant.png           Trồng        ├── trophy.png      Xếp hạng
+    ├── harvest.png         Thu hoạch    ├── game-room.png   Phòng game
+    ├── settings.png        Cài đặt      ├── egg.png, milk.png  trứng, sữa
 ```
 
 ## Cách nhanh: mỗi cây một tấm ảnh
