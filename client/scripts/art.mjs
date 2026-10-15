@@ -159,6 +159,16 @@ for (const file of sheets) {
       const cx = ((sx / n) * S) / cw, cy = ((sy / n) * S) / ch;
       cellOf.push(Math.min(2, Math.max(0, cx | 0)) + 3 * Math.min(1, Math.max(0, cy | 0)));
     }
+    // a shape mostly outside its centroid's cell is two drawings touching: split it along the grid
+    const gridCell = (x, y) => Math.min(2, ((x * S) / cw) | 0) + 3 * Math.min(1, ((y * S) / ch) | 0);
+    const inOwn = new Float64Array(cellOf.length), total = new Float64Array(cellOf.length);
+    for (let i = 0; i < w * h; i++) {
+      const l = label[i];
+      if (l < 0) continue;
+      total[l]++;
+      if (gridCell(i % w, (i / w) | 0) === cellOf[l]) inOwn[l]++;
+    }
+    const split = cellOf.map((_, l) => total[l] > 50 && inOwn[l] / total[l] < 0.8);
     const src = fctx.getImageData(0, 0, W, H);
     const out = [];
     for (let cell = 0; cell < 6; cell++) {
@@ -168,7 +178,9 @@ for (const file of sheets) {
       for (let y = 0; y < H; y++)
         for (let x = 0; x < W; x++) {
           const l = label[((y / S) | 0) * w + ((x / S) | 0)];
-          if (l < 0 || cellOf[l] !== cell) continue;
+          if (l < 0) continue;
+          const owner = split[l] ? gridCell((x / S) | 0, (y / S) | 0) : cellOf[l];
+          if (owner !== cell) continue;
           const i = (y * W + x) * 4;
           if (src.data[i + 3] < 24) continue;
           own.data.set(src.data.subarray(i, i + 4), i);
