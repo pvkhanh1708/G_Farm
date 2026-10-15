@@ -53,7 +53,8 @@ Thay vì 5 file riêng, có thể đặt **một tấm** `crops/<mã>.png` (ví 
 └──────────┴──────────┴──────────┘
 ```
 
-Game tự cắt tấm này. Nếu có cả file lẻ (`crops/carrot/carrot-4.png`, `icons/carrot.png`) thì file lẻ được ưu tiên.
+Game tự tách tấm này: `npm run art` tìm từng cây theo hình dạng (không cắt theo ô vuông), nên cây vẽ tràn ra ngoài ô vẫn
+được giữ nguyên, và tạo `crops/<mã>/stage-0..4.webp` + `icons/<mã>.webp`. Nếu có cả file lẻ (`crops/carrot/carrot-4.png`, `icons/carrot.png`) thì file lẻ được ưu tiên.
 
 ## Quy tắc đặt tên
 

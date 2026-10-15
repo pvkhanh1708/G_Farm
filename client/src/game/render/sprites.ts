@@ -12,12 +12,17 @@ import { artUrl, cropSheetUrl, loadImage, SHEET } from '../art';
  * quad template that tiles draw as thin instances.
  */
 
-const CELL = 192; // px per atlas cell (includes padding against mip bleeding)
+const CELL = 224; // px per atlas cell (includes padding against mip bleeding)
 const PAD = 8;
-const DRAW = CELL - PAD * 2; // drawable square in the atlas (176 px)
-const COLS = 21;
+const DRAW = CELL - PAD * 2; // drawable square in the atlas (208 px)
+const COLS = 18;
 const ATLAS_W = COLS * CELL; // 4032
-const ATLAS_H = 7 * CELL; // 1344: 4 tile cells + 25 crops x 5 stages = 129 cells
+const ATLAS_H = 8 * CELL; // 1792: 4 tile cells + 25 crops x 5 stages = 129 cells
+/**
+ * Stage sprites sliced from a crop sheet by scripts/art.mjs cover 1.5 sheet cells
+ * (so plants spilling out of their cell are kept whole): drawn 1.5x larger.
+ */
+const SLICE_SCALE = 1.5;
 /** Logical canvas units the procedural painters draw in (scaled to DRAW). */
 const S = 144;
 type Ctx = CanvasRenderingContext2D;
@@ -906,6 +911,8 @@ export class SpriteLibrary {
   private atlas: DynamicTexture;
   private cells = new Map<string, number>();
   private cache = new Map<string, Mesh>();
+  /** Atlas cells holding a 1.5x sliced stage sprite (see SLICE_SCALE). */
+  private sliced = new Set<string>();
   readonly tileMaterial: StandardMaterial;
   readonly cropMaterial: StandardMaterial;
 
@@ -918,7 +925,7 @@ export class SpriteLibrary {
     let i = 0;
     /** atlas cell <- image url (+ which cell of a 3x2 crop sheet, if it is one) */
     const art: Array<{ cell: number; url: string; part?: number }> = [];
-    const paint = (key: string, file: string, fn: (c: Ctx) => void, sheet?: { url?: string; part: number }) => {
+    const paint = (key: string, file: string, fn: (c: Ctx) => void, sheet?: { url?: string; part: number; slice?: string }) => {
       const x = (i % COLS) * CELL + PAD, y = Math.floor(i / COLS) * CELL + PAD;
       c.save();
       c.translate(x, y);
@@ -929,8 +936,12 @@ export class SpriteLibrary {
       fn(c);
       c.restore();
       const url = artUrl(file);
+      const slice = sheet?.slice ? artUrl(sheet.slice) : undefined;
       if (url) art.push({ cell: i, url });
-      else if (sheet?.url) art.push({ cell: i, url: sheet.url, part: sheet.part });
+      else if (slice) {
+        art.push({ cell: i, url: slice });
+        this.sliced.add(key);
+      } else if (sheet?.url) art.push({ cell: i, url: sheet.url, part: sheet.part });
       this.cells.set(key, i++);
     };
     // file names: see client/src/assets/sprites/README.md
@@ -943,7 +954,7 @@ export class SpriteLibrary {
           if (s === 0) paintSeeds(cc, SEED[crop]);
           else if (s === 1) paintSprout(cc, G.mid, G.light, 1);
           else PAINTERS[crop](cc, s);
-        }, { url: sheet, part: s });
+        }, { url: sheet, part: s, slice: `crops/${crop}/stage-${s}.png` });
     }
     this.atlas.update(true);
     // hand-made PNGs replace their procedural cell as they load
@@ -999,6 +1010,9 @@ export class SpriteLibrary {
    */
   private quad(key: string, size: number, material: Material, upright = false) {
     let mesh = this.cache.get(key);
+    // sliced sheet sprites show 1.5 cells, with the original cell in the middle
+    const sliced = this.sliced.has(key);
+    if (sliced) size *= SLICE_SCALE;
     if (mesh) return mesh;
     const i = this.cells.get(key)!;
     const x0 = ((i % COLS) * CELL + PAD) / ATLAS_W, x1 = x0 + DRAW / ATLAS_W;
@@ -1014,7 +1028,7 @@ export class SpriteLibrary {
       const corner = (sx: number, sy: number) => R.scale(sx).addInPlace(U.scale(sy)).addInPlace(lift).asArray();
       // drawn plants stand on a soil mound about a quarter up from the cell's bottom:
       // lower the quad so that mound lands on the tile centre
-      const y0 = -size * 0.4;
+      const y0 = sliced ? -size * (0.4 / SLICE_SCALE + (SLICE_SCALE - 1) / 2 / SLICE_SCALE) : -size * 0.4;
       vd.positions = [...corner(-h, y0), ...corner(h, y0), ...corner(h, y0 + size), ...corner(-h, y0 + size)];
       const n = CameraRig.toCamera.asArray();
       vd.normals = [...n, ...n, ...n, ...n];

@@ -139,7 +139,13 @@ function LobbyView({ lobby, busy, run }: { lobby: Lobby | null; busy: boolean; r
         </div>
         <label className="stake-input">
           Mức cược
-          <input type="number" inputMode="numeric" min={MIN_STAKE} value={stake} onChange={(e) => setStake(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+          {/* text, not number: shows thousands separators (1.000.000) while typing */}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={stake ? stake.toLocaleString('vi-VN') : ''}
+            onChange={(e) => setStake(Math.min(1e12, Number(e.target.value.replace(/\D/g, '')) || 0))}
+          />
           <CoinIcon size={20} />
         </label>
         {!valid && <p className="warn">{stake < MIN_STAKE ? `Cược tối thiểu ${MIN_STAKE} xu` : 'Không đủ xu'}</p>}
