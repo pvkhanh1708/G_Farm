@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { serverNow } from '../game/net/clock';
 import { tienlen, tlBeats, tlCombo, TLLobby, TLView } from '../game/net/games';
 import { sfx } from '../game/audio/sfx';
@@ -123,6 +123,36 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
   }, []);
   // drop selected cards that are no longer in hand
   useEffect(() => setSel((s) => s.filter((c) => t.hand.includes(c))), [t.hand]);
+  // fly freshly played cards from the player who played them to the pile
+  const seatEls = useRef(new Map<number, HTMLDivElement>());
+  const handEl = useRef<HTMLDivElement>(null);
+  const pileEl = useRef<HTMLDivElement>(null);
+  const flown = useRef<string | null>(null);
+  const actionKey = t.lastAction?.kind === 'play' ? `${t.id}:${t.lastAction.seat}:${t.lastAction.cards.join(',')}` : null;
+  useLayoutEffect(() => {
+    if (!actionKey || actionKey === flown.current || !t.lastAction) return;
+    const first = flown.current === null;
+    flown.current = actionKey;
+    if (first) return; // don't replay the play that was already on the table when opening
+    const pile = pileEl.current;
+    const from = t.lastAction.seat === t.you ? handEl.current : seatEls.current.get(t.lastAction.seat);
+    if (!pile || !from) return;
+    const a = from.getBoundingClientRect();
+    const cards = [...pile.querySelectorAll<HTMLElement>('.card')];
+    cards.forEach((el, i) => {
+      const b = el.getBoundingClientRect();
+      const dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.top + a.height / 2 - (b.top + b.height / 2);
+      el.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) rotate(${(i - cards.length / 2) * 14}deg) scale(.55)`, opacity: 0.4 },
+          { transform: `translate(${dx * 0.3}px, ${dy * 0.3 - 30}px) rotate(${(i - cards.length / 2) * 5}deg) scale(1.1)`, opacity: 1, offset: 0.6 },
+          { transform: 'none', opacity: 1 },
+        ],
+        { duration: 420, delay: i * 45, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' },
+      );
+    });
+    sfx.tap();
+  }, [actionKey, t.lastAction, t.you]);
   const prev = useRef(t.status);
   useEffect(() => {
     if (prev.current !== 'finished' && t.status === 'finished') (t.winner === t.you ? sfx.unlock : sfx.error).call(sfx);
@@ -165,7 +195,7 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
     const s = t.seats[seat];
     const active = t.status === 'playing' && t.turn === seat;
     return (
-      <div key={seat} className={`tl-opp pos${rel(seat)} ${active ? 'turn' : ''} ${t.winner === seat ? 'won' : ''}`}>
+      <div key={seat} ref={(el) => (el ? seatEls.current.set(seat, el) : seatEls.current.delete(seat))} className={`tl-opp pos${rel(seat)} ${active ? 'turn' : ''} ${t.winner === seat ? 'won' : ''}`}>
         <b>{s.name}</b>
         <span className="tl-count">{s.cards} lá</span>
         {s.passed && <span className="tl-pass">Bỏ lượt</span>}
@@ -184,7 +214,7 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
         <div className="tl-center">
           {t.combo ? (
             <>
-              <div className="tl-pile">
+              <div className="tl-pile" ref={pileEl} key={actionKey ?? 'pile'}>
                 {t.combo.cards.map((c) => (
                   <Card key={c} id={c} small />
                 ))}
@@ -213,7 +243,7 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
             <span>{myTurn ? `Tới lượt bạn · ${left}s` : `Đợi ${t.seats[t.turn ?? 0]?.name ?? ''}…`}</span>
             {t.firstTrick && myTurn && <span className="tl-hint">Lượt đầu phải có 3♠</span>}
           </div>
-          <div className="tl-hand">
+          <div className="tl-hand" ref={handEl}>
             {t.hand.map((c) => (
               <Card key={c} id={c} selected={sel.includes(c)} onClick={() => setSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />
             ))}
