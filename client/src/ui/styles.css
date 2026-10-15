@@ -83,7 +83,12 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   background: linear-gradient(#ff6b5a, #d83020); border: 3px solid #fff; color: #fff; font-weight: 800; font-size: 16px; display: grid; place-items: center;
   box-shadow: 0 3px 6px rgba(0,0,0,.3); animation: pop .35s ease;
 }
-.bottombar { position: absolute; right: calc(18px + var(--safe-right)); bottom: calc(26px + var(--safe-bottom)); display: flex; gap: 16px; }
+.bottombar {
+  position: absolute; left: calc(18px + var(--safe-left)); right: calc(18px + var(--safe-right)); bottom: calc(26px + var(--safe-bottom));
+  display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none;
+}
+/* labels are wider than the round buttons, so the gap keeps neighbouring labels apart */
+.dock { display: flex; align-items: flex-end; gap: 30px; pointer-events: auto; }
 
 .bump { animation: bump .35s ease; }
 @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
@@ -106,7 +111,7 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 
 /* ------------------------------------------------------------ hint & tool banner */
 .hint {
-  position: absolute; left: calc(14px + var(--safe-left)); bottom: calc(26px + var(--safe-bottom)); max-width: min(340px, calc(100vw - 440px));
+  position: absolute; left: calc(14px + var(--safe-left)); bottom: calc(136px + var(--safe-bottom)); max-width: min(380px, calc(100vw - 100px));
   display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 24px;
   background: rgba(255, 250, 235, .95); border: 3px solid var(--wood); box-shadow: 0 4px 0 var(--wood-dark), 0 8px 18px rgba(0,0,0,.2);
   font-weight: 700; font-size: 16px; line-height: 1.2; animation: slideUp .35s cubic-bezier(.2, 1.4, .4, 1); pointer-events: none;
@@ -334,11 +339,12 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
   .round-btn.big { width: 74px; height: 74px; }
   .round-btn.big svg { width: 42px; height: 42px; }
   .round-btn-label { font-size: 14px; }
-  .bottombar { right: 8px; gap: 8px; }
+  .bottombar { left: calc(12px + var(--safe-left)); right: calc(12px + var(--safe-right)); bottom: calc(20px + var(--safe-bottom)); }
+  .dock { gap: 20px; }
   .round-btn.mid { width: 58px; height: 58px; }
   .round-btn.mid svg { width: 32px; height: 32px; }
   .round-btn.bulk .round-btn-label { font-size: 11px; }
-  .hint { left: 10px; max-width: none; font-size: 13px; padding: 6px 10px 6px 6px; bottom: calc(110px + var(--safe-bottom)); right: 10px; }
+  .hint { left: 10px; max-width: none; font-size: 13px; padding: 6px 10px 6px 6px; bottom: calc(118px + var(--safe-bottom)); right: 10px; }
   .hint-avatar { width: 34px; height: 34px; }
   .seed-grid { gap: 6px; }
   .seed-art { width: 70px; height: 70px; }
