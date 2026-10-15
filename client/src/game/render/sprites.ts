@@ -987,14 +987,15 @@ export class SpriteLibrary {
       return m;
     };
     this.tileMaterial = mat('tile-sprites', false);
+    // flat ground tiles never hide anything: crops dipping below the ground plane stay visible
+    this.tileMaterial.disableDepthWrite = true;
     this.cropMaterial = mat('crop-sprites', true);
   }
 
   /**
    * Quad showing one atlas cell, `size` world units square. Flat on the ground (tiles), or
    * `upright`: standing on the origin and facing the fixed isometric camera (crops), so
-   * plants read as standing up. Upright quads sit a little toward the camera so their own
-   * soil tile never hides the base of the plant.
+   * plants read as standing up.
    */
   private quad(key: string, size: number, material: Material, upright = false) {
     let mesh = this.cache.get(key);
@@ -1008,10 +1009,12 @@ export class SpriteLibrary {
     const vd = new VertexData();
     if (upright) {
       const R = CameraRig.screenRight, U = CameraRig.screenUp;
-      const lift = CameraRig.toCamera.scale(0.4);
+      // a hair toward the camera so a crop always wins against tiles at equal depth
+      const lift = CameraRig.toCamera.scale(0.05);
       const corner = (sx: number, sy: number) => R.scale(sx).addInPlace(U.scale(sy)).addInPlace(lift).asArray();
-      // the plant's base sits a little below the cell's bottom edge in the art
-      const y0 = -size * 0.1;
+      // drawn plants stand on a soil mound about a quarter up from the cell's bottom:
+      // lower the quad so that mound lands on the tile centre
+      const y0 = -size * 0.28;
       vd.positions = [...corner(-h, y0), ...corner(h, y0), ...corner(h, y0 + size), ...corner(-h, y0 + size)];
       const n = CameraRig.toCamera.asArray();
       vd.normals = [...n, ...n, ...n, ...n];

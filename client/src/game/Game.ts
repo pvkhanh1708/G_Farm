@@ -387,7 +387,8 @@ export class Game {
     const ring = this.templates.ring;
     const v = g === null ? undefined : this.tiles.get(g);
     if (!v) return ring.setEnabled(false);
-    ring.position.set(v.center.x, v.center.y + 0.04, v.center.z);
+    // just above the flat tile sprite (tiles lie at y 0.02), not at the old raised soil height
+    ring.position.set(v.center.x, 0.03, v.center.z);
     ring.setEnabled(true);
   }
 

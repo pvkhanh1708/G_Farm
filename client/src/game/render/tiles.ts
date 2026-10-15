@@ -216,8 +216,8 @@ export class TileView {
     const fx = this.ctx.fx;
     tw.add(0.16, (k) => {
       // seen from above a hop is invisible, so it swells instead
-      this.cropY = CROP_Y + 0.2 * k;
-      this.cropScale.set(1 + 0.3 * k, 1, 1 + 0.3 * k);
+      this.cropY = CROP_Y + 0.1 * k;
+      this.cropScale.set(1 + 0.1 * k, 1, 1 + 0.1 * k);
       this.applyCrop();
     }, {
       ease: ease.outCubic,
@@ -228,8 +228,8 @@ export class TileView {
       },
     });
     tw.add(0.3, (k) => {
-      this.cropY = CROP_Y + 0.2;
-      const s = 1.3 * (1 - k);
+      this.cropY = CROP_Y + 0.1;
+      const s = 1.1 * (1 - k);
       this.cropScale.set(s, 1, s);
       this.applyCrop();
     }, {
