@@ -18,6 +18,10 @@ const TILES_HALF = (PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE)) / 2;
 const GROUND_SIZE = 1200;
 /** Wild parcels beyond the one to come that get scenery. */
 const WILD_RING = 16;
+/** Light-earth pad under opened parcels (off: tiles sit straight on the meadow). */
+const SHOW_PLOT_PAD = false;
+/** Trees and bushes on the wild land and the parcel to come (off: open meadow). */
+const SHOW_TREES = false;
 
 type Placement = { x: number; y: number; z: number; s: number; yaw: number };
 
@@ -180,9 +184,7 @@ export class World {
       const { x: ox, z: oz } = parcelCenter(k);
       const r = mulberry(1000 + k * 77);
       const opened = k < active, next = k === active, wild = k > active;
-      if (opened) {
-        pads.push({ x: ox, y: 0, z: oz, s: 1, yaw: 0 });
-      }
+      if (opened && SHOW_PLOT_PAD) pads.push({ x: ox, y: 0, z: oz, s: 1, yaw: 0 });
       const inBorder = (x: number, z: number) => Math.max(Math.abs(x), Math.abs(z)) > TILES_HALF + 0.12;
       const inside = (x: number, z: number) => {
         const [rx, rz] = roundCorner(x, z, half, ISLAND_CORNER - 0.3);
@@ -204,12 +206,12 @@ export class World {
         for (let i = 0; i < 20; i++) put(flowers[Math.floor(r() * flowers.length)], 0, 0.9 + r() * 0.5);
       }
       for (let i = 0; i < (opened ? 2 : 3); i++) put(rocks, -0.04, (opened ? 0.18 : 0.25) + r() * 0.2);
-      if (next) {
+      if (next && SHOW_TREES) {
         const bushSpots: Array<[number, number]> = [[half - 0.4, half - 0.4], [half - 0.3, 0.6], [-1.2, half - 0.3], [half - 0.5, -half + 0.6]];
         for (let i = 0; i < 6; i++) bushSpots.push([(r() * 2 - 1) * (TILES_HALF - 0.4), (r() * 2 - 1) * (TILES_HALF - 0.4)]);
         bushSpots.forEach(([bx, bz], i) => bushes[(i + k) % bushes.length].push({ x: ox + bx, y: 0, z: oz + bz, s: 0.75 + r() * 0.4, yaw: r() * 6.28 }));
       }
-      if (wild) {
+      if (wild && SHOW_TREES) {
         for (let i = 0; i < 4; i++) put(bushes[Math.floor(r() * bushes.length)], 0, 0.7 + r() * 0.5);
         for (let i = 0; i < 2 + Math.floor(r() * 3); i++) put(trees[Math.floor(r() * trees.length)], 0, 0.8 + r() * 0.5);
       }
