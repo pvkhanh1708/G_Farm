@@ -77,10 +77,11 @@ class Sfx {
     this.tone(700, 0.08, { type: 'triangle', gain: 0.14, slideTo: 420 });
   }
 
+  /** Soft soil rustle and a gentle rising "pip". */
   plant() {
-    this.noise(0.12, { freq: 380, gain: 0.5, q: 0.8 });
-    this.tone(220, 0.14, { type: 'sine', gain: 0.25, slideTo: 140 });
-    this.tone(880, 0.1, { type: 'triangle', gain: 0.08, delay: 0.08 });
+    this.noise(0.1, { freq: 1100, gain: 0.07, q: 0.5 });
+    this.tone(440, 0.22, { type: 'sine', gain: 0.07, attack: 0.02, slideTo: 587 });
+    this.tone(880, 0.2, { type: 'sine', gain: 0.025, attack: 0.03, delay: 0.06 });
   }
 
   grow() {

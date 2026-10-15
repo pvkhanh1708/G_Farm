@@ -231,13 +231,12 @@ export class World {
         const p = spot(border);
         if (p) flowers[Math.floor(r() * flowers.length)].push({ x: ox + p[0], y: 0, z: oz + p[1], s: 0.9 + r() * 0.5, yaw: r() * 6.28 });
       }
-      // bushes sit on the far corners/edges so they never hide tiles from the camera
-      const bushSpots: Array<[number, number]> = [[half - 0.4, half - 0.4], [half - 0.3, 0.6], [-1.2, half - 0.3], [half - 0.5, -half + 0.6]];
-      if (isl.wild) for (let i = 0; i < 6; i++) bushSpots.push([(r() * 2 - 1) * (TILES_HALF - 0.4), (r() * 2 - 1) * (TILES_HALF - 0.4)]);
-      bushSpots.forEach(([bx, bz], i) => {
-        if (r() < 0.25 && !isl.wild) return;
-        bushes[(i + k) % bushes.length].push({ x: ox + bx, y: 0, z: oz + bz, s: 0.75 + r() * 0.4, yaw: r() * 6.28 });
-      });
+      // bushes only overgrow the wild island to come; opened parcels are kept clear around the tiles
+      if (isl.wild) {
+        const bushSpots: Array<[number, number]> = [[half - 0.4, half - 0.4], [half - 0.3, 0.6], [-1.2, half - 0.3], [half - 0.5, -half + 0.6]];
+        for (let i = 0; i < 6; i++) bushSpots.push([(r() * 2 - 1) * (TILES_HALF - 0.4), (r() * 2 - 1) * (TILES_HALF - 0.4)]);
+        bushSpots.forEach(([bx, bz], i) => bushes[(i + k) % bushes.length].push({ x: ox + bx, y: 0, z: oz + bz, s: 0.75 + r() * 0.4, yaw: r() * 6.28 }));
+      }
       for (let i = 0; i < 3; i++) {
         const p = spot(true);
         if (p) rocks.push({ x: ox + p[0], y: -0.04, z: oz + p[1], s: 0.25 + r() * 0.25, yaw: r() * 6.28 });
