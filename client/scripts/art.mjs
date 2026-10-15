@@ -25,7 +25,10 @@ const pngs = [];
   }
 })(ROOT);
 
+const relOf = (p) => path.relative(ROOT, p).split(path.sep).join('/');
+const isAnimalSheet = (p) => /^animals\/[a-z]+\.png$/.test(relOf(p));
 const todo = pngs.filter((p) => {
+  if (isAnimalSheet(p)) return false; // sliced into frames below
   const out = p.replace(/\.png$/i, '.webp');
   return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
 });
@@ -37,7 +40,15 @@ const sheets = pngs.filter((p) => {
   const out = sheetOut(p, 4);
   return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
 });
-if (!todo.length && !sheets.length) {
+// animal sheets animals/<id>.png (one row of 6 poses) become animals/<id>/frame-0..5.webp, see sliceAnimals()
+const ANIMAL_FRAMES = 6;
+const frameOut = (file, f) => path.join(path.dirname(file), path.basename(file, '.png'), `frame-${f}.webp`);
+const animalSheets = pngs.filter((p) => {
+  if (!isAnimalSheet(p)) return false;
+  const out = frameOut(p, ANIMAL_FRAMES - 1);
+  return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
+});
+if (!todo.length && !sheets.length && !animalSheets.length) {
   console.log(`[art] ${pngs.length} PNG, all WebP up to date`);
   process.exit(0);
 }
@@ -215,6 +226,109 @@ for (const file of sheets) {
   fs.mkdirSync(path.join(ROOT, 'icons'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'icons', `${id}.webp`), Buffer.from(parts[5], 'base64'));
   console.log(`[art] ${rel} -> crops/${id}/stage-0..4.webp + icons/${id}.webp`);
+}
+
+/**
+ * An animal sheet is one row of poses. Each pose is the group of solid shapes whose centre lies in
+ * its sixth of the sheet; specks of background left around the drawings (small shapes, faint
+ * pixels) are dropped. All frames share one scale and stand on the bottom edge of a 256 px square,
+ * centred, so the animal keeps its size and footing from frame to frame.
+ */
+for (const file of animalSheets) {
+  const rel = relOf(file);
+  const frames = await page.evaluate(async (data, N) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + data;
+    await img.decode();
+    const W = img.width, H = img.height;
+    const full = document.createElement('canvas');
+    full.width = W;
+    full.height = H;
+    full.getContext('2d').drawImage(img, 0, 0);
+    const src = full.getContext('2d').getImageData(0, 0, W, H);
+    const S = 2, w = Math.ceil(W / S), h = Math.ceil(H / S);
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const i = (Math.min(H - 1, y * S) * W + Math.min(W - 1, x * S)) * 4;
+        mask[y * w + x] = src.data[i + 3] > 140 ? 1 : 0;
+      }
+    const label = new Int32Array(w * h).fill(-1);
+    const comps = [];
+    for (let i = 0; i < w * h; i++) {
+      if (!mask[i] || label[i] >= 0) continue;
+      const id = comps.length;
+      const stack = [i];
+      label[i] = id;
+      let sx = 0, n = 0;
+      while (stack.length) {
+        const j = stack.pop();
+        const x = j % w;
+        sx += x;
+        n++;
+        for (const k of [j - 1, j + 1, j - w, j + w]) {
+          if (k < 0 || k >= w * h || label[k] >= 0 || !mask[k]) continue;
+          if ((k === j - 1 && x === 0) || (k === j + 1 && x === w - 1)) continue;
+          label[k] = id;
+          stack.push(k);
+        }
+      }
+      comps.push({ n, frame: Math.min(N - 1, Math.floor(((sx / n) * S) / (W / N))) });
+    }
+    const biggest = Math.max(...comps.map((c) => c.n));
+    const keep = comps.map((c) => c.n >= biggest * 0.004);
+    // owner of each mask cell, grown by 2 cells so antialiased outlines survive
+    let owner = new Int8Array(w * h).fill(-1);
+    for (let i = 0; i < w * h; i++) if (label[i] >= 0 && keep[label[i]]) owner[i] = comps[label[i]].frame;
+    for (let pass = 0; pass < 2; pass++) {
+      const o2 = owner.slice();
+      for (let y = 1; y < h - 1; y++)
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          if (owner[i] >= 0) continue;
+          for (const k of [i - 1, i + 1, i - w, i + w]) if (owner[k] >= 0) { o2[i] = owner[k]; break; }
+        }
+      owner = o2;
+    }
+    const layers = [], boxes = [];
+    for (let f = 0; f < N; f++) {
+      const own = new ImageData(W, H);
+      let x0 = W, y0 = H, x1 = 0, y1 = 0;
+      for (let y = 0; y < H; y++)
+        for (let x = 0; x < W; x++) {
+          if (owner[((y / S) | 0) * w + ((x / S) | 0)] !== f) continue;
+          const i = (y * W + x) * 4;
+          if (src.data[i + 3] < 70) continue;
+          own.data.set(src.data.subarray(i, i + 4), i);
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      const layer = document.createElement('canvas');
+      layer.width = W;
+      layer.height = H;
+      layer.getContext('2d').putImageData(own, 0, 0);
+      layers.push(layer);
+      boxes.push({ x0, y0, x1, y1 });
+    }
+    const side = Math.max(...boxes.map((b) => Math.max(b.x1 - b.x0, b.y1 - b.y0))) * 1.04;
+    const out = [];
+    for (let f = 0; f < N; f++) {
+      const b = boxes[f];
+      const c = document.createElement('canvas');
+      c.width = c.height = 256;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      // feet on the bottom edge (a 2% margin), centred horizontally
+      const sx = (b.x0 + b.x1) / 2 - side / 2, sy = b.y1 + side * 0.02 - side;
+      ctx.drawImage(layers[f], sx, sy, side, side, 0, 0, 256, 256);
+      out.push(c.toDataURL('image/webp', 0.9).split(',')[1]);
+    }
+    return out;
+  }, fs.readFileSync(file).toString('base64'), ANIMAL_FRAMES);
+  frames.forEach((b64, f) => {
+    fs.mkdirSync(path.dirname(frameOut(file, f)), { recursive: true });
+    fs.writeFileSync(frameOut(file, f), Buffer.from(b64, 'base64'));
+  });
+  console.log(`[art] ${rel} -> ${rel.replace(/\.png$/, '')}/frame-0..${ANIMAL_FRAMES - 1}.webp`);
 }
 
 await browser.close();

@@ -17,14 +17,24 @@ import { mulberry } from './geometry';
  * above it while one is ready to collect.
  */
 
-const SIZE = { chicken: 0.95, cow: 1.4 };
+const SIZE = { chicken: 1.1, cow: 1.75 };
+/**
+ * Poses on an animal sheet (see scripts/art.mjs): 0 standing, 1-2 walking, 3 pecking /
+ * grazing, 4 seen from behind, 5 walking away three-quarters. All face right; mirrored for left.
+ */
+const POSE = { stand: 0, walk: [1, 2], eat: 3, back: 4, away: 5 };
+/** Walk-cycle frames per second. */
+const STEP_RATE = { chicken: 7, cow: 4 };
 const SPEED = { chicken: 0.55, cow: 0.3 };
 const BUBBLE = 0.55;
 
 interface Walker {
-  mesh: Mesh;
-  mirrored: Mesh;
+  /** One mesh per pose (and mirror), made on first use; only `shown` is visible. */
+  poses: Map<string, Mesh>;
+  shown: Mesh | null;
   bubble: Mesh;
+  /** What it does while standing still: look around or peck / graze. */
+  idle: 'stand' | 'eat';
   type: Animal['type'];
   pos: Vector3;
   goal: Vector3;
@@ -121,7 +131,7 @@ export class AnimalPen {
 
   /** Match the walkers to the owned animals (same order as the state). */
   sync(animals: Animal[], now: number) {
-    const drop = (w: Walker) => [w.mesh, w.mirrored, w.bubble].forEach((m) => m.dispose());
+    const drop = (w: Walker) => [...w.poses.values(), w.bubble].forEach((m) => m.dispose());
     while (this.walkers.length > animals.length) drop(this.walkers.pop()!);
     animals.forEach((a, i) => {
       let w = this.walkers[i];
@@ -130,13 +140,9 @@ export class AnimalPen {
         w = undefined as unknown as Walker;
       }
       if (!w) {
-        const mesh = this.boards.quad(a.type, SIZE[a.type], { bottom: true }).clone(`animal-${i}`);
-        mesh.isVisible = true;
-        const mirrored = this.boards.quad(a.type, SIZE[a.type], { bottom: true, flip: true }).clone(`animal-m-${i}`);
         const bubble = this.boards.quad(ANIMALS[a.type].product, BUBBLE, { onTop: true }).clone(`animal-bubble-${i}`);
         const pos = this.spot();
-        w = { mesh, mirrored, bubble, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
-        mesh.position.copyFrom(pos);
+        w = { poses: new Map(), shown: null, idle: 'stand', bubble, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
         this.walkers[i] = w;
       }
       const ready = now >= a.lastCollect + ANIMALS[a.type].period * 1000;
@@ -144,30 +150,53 @@ export class AnimalPen {
     });
   }
 
+  /** Show pose `frame` (mirrored when facing left), hiding the previous one. */
+  private show(w: Walker, frame: number) {
+    const flip = w.facing === -1;
+    const key = `${frame}:${flip ? 1 : 0}`;
+    let mesh = w.poses.get(key);
+    if (!mesh) {
+      mesh = this.boards.quad(`${w.type}:${frame}`, SIZE[w.type], { bottom: true, flip }).clone(`animal-${w.type}-${key}`);
+      w.poses.set(key, mesh);
+    }
+    if (w.shown !== mesh) {
+      if (w.shown) w.shown.isVisible = false;
+      mesh.isVisible = true;
+      w.shown = mesh;
+    }
+    return mesh;
+  }
+
   update(dt: number) {
     this.time += dt;
     for (const w of this.walkers) {
       const to = w.goal.subtract(w.pos);
       const d = to.length();
+      let frame: number;
       if (d < 0.05) {
         w.wait -= dt;
         if (w.wait <= 0) {
           w.goal = this.spot();
           w.wait = 1 + this.rand() * 4;
+          w.idle = this.rand() < 0.55 ? 'eat' : 'stand';
         }
+        // pecking chickens bob their head down and up; grazing cows keep it down
+        const peck = w.type === 'chicken' ? Math.sin(this.time * 5 + w.phase) > -0.2 : true;
+        frame = w.idle === 'eat' && peck ? POSE.eat : POSE.stand;
       } else {
         const step = Math.min(d, SPEED[w.type] * dt);
         w.pos.addInPlace(to.scale(step / d));
-        // screen-right is (+x, -z): moving that way faces the picture right
-        const right = to.x - to.z;
+        // screen-right is (+x, -z) and screen-up (away from the camera) is (+x, +z)
+        const right = to.x - to.z, away = to.x + to.z;
         if (Math.abs(right) > 0.01) w.facing = right > 0 ? 1 : -1;
+        if (away > 2.5 * Math.abs(right)) frame = POSE.back;
+        else if (away > 0.8 * Math.abs(right)) frame = POSE.away;
+        else frame = POSE.walk[Math.floor(this.time * STEP_RATE[w.type] + w.phase) % POSE.walk.length];
       }
       const walking = d >= 0.05;
-      const hop = walking ? Math.abs(Math.sin(this.time * (w.type === 'chicken' ? 14 : 7) + w.phase)) * (w.type === 'chicken' ? 0.06 : 0.03) : 0;
-      w.mesh.position.set(w.pos.x, hop, w.pos.z);
-      w.mirrored.position.copyFrom(w.mesh.position);
-      w.mesh.isVisible = w.facing === 1;
-      w.mirrored.isVisible = w.facing === -1;
+      // back views have no walk cycle, so they waddle a little instead
+      const hop = walking && (frame === POSE.back || frame === POSE.away) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
+      this.show(w, frame).position.set(w.pos.x, hop, w.pos.z);
       if (w.bubble.isVisible) w.bubble.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
     }
   }

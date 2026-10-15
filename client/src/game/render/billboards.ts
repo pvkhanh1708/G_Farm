@@ -15,12 +15,20 @@ import { CameraRig } from './camera';
  * Painted once on a canvas texture of its own.
  */
 
-export type BillboardKey = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk';
-const KEYS: BillboardKey[] = ['ripe', 'chicken', 'cow', 'egg', 'milk'];
+/** Animal pictures come in 6 poses (see animals.ts): `chicken:0` … `cow:5`. */
+export const ANIMAL_FRAMES = 6;
+type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk';
+export type BillboardKey = 'ripe' | 'egg' | 'milk' | `${'chicken' | 'cow'}:${number}`;
+const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
 const CELL = 256;
+/** Cells per row of the texture (2048 px wide: fine for any mobile GPU). */
+const COLS = 8;
+const ROWS = Math.ceil(KEYS.length / COLS);
+const cellX = (i: number) => (i % COLS) * CELL;
+const cellY = (i: number) => Math.floor(i / COLS) * CELL;
 const OUT = '#5a3214';
 /** Bubbles whose picture comes from the hand-drawn UI art when it is provided. */
-const BUBBLE_ART: Partial<Record<BillboardKey, string>> = { ripe: 'ui/level-star.png', egg: 'ui/egg.png', milk: 'ui/milk.png' };
+const BUBBLE_ART: Partial<Record<string, string>> = { ripe: 'ui/level-star.png', egg: 'ui/egg.png', milk: 'ui/milk.png' };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -49,7 +57,7 @@ function star(c: Ctx, x: number, y: number, r: number) {
   c.closePath();
 }
 
-const PAINT: Record<BillboardKey, (c: Ctx) => void> = {
+const PAINT: Record<Picture, (c: Ctx) => void> = {
   ripe(c) {
     bubble(c, (c) => {
       c.fillStyle = '#ffd23f';
@@ -238,33 +246,31 @@ export class Billboards {
   readonly material: StandardMaterial;
 
   constructor(private scene: Scene) {
-    this.tex = new DynamicTexture('billboards', { width: CELL * KEYS.length, height: CELL }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
+    this.tex = new DynamicTexture('billboards', { width: CELL * COLS, height: CELL * ROWS }, scene, true, Texture.TRILINEAR_SAMPLINGMODE);
     this.tex.hasAlpha = true;
     this.tex.wrapU = this.tex.wrapV = Texture.CLAMP_ADDRESSMODE;
     const c = this.tex.getContext() as unknown as Ctx;
-    c.clearRect(0, 0, CELL * KEYS.length, CELL);
-    KEYS.forEach((k, i) => {
+    c.clearRect(0, 0, CELL * COLS, CELL * ROWS);
+    // a little inset so trilinear sampling never bleeds a neighbour in
+    const inCell = (i: number, draw: () => void) => {
+      c.clearRect(cellX(i), cellY(i), CELL, CELL);
       c.save();
-      c.translate(i * CELL, 0);
-      // a little inset so trilinear sampling never bleeds a neighbour in
-      c.translate(CELL * 0.03, CELL * 0.03);
+      c.translate(cellX(i) + CELL * 0.03, cellY(i) + CELL * 0.03);
       c.scale(0.94, 0.94);
-      PAINT[k](c);
+      draw();
       c.restore();
-    });
+    };
+    KEYS.forEach((k, i) => inCell(i, () => PAINT[k.split(':')[0] as Picture](c)));
     this.tex.update(true);
-    // repaint those bubbles around the drawn picture once it loads
+    // hand-drawn pictures replace the painted ones as they load: bubbles keep their frame,
+    // animal poses fill the cell (animals/<id>/frame-<n>, made by scripts/art.mjs)
     KEYS.forEach((k, i) => {
-      const url = BUBBLE_ART[k] && artUrl(BUBBLE_ART[k]!);
+      const [name, frame] = k.split(':');
+      const url = frame !== undefined ? artUrl(`animals/${name}/frame-${frame}.png`) : BUBBLE_ART[k] && artUrl(BUBBLE_ART[k]!);
       if (!url) return;
       void loadImage(url).then((img) => {
         if (!img) return;
-        c.clearRect(i * CELL, 0, CELL, CELL);
-        c.save();
-        c.translate(i * CELL + CELL * 0.03, CELL * 0.03);
-        c.scale(0.94, 0.94);
-        bubble(c, (c) => c.drawImage(img, 128 - 66, 108 - 66, 132, 132));
-        c.restore();
+        inCell(i, () => (frame !== undefined ? c.drawImage(img, 0, 0, CELL, CELL) : bubble(c, (c) => c.drawImage(img, 128 - 66, 108 - 66, 132, 132))));
         this.tex.update(true);
       });
     });
@@ -293,9 +299,11 @@ export class Billboards {
     let mesh = this.cache.get(id);
     if (mesh) return mesh;
     const i = KEYS.indexOf(key);
-    const n = KEYS.length;
+    const a = cellX(i) / (CELL * COLS), b = (cellX(i) + CELL) / (CELL * COLS);
     // `flip` mirrors the picture (an animal walking the other way)
-    const [u0, u1] = opts.flip ? [(i + 1) / n, i / n] : [i / n, (i + 1) / n];
+    const [u0, u1] = opts.flip ? [b, a] : [a, b];
+    // DynamicTexture is uploaded flipped: canvas top = v 1
+    const vTop = 1 - cellY(i) / (CELL * ROWS), vBot = 1 - (cellY(i) + CELL) / (CELL * ROWS);
     const R = CameraRig.screenRight, U = CameraRig.screenUp;
     const h = size / 2;
     const y0 = opts.bottom ? -size * 0.04 : -h;
@@ -304,8 +312,7 @@ export class Billboards {
     vd.positions = [...corner(-h, y0), ...corner(h, y0), ...corner(h, y0 + size), ...corner(-h, y0 + size)];
     const nrm = CameraRig.toCamera.asArray();
     vd.normals = [...nrm, ...nrm, ...nrm, ...nrm];
-    // DynamicTexture is uploaded flipped: canvas top = v 1
-    vd.uvs = [u0, 0, u1, 0, u1, 1, u0, 1];
+    vd.uvs = [u0, vBot, u1, vBot, u1, vTop, u0, vTop];
     vd.indices = [0, 2, 1, 0, 3, 2];
     mesh = new Mesh(`billboard-${id}`, this.scene);
     vd.applyToMesh(mesh);
