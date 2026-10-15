@@ -79,6 +79,14 @@ class Sync {
     this.apply(res, performance.now() - t0);
   }
 
+  /**
+   * Adopt the farm state that another API (e.g. the game room, which moves coins)
+   * returned, unless local actions are still on their way to the server.
+   */
+  adopt(res: { state?: FarmResponse['state']; serverTime?: number }) {
+    if (!this.queue.length && !this.busy) this.apply(res, 0);
+  }
+
   private apply(res: { state?: FarmResponse['state']; serverTime?: number }, rtt: number) {
     if (res.serverTime) syncClock(res.serverTime, rtt);
     if (res.state) store.hydrate(res.state);

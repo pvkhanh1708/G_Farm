@@ -533,6 +533,17 @@ export function CantaloupeIcon(p: P) {
   );
 }
 
+export function CardsIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <rect x="8" y="14" width="26" height="36" rx="5" fill="#fff" stroke={OUT} strokeWidth="3" transform="rotate(-14 21 32)" />
+      <rect x="28" y="12" width="26" height="36" rx="5" fill="#fff" stroke={OUT} strokeWidth="3" transform="rotate(12 41 30)" />
+      <path d="M41 22c-3-4-9-1-7 3l7 8 7-8c2-4-4-7-7-3z" fill="#e2483a" stroke={OUT} strokeWidth="1.6" transform="rotate(12 41 30)" />
+      <path d="M17 34l4-7 4 7-4 7z" fill="#2a2a2a" transform="rotate(-14 21 32)" />
+    </Svg>
+  );
+}
+
 export function CoinIcon(p: P) {
   const id = useId();
   return (

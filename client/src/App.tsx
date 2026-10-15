@@ -11,10 +11,11 @@ import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './u
 import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
+import { GameRoom } from './ui/GameRoom';
 import { TileOverlays } from './ui/TileOverlays';
 import { formatNum } from './ui/format';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
@@ -233,6 +234,7 @@ export function App() {
               else (sfx.open(), setPopup({ type: 'shop', tile: null, bulk: true }));
             }}
             onOverview={() => (sfx.tap(), setOverview(game.toggleOverview()))}
+            onGameRoom={() => (sfx.open(), setPopup({ type: 'room' }))}
           />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
           <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
@@ -262,6 +264,7 @@ export function App() {
       )}
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
       {popup?.type === 'levels' && <LevelsPopup onClose={close} />}
+      {popup?.type === 'room' && <GameRoom onClose={close} />}
       {popup?.type === 'install' && <InstallPopup onClose={close} />}
       {popup?.type === 'account' && (
         <AccountPopup

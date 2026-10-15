@@ -6,6 +6,8 @@ trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp tr
 
 Nông trại nhìn **chéo kiểu isometric, góc cố định, không zoom** (kéo để di chuyển). Ô đất nằm sát nhau thành một khối:
 mỗi **cột 10 ô**, mở theo thứ tự; hết một cột thì sang cột mới nằm **bên trái** cột cũ, không giới hạn số cột.
+**Phòng game** (nút góc phải): mở bàn cờ caro với mức cược tự đặt; người khác vào bàn hoặc chơi với máy. Người thắng nhận cả
+2 phần cược trừ 5% phí; hoà hoàn tiền; mỗi lượt 60 giây. Cờ vây và tiến lên sẽ làm sau.
 Chạm ô cây đang lớn để xem thời gian còn lại và **đào cây** (một ô, hoặc mọi ô cùng loại cây đang lớn).
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
@@ -121,6 +123,10 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | GET | `/farm` | State nông trại |
 | POST | `/farm/plant` | `{tiles: number[], crop}` — gieo theo thứ tự đến khi hết xu |
 | POST | `/farm/harvest` | `{tiles: number[]}` — thu các ô đã chín, bỏ qua ô chưa chín |
+| GET | `/games/tables?game=caro` | Phòng game: bàn đang chờ + bàn chưa xong của mình |
+| POST | `/games/tables` | `{game, stake}` mở bàn, giữ tiền cược (tối thiểu 100) |
+| GET | `/games/tables/{id}` | Trạng thái bàn (client hỏi mỗi giây; kiểm tra hết giờ) |
+| POST | `/games/tables/{id}/join` · `/bot` · `/cancel` · `/move {x,y}` · `/resign` | Vào bàn · chơi với máy · huỷ (hoàn tiền) · đánh · bỏ cuộc |
 | POST | `/farm/dig` | `{tiles: number[]}` — đào cây trên các ô (không hoàn tiền) |
 | POST | `/farm/sell` | `{crop, qty}` |
 | POST | `/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
