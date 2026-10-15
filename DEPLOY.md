@@ -35,28 +35,14 @@ API chạy ở subdomain, còn `server/.env`, `.git/config`, `shared/`, `client/
 
 1. **PHP 8.4:** Websites → Advanced → **PHP Configuration** → 8.4 (cho cả domain chính và subdomain `api`).
 2. **Subdomain:** Domains → **Subdomains** → `api.nongtrai.io.vn`, tick *Custom folder* → `public_html/api`.
-3. **SSH:** Advanced → **SSH Access** → Enable. Ghi lại IP, port (thường **65002**), username (`u123456789`).
+3. **SSH:** Advanced → **SSH Access** → Enable.
 4. **Database:** Databases → **Management** → tạo database + user (vd. `u123456789_nongtrai`). Ghi lại mật khẩu.
 5. **SSL:** Security → **SSL** → cài SSL miễn phí cho **cả** `nongtrai.io.vn` và `api.nongtrai.io.vn`.
 
-### 2. Clone repo vào thư mục web
+### 2. Đưa code lên
 
-```bash
-ssh -p 65002 u123456789@IP_SERVER
-
-# deploy key cho repo private
-ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
-cat ~/.ssh/id_ed25519.pub
-```
-
-GitHub → repo **G_Farm** → Settings → **Deploy keys** → *Add deploy key* → dán khóa trên (không cần quyền ghi).
-
-```bash
-cd ~/domains/api.nongtrai.io.vn/public_html
-ls -A                       # xem có gì: thường là default.php của Hostinger, có thể có thư mục api/ trống
-rm -rf ./* ./.[!.]*         # git clone cần thư mục rỗng — chỉ chạy khi chắc chắn không còn gì cần giữ
-git clone git@github.com:pvkhanh1708/G_Farm.git .
-```
+Clone repo vào `~/domains/api.nongtrai.io.vn/public_html` (gốc repo = thư mục web, xóa trang mặc định của Hostinger trước).
+Các lệnh dưới đây chạy trong thư mục đó qua SSH.
 
 ### 3. Cấu hình API
 
@@ -102,22 +88,12 @@ Mở **https://nongtrai.io.vn**: góc phải trên hiện **“Đã đồng bộ
 
 ## Cập nhật phiên bản mới
 
-**Trên máy dev:**
-
-```bash
-cd client && npm run build        # chỉ cần khi sửa client/ hoặc shared/ — ghi bản build vào game/
-cd .. && git add -A && git commit -m "..." && git push
-```
-
-**Trên server:**
-
-```bash
-cd ~/domains/api.nongtrai.io.vn/public_html && git pull
-```
+Sửa `client/` hoặc `shared/` thì chạy `cd client && npm run build` trên máy dev trước khi commit,
+để thư mục `game/` có bản build mới (hosting không có Node).
 
 `git pull` cập nhật game ngay (file trong `game/`), rồi hook tự chạy: `composer install` → `migrate` → cache.
-Cuối cùng in ra phiên bản game / API đang chạy. Nếu bạn quên build, nó cảnh báo:
-`!! game/ is older than client/ or shared/` → build, commit, push rồi `git pull` lại.
+Cuối cùng in ra phiên bản game / API đang chạy. Nếu quên build, nó cảnh báo
+`!! game/ is older than client/ or shared/`.
 
 Người chơi chỉ cần tải lại trang (`index.html` không bị cache, file JS có hash trong tên nên luôn đúng bản mới).
 Không muốn dùng hook thì thay `git pull` bằng `./deploy.sh` (tự pull + cập nhật API).
@@ -134,7 +110,6 @@ Không muốn dùng hook thì thay `git pull` bằng `./deploy.sh` (tự pull + 
 | `api.nongtrai.io.vn` ra trang game hoặc 404 | Thư mục subdomain chưa phải `public_html/api` (hPanel → Subdomains) |
 | API trả **500** | Xem `server/storage/logs/laravel-*.log`. Hay gặp: thiếu `APP_KEY`, sai mật khẩu DB, quyền `storage/` |
 | API trả **401** dù có token | Kiểm tra `api/.htaccess` còn dòng `HTTP_AUTHORIZATION` (có sẵn) |
-| `git pull` báo *local changes would be overwritten* | Có file trên server bị sửa tay → `git status`, rồi `git checkout -- <file>` |
 | Sửa `server/.env` không có tác dụng | `./deploy.sh --after-pull` (cache lại config) |
 
 ## Sao lưu
