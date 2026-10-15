@@ -32,10 +32,14 @@ html, body { overscroll-behavior: none; position: fixed; inset: 0; }
 @media (display-mode: standalone), (display-mode: fullscreen) {
   html, body, #root { height: 100vh; }
 }
+/* iOS home-screen app: the real screen height, measured in game/pwa.ts */
+html.ios-standalone, html.ios-standalone body, html.ios-standalone #root { height: var(--app-h, 100vh); bottom: auto; }
 body { font-family: var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 input, textarea { user-select: text; -webkit-user-select: text; }
 button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
-.app { position: fixed; inset: 0; overflow: hidden; }
+#root { position: relative; }
+/* absolute (not fixed): a fixed box is sized to the layout viewport, which iOS home-screen apps report short */
+.app { position: absolute; inset: 0; overflow: hidden; }
 .scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
 
 /* ------------------------------------------------------------ text outline helper */

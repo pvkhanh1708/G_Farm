@@ -4,10 +4,10 @@ Bản thử nghiệm chất lượng hình ảnh và cảm giác chơi trước 
 Phạm vi: nông trại nhìn từ trên xuống (ô đất và cây dạng 2D trên đảo 3D), 15 loại cây × 5 giai đoạn, hệ thống kinh nghiệm/cấp độ, và chu trình
 trồng → thu hoạch → bán → mở rộng đất, chạy trực tiếp trên trình duyệt.
 
-Bố cục theo kiểu đảo nổi: mỗi **mảnh đất** là một đảo cỏ với lưới **4×4 ô** vuông. Ô mở theo thứ tự
-(ô kế tiếp có biển “Mở khóa”); mở hết 16 ô thì mảnh kế tiếp xuất hiện. Các mảnh xếp theo vòng xoắn quanh
-mảnh đầu tiên, số mảnh không giới hạn. Có nút “Trồng tất cả”, “Thu tất cả”,
-và nút kính lúp để zoom ra xem tổng quan mọi mảnh đất.
+Nông trại nằm trên một **đồng cỏ liền vô tận**, nhìn từ trên xuống: mỗi **mảnh đất** là lưới **4×4 ô** vuông, các mảnh
+nằm sát nhau (viền lối đất phân cách) và xếp theo vòng xoắn quanh mảnh đầu tiên, không giới hạn số mảnh. Ô mở theo thứ tự
+(ô kế tiếp có biển “Mở khóa”); mở hết 16 ô thì mảnh kế tiếp (đang um tùm bụi cây) được khai hoang. Có nút “Trồng tất cả”,
+“Thu tất cả”, và nút kính lúp để zoom ra xem tổng quan.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
@@ -154,7 +154,7 @@ client/src/
       sprites.ts         hình 2D (Canvas) ô đất / ô cỏ / 15 cây × 5 giai đoạn, gộp vào 1 atlas
       batch.ts           thin instance theo mảnh + toàn nông trại
       tiles.ts           ô đất / ô cỏ khóa + animation trồng / thu hoạch / mở khóa
-      world.ts           đảo nổi theo mảnh, mây, đảo xa, bướm
+      world.ts           đồng cỏ vô tận, viền lối đất từng mảnh, cây / bụi / hoa ở đất hoang, bướm
       kits.ts            mẫu bụi, hoa, cỏ, đá, cây, bướm dùng chung
       materials.ts       PBR stylized + plugin shader gió (lá / cỏ rung)
       fx.ts              hạt lấp lánh, lá bay, bụi

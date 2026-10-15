@@ -48,7 +48,8 @@ export const TILE_PITCH = 1.64;
 export const SOIL_TOP = 0.14;
 export const PARCEL_BORDER = 0.8;
 export const ISLAND_SIZE = PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE) + PARCEL_BORDER * 2;
-export const PARCEL_PITCH = ISLAND_SIZE + 1.5;
+/** Parcels sit edge to edge on one continuous meadow. */
+export const PARCEL_PITCH = ISLAND_SIZE;
 
 export const START_UNLOCKED = economy.startUnlocked;
 export const STARTING_COINS = economy.startingCoins;

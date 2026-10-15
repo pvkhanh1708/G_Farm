@@ -51,7 +51,29 @@ export const pwa = {
     return (await e.userChoice).outcome === 'accepted';
   },
 
+  /**
+   * iOS home-screen apps with a translucent status bar size the page to the
+   * screen minus the status bar while drawing from the very top, which leaves a
+   * strip at the bottom that neither 100% nor 100vh covers. Size the page to
+   * the real screen instead (the HUD already pads by the safe-area insets).
+   */
+  fitIosStandalone() {
+    if ((navigator as Navigator & { standalone?: boolean }).standalone !== true) return;
+    const root = document.documentElement;
+    root.classList.add('ios-standalone');
+    const fit = () => {
+      const portrait = matchMedia('(orientation: portrait)').matches;
+      const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      root.style.setProperty('--app-h', `${Math.max(innerHeight, full)}px`);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    // iOS reports the new size a moment after rotating
+    window.addEventListener('orientationchange', () => setTimeout(fit, 350));
+  },
+
   register() {
+    this.fitIosStandalone();
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault(); // keep it for our own button instead of the mini-infobar
       deferred = e as BeforeInstallPromptEvent;
