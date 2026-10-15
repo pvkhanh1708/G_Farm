@@ -140,46 +140,87 @@ for (const file of sheets) {
     small.height = h;
     small.getContext('2d').drawImage(img, 0, 0, w, h);
     const a = small.getContext('2d').getImageData(0, 0, w, h).data;
-    let mask = new Uint8Array(w * h);
-    for (let i = 0; i < w * h; i++) mask[i] = a[i * 4 + 3] > 60 ? 1 : 0;
-    for (let pass = 0; pass < 2; pass++) {
-      const m2 = mask.slice();
-      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (!mask[y * w + x] && (mask[y * w + x - 1] || mask[y * w + x + 1] || mask[(y - 1) * w + x] || mask[(y + 1) * w + x])) m2[y * w + x] = 1;
-      mask = m2;
-    }
-    const label = new Int32Array(w * h).fill(-1);
-    const cellOf = [];
+    // Label the shapes at alpha > `th`. A soft glow around the drawings can join two of them
+    // into one shape that then has to be cut along the grid (clipping both); when that happens,
+    // label again ignoring the glow (a higher threshold), and keep whichever needs fewer cuts.
     const cw = W / 3, ch = H / 2;
-    for (let i = 0; i < w * h; i++) {
-      if (!mask[i] || label[i] >= 0) continue;
-      const id = cellOf.length;
-      const stack = [i];
-      label[i] = id;
-      let sx = 0, sy = 0, n = 0;
-      while (stack.length) {
-        const j = stack.pop();
-        const x = j % w, y = (j / w) | 0;
-        sx += x; sy += y; n++;
-        for (const k of [j - 1, j + 1, j - w, j + w]) {
-          if (k < 0 || k >= w * h || label[k] >= 0 || !mask[k]) continue;
-          if ((k === j - 1 && x === 0) || (k === j + 1 && x === w - 1)) continue;
-          label[k] = id;
-          stack.push(k);
-        }
-      }
-      const cx = ((sx / n) * S) / cw, cy = ((sy / n) * S) / ch;
-      cellOf.push(Math.min(2, Math.max(0, cx | 0)) + 3 * Math.min(1, Math.max(0, cy | 0)));
-    }
-    // a shape mostly outside its centroid's cell is two drawings touching: split it along the grid
     const gridCell = (x, y) => Math.min(2, ((x * S) / cw) | 0) + 3 * Math.min(1, ((y * S) / ch) | 0);
-    const inOwn = new Float64Array(cellOf.length), total = new Float64Array(cellOf.length);
-    for (let i = 0; i < w * h; i++) {
-      const l = label[i];
-      if (l < 0) continue;
-      total[l]++;
-      if (gridCell(i % w, (i / w) | 0) === cellOf[l]) inOwn[l]++;
+    const labelShapes = (th) => {
+      let mask = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) mask[i] = a[i * 4 + 3] > th ? 1 : 0;
+      for (let pass = 0; pass < 2; pass++) {
+        const m2 = mask.slice();
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (!mask[y * w + x] && (mask[y * w + x - 1] || mask[y * w + x + 1] || mask[(y - 1) * w + x] || mask[(y + 1) * w + x])) m2[y * w + x] = 1;
+        mask = m2;
+      }
+      const label = new Int32Array(w * h).fill(-1);
+      const cellOf = [];
+      for (let i = 0; i < w * h; i++) {
+        if (!mask[i] || label[i] >= 0) continue;
+        const id = cellOf.length;
+        const stack = [i];
+        label[i] = id;
+        let sx = 0, sy = 0, n = 0;
+        while (stack.length) {
+          const j = stack.pop();
+          const x = j % w, y = (j / w) | 0;
+          sx += x; sy += y; n++;
+          for (const k of [j - 1, j + 1, j - w, j + w]) {
+            if (k < 0 || k >= w * h || label[k] >= 0 || !mask[k]) continue;
+            if ((k === j - 1 && x === 0) || (k === j + 1 && x === w - 1)) continue;
+            label[k] = id;
+            stack.push(k);
+          }
+        }
+        const cx = ((sx / n) * S) / cw, cy = ((sy / n) * S) / ch;
+        cellOf.push(Math.min(2, Math.max(0, cx | 0)) + 3 * Math.min(1, Math.max(0, cy | 0)));
+      }
+      // a shape mostly outside its centroid's cell is two drawings touching: split it along the grid
+      const inOwn = new Float64Array(cellOf.length), total = new Float64Array(cellOf.length);
+      for (let i = 0; i < w * h; i++) {
+        const l = label[i];
+        if (l < 0) continue;
+        total[l]++;
+        if (gridCell(i % w, (i / w) | 0) === cellOf[l]) inOwn[l]++;
+      }
+      const split = cellOf.map((_, l) => total[l] > 50 && inOwn[l] / total[l] < 0.8);
+      return { label, cellOf, split, cuts: split.filter(Boolean).length };
+    };
+    let shapes = labelShapes(60);
+    if (shapes.cuts) {
+      const strict = labelShapes(170);
+      if (strict.cuts < shapes.cuts) shapes = strict;
     }
-    const split = cellOf.map((_, l) => total[l] > 50 && inOwn[l] / total[l] < 0.8);
+    const { label, cellOf, split } = shapes;
+    // Touching drawings are cut where they are thinnest near each grid line (not on the line
+    // itself), so a plant reaching a little past its cell is kept whole.
+    const cuts = new Map();
+    split.forEach((isSplit, l) => {
+      if (!isSplit) return;
+      const colN = new Int32Array(w), rowN = new Int32Array(h);
+      for (let i = 0; i < w * h; i++)
+        if (label[i] === l) {
+          colN[i % w]++;
+          rowN[(i / w) | 0]++;
+        }
+      const best = (hist, line, reach) => {
+        let at = line, min = Infinity;
+        for (let v = Math.max(0, Math.round(line - reach)); v <= Math.min(hist.length - 1, Math.round(line + reach)); v++) {
+          const score = hist[v] + Math.abs(v - line) * 0.01; // ties: closest to the grid line
+          if (score < min) {
+            min = score;
+            at = v;
+          }
+        }
+        return at;
+      };
+      const rw = (cw / S) * 0.2, rh = (ch / S) * 0.2;
+      cuts.set(l, { x1: best(colN, cw / S, rw), x2: best(colN, (2 * cw) / S, rw), y: best(rowN, ch / S, rh) });
+    });
+    const cutCell = (l, x, y) => {
+      const c = cuts.get(l);
+      return (x < c.x1 ? 0 : x < c.x2 ? 1 : 2) + (y < c.y ? 0 : 3);
+    };
     const src = fctx.getImageData(0, 0, W, H);
     const out = [];
     for (let cell = 0; cell < 6; cell++) {
@@ -190,7 +231,7 @@ for (const file of sheets) {
         for (let x = 0; x < W; x++) {
           const l = label[((y / S) | 0) * w + ((x / S) | 0)];
           if (l < 0) continue;
-          const owner = split[l] ? gridCell((x / S) | 0, (y / S) | 0) : cellOf[l];
+          const owner = split[l] ? cutCell(l, (x / S) | 0, (y / S) | 0) : cellOf[l];
           if (owner !== cell) continue;
           const i = (y * W + x) * 4;
           if (src.data[i + 3] < 24) continue;
