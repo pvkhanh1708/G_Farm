@@ -204,5 +204,13 @@ export function fertilizerCost(crop: CropId): number {
 export const ORDERS_UNLOCK = economy.orders.unlockLevel;
 export const LOGIN_REWARDS = economy.login;
 
-/** Fenced animal pen on the right of the farm block (column 0 is at x = 0, columns grow toward -x). */
-export const PEN = { x0: 1.5, x1: 6.3, z0: -9.6, z1: -3.6 };
+/**
+ * Fenced pens on the right of the farm block (column 0 is at x = 0, columns grow toward -x),
+ * one per animal kind: a small chicken coop, then a larger cow pen further along the column.
+ */
+export const PENS: Record<AnimalId, { x0: number; x1: number; z0: number; z1: number }> = {
+  chicken: { x0: 1.5, x1: 5.5, z0: -5.2, z1: -1.4 },
+  cow: { x0: 1.5, x1: 6.3, z0: -12.4, z1: -6.2 },
+};
+/** Right edge of the pens (camera bounds, meadow decor). */
+export const PENS_X1 = Math.max(...Object.values(PENS).map((p) => p.x1));

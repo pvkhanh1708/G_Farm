@@ -6,14 +6,14 @@ import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
 import { Scene } from '@babylonjs/core/scene.js';
-import { ANIMALS, PEN } from '../config';
+import { AnimalId, ANIMALS, PENS } from '../config';
 import type { Animal } from '../state/store';
 import { Billboards } from './billboards';
 import { mulberry } from './geometry';
 
 /**
- * The fenced pen on the right of the farm block. Each owned animal is a
- * camera-facing picture that wanders inside; a bubble with its product floats
+ * Fenced pens on the right of the farm block, one for chickens and one for cows.
+ * Each owned animal is a camera-facing picture that wanders inside its own pen; a bubble with its product floats
  * above it while one is ready to collect.
  */
 
@@ -45,13 +45,16 @@ interface Walker {
   facing: 1 | -1;
 }
 
-function fence(scene: Scene) {
-  const mat = new StandardMaterial('fence-mat', scene);
-  mat.diffuseColor = Color3.FromHexString('#b07a45');
-  mat.emissiveColor = Color3.FromHexString('#4a2f18');
-  mat.specularColor = Color3.Black();
+type Rect = { x0: number; x1: number; z0: number; z1: number };
+
+/** Ground look per pen: straw for the coop, dry grass for the cows. */
+const FLOOR: Record<AnimalId, { ground: string; tufts: string }> = {
+  chicken: { ground: '#cfae63', tufts: '#b8973e' },
+  cow: { ground: '#a9b85e', tufts: '#7f9440' },
+};
+
+function fence(scene: Scene, mat: StandardMaterial, id: string, { x0, x1, z0, z1 }: Rect) {
   const parts: Mesh[] = [];
-  const { x0, x1, z0, z1 } = PEN;
   const post = (x: number, z: number) => {
     const p = CreateBox('post', { width: 0.12, depth: 0.12, height: 0.62 }, scene);
     p.position.set(x, 0.31, z);
@@ -75,41 +78,41 @@ function fence(scene: Scene) {
   side(x1, z1, x0, z1);
   side(x0, z1, x0, z0);
   const m = Mesh.MergeMeshes(parts, true)!;
-  m.name = 'pen-fence';
+  m.name = `pen-fence-${id}`;
   m.material = mat;
   m.isPickable = false;
   return m;
 }
 
-function floor(scene: Scene) {
-  const w = PEN.x1 - PEN.x0, d = PEN.z1 - PEN.z0;
-  const g = CreateGround('pen-floor', { width: w, height: d }, scene);
-  g.position.set((PEN.x0 + PEN.x1) / 2, 0.004, (PEN.z0 + PEN.z1) / 2);
-  const mat = new StandardMaterial('pen-floor-mat', scene);
+function floor(scene: Scene, id: AnimalId, pen: Rect) {
+  const w = pen.x1 - pen.x0, d = pen.z1 - pen.z0;
+  const g = CreateGround(`pen-floor-${id}`, { width: w, height: d }, scene);
+  g.position.set((pen.x0 + pen.x1) / 2, 0.004, (pen.z0 + pen.z1) / 2);
+  const mat = new StandardMaterial(`pen-floor-mat-${id}`, scene);
   mat.disableLighting = true;
-  mat.emissiveColor = Color3.FromHexString('#cfae63');
+  mat.emissiveColor = Color3.FromHexString(FLOOR[id].ground);
   mat.disableDepthWrite = true;
   g.material = mat;
   g.isPickable = false;
   // a few straw tufts
-  const r = mulberry(77);
+  const r = mulberry(id === 'cow' ? 78 : 77);
   const pos: number[] = [], idx: number[] = [];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < Math.round(w * d * 3); i++) {
     const x = (r() - 0.5) * (w - 0.3), z = (r() - 0.5) * (d - 0.3), a = r() * Math.PI, l = 0.12 + r() * 0.12;
     const b = pos.length / 3;
     const dx = Math.cos(a) * l, dz = Math.sin(a) * l;
     pos.push(x - dx, 0.01, z - dz, x + dx, 0.01, z + dz, x + dx + 0.02, 0.01, z + dz + 0.03, x - dx + 0.02, 0.01, z - dz + 0.03);
     idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
-  const straw = new Mesh('pen-straw', scene);
+  const straw = new Mesh(`pen-straw-${id}`, scene);
   const vd = new VertexData();
   vd.positions = pos;
   vd.indices = idx;
   vd.applyToMesh(straw);
   straw.parent = g;
-  const sm = new StandardMaterial('straw-mat', scene);
+  const sm = new StandardMaterial(`straw-mat-${id}`, scene);
   sm.disableLighting = true;
-  sm.emissiveColor = Color3.FromHexString('#b8973e');
+  sm.emissiveColor = Color3.FromHexString(FLOOR[id].tufts);
   sm.backFaceCulling = false;
   straw.material = sm;
   straw.isPickable = false;
@@ -122,13 +125,20 @@ export class AnimalPen {
   private rand = mulberry(4242);
 
   constructor(scene: Scene, private boards: Billboards) {
-    fence(scene);
-    floor(scene);
+    const wood = new StandardMaterial('fence-mat', scene);
+    wood.diffuseColor = Color3.FromHexString('#b07a45');
+    wood.emissiveColor = Color3.FromHexString('#4a2f18');
+    wood.specularColor = Color3.Black();
+    for (const id of Object.keys(PENS) as AnimalId[]) {
+      fence(scene, wood, id, PENS[id]);
+      floor(scene, id, PENS[id]);
+    }
   }
 
-  private spot() {
-    const m = 0.5;
-    return new Vector3(PEN.x0 + m + this.rand() * (PEN.x1 - PEN.x0 - 2 * m), 0, PEN.z0 + m + this.rand() * (PEN.z1 - PEN.z0 - 2 * m));
+  /** A random point inside the pen of this kind of animal. */
+  private spot(type: AnimalId) {
+    const p = PENS[type], m = 0.5;
+    return new Vector3(p.x0 + m + this.rand() * (p.x1 - p.x0 - 2 * m), 0, p.z0 + m + this.rand() * (p.z1 - p.z0 - 2 * m));
   }
 
   /** Match the walkers to the owned animals (same order as the state). */
@@ -143,7 +153,7 @@ export class AnimalPen {
       }
       if (!w) {
         const bubble = this.boards.quad(ANIMALS[a.type].product, BUBBLE, { onTop: true }).clone(`animal-bubble-${i}`);
-        const pos = this.spot();
+        const pos = this.spot(a.type);
         w = { poses: new Map(), shown: null, idle: 'stand', bubble, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
         this.walkers[i] = w;
       }
@@ -178,7 +188,7 @@ export class AnimalPen {
       if (d < 0.05) {
         w.wait -= dt;
         if (w.wait <= 0) {
-          w.goal = this.spot();
+          w.goal = this.spot(w.type);
           w.wait = 1 + this.rand() * 4;
           const r = this.rand();
           w.idle = r < 0.45 ? 'eat' : r < 0.7 ? 'stand' : r < 0.85 ? 'happy' : 'call';

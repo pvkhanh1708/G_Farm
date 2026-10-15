@@ -15,7 +15,7 @@ cả dãy, hoặc khi đang “Gieo nhanh” thì kéo qua các ô trống để
 
 **Cột nút bên phải:** *Nhiệm vụ* (3–4 nhiệm vụ mỗi ngày theo giờ Việt Nam + quà đăng nhập 7 ngày liên tiếp, tự hiện khi vào game),
 *Đơn hàng* (từ cấp 3: 3 đơn, giao đủ hàng nhận ×1,6 giá chợ và ×1,5 XP; “Đổi” để lấy đơn khác), *Chuồng* (gà từ cấp 6 đẻ trứng
-mỗi 5 phút, bò từ cấp 15 cho sữa mỗi 15 phút; chạm con vật trong chuồng bên phải nông trại để thu), *Nâng cấp* (Đất màu mỡ +10%
+mỗi 5 phút, bò từ cấp 15 cho sữa mỗi 15 phút; chuồng gà và chuồng bò riêng, bên phải nông trại; chạm con vật để thu), *Nâng cấp* (Đất màu mỡ +10%
 sản lượng/cấp, Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (nông trại: xu / cấp / số ô đất; phòng game: số trận thắng / tiền thắng
 ròng) và *Phòng game*.
 **Thời tiết:** trời mưa theo từng khung 20 phút, giống nhau cho mọi người chơi (công thức chung client/server); khi mưa thu hoạch

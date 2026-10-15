@@ -413,7 +413,7 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
       >
         <Busy on={busy === 'collect'}>{ready ? `Thu ${ready} sản phẩm` : 'Chưa có sản phẩm'}</Busy>
       </button>
-      <p className="prog-note">Chạm vào con vật trong chuồng (bên phải nông trại) để thu trứng, sữa. Sản phẩm vào Kho để bán hoặc giao đơn.</p>
+      <p className="prog-note">Chạm vào con vật trong chuồng gà, chuồng bò (bên phải nông trại) để thu trứng, sữa. Sản phẩm vào Kho để bán hoặc giao đơn.</p>
     </Modal>
   );
 }

@@ -17,7 +17,7 @@ import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { Scene } from '@babylonjs/core/scene.js';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, ISLAND_SIZE, PEN, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
+import { CROP_ORDER, CropId, ISLAND_SIZE, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { SpriteLibrary } from './render/sprites';
 import { Fx } from './render/fx';
@@ -345,7 +345,7 @@ export class Game {
     const xs = centers.map((c) => c.x), zs = centers.map((c) => c.z);
     const h = ISLAND_SIZE / 2;
     // the animal pen sits right of the farm block
-    this.rig.setBounds(Math.min(...xs) - h, Math.max(PEN.x1 - 1, Math.max(...xs) + h), Math.min(...zs) - h, Math.max(...zs) + h);
+    this.rig.setBounds(Math.min(...xs) - h, Math.max(PENS_X1 - 1, Math.max(...xs) + h), Math.min(...zs) - h, Math.max(...zs) + h);
   }
 
   /** Centre on the parcel being filled. */
