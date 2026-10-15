@@ -972,7 +972,11 @@ export class SpriteLibrary {
       m.specularColor.set(0, 0, 0);
       m.backFaceCulling = false;
       if (blend) {
-        m.transparencyMode = Material.MATERIAL_ALPHABLEND;
+        // blend for soft edges, but drop near-empty pixels and write depth, so overlapping
+        // plants (sprites larger than their tile) layer by row instead of by draw order
+        m.transparencyMode = Material.MATERIAL_ALPHATESTANDBLEND;
+        m.alphaCutOff = 0.1;
+        m.forceDepthWrite = true;
         m.alphaMode = Constants.ALPHA_COMBINE;
       } else {
         m.transparencyMode = Material.MATERIAL_ALPHATEST;

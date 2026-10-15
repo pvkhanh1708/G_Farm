@@ -10,6 +10,12 @@ const CORNER = 0.22;
 /** Heights of the flat layers: wild grass / soil, then the crop sprite above it. */
 const BED_Y = 0.02;
 const CROP_Y = 0.05;
+/**
+ * Crop sprites are drawn larger than their tile and nudged up the screen, so tall
+ * plants spill over the tile's top edge like in hand-drawn farm games.
+ */
+const CROP_SPRITE = TILE_SIZE * 1.4;
+const CROP_NUDGE_Z = TILE_SIZE * 0.12;
 
 // ------------------------------------------------------------------ templates
 
@@ -108,8 +114,8 @@ export class TileView {
     this.cropHandle = ctx.batches.handle();
   }
 
-  private compose(scale: Vector3, y: number) {
-    tmpPos.set(this.x, y, this.z);
+  private compose(scale: Vector3, y: number, dz = 0) {
+    tmpPos.set(this.x, y, this.z + dz);
     return Matrix.ComposeToRef(scale, NO_ROTATION, tmpPos, tmpMatrix);
   }
 
@@ -118,7 +124,12 @@ export class TileView {
   }
 
   private applyCrop() {
-    this.cropBatch?.set(this.cropHandle, this.compose(this.cropScale, this.cropY));
+    this.cropBatch?.set(this.cropHandle, this.compose(this.cropScale, this.cropY + this.cropBias, CROP_NUDGE_Z));
+  }
+
+  /** Lower rows sit a hair higher, so a plant overlapping the tile above is drawn in front of it. */
+  private get cropBias() {
+    return -this.z * 0.0004;
   }
 
   dispose() {
@@ -173,9 +184,9 @@ export class TileView {
     this.cropScale.setAll(1);
     this.cropY = CROP_Y;
     if (crop) {
-      const sprite = () => this.ctx.sprites.crop(crop, stage, TILE_SIZE);
+      const sprite = () => this.ctx.sprites.crop(crop, stage, CROP_SPRITE);
       this.cropBatch = this.ctx.batches.get(`crop:${crop}:${stage}`, this.x, this.z, () => ({ detailed: sprite(), simple: sprite() }), false);
-      this.cropBatch.add(this.cropHandle, this.compose(this.cropScale, this.cropY));
+      this.cropBatch.add(this.cropHandle, this.compose(this.cropScale, this.cropY + this.cropBias, CROP_NUDGE_Z));
     }
     const ripe = stage === 4 && crop !== null;
     this.ctx.sparkles.set(this.g, ripe ? this.center : null);
