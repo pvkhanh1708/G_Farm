@@ -14,8 +14,8 @@ const CROP_Y = 0.05;
  * Crop sprites are drawn larger than their tile and nudged up the screen, so tall
  * plants spill over the tile's top edge like in hand-drawn farm games.
  */
-const CROP_SPRITE = TILE_SIZE * 1.4;
-const CROP_NUDGE_Z = TILE_SIZE * 0.12;
+const CROP_SPRITE = TILE_SIZE * 1.2;
+const CROP_NUDGE_Z = TILE_SIZE * 0.08;
 
 // ------------------------------------------------------------------ templates
 

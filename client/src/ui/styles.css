@@ -285,7 +285,8 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .inv-info b { font-size: 19px; }
 .inv-info small { display: flex; align-items: center; gap: 3px; font-weight: 700; color: var(--wood); }
 .inv-actions { display: flex; flex-direction: column; gap: 6px; }
-.inv-total { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 12px; font-weight: 700; font-size: 16px; color: var(--wood); }
+/* stays at the bottom of the popup while the list scrolls */
+.inv-total { flex: none; display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 2px dashed #ecd9b4; font-weight: 700; font-size: 16px; color: var(--wood); }
 .inv-total b { font-size: 20px; color: var(--ink); }
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; font-weight: 700; color: var(--wood); padding: 10px 0; }
 .empty p { margin: 8px 0 0; }

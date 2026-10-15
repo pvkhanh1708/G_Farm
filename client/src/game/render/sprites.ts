@@ -17,6 +17,8 @@ const DRAW = CELL - PAD * 2; // drawable square in the atlas (176 px)
 const COLS = 21;
 const ATLAS_W = COLS * CELL; // 4032
 const ATLAS_H = 7 * CELL; // 1344: 4 tile cells + 25 crops x 5 stages = 129 cells
+/** Share of each side of a drawn tile image cut away to drop its outline rim. */
+const TILE_ART_INSET = 0.075;
 /** Logical canvas units the procedural painters draw in (scaled to DRAW). */
 const S = 144;
 type Ctx = CanvasRenderingContext2D;
@@ -916,7 +918,7 @@ export class SpriteLibrary {
     c.clearRect(0, 0, ATLAS_W, ATLAS_H);
     let i = 0;
     /** atlas cell <- image url (+ which cell of a 3x2 crop sheet, if it is one) */
-    const art: Array<{ cell: number; url: string; part?: number }> = [];
+    const art: Array<{ cell: number; url: string; part?: number; inset?: number }> = [];
     const paint = (key: string, file: string, fn: (c: Ctx) => void, sheet?: { url?: string; part: number }) => {
       const x = (i % COLS) * CELL + PAD, y = Math.floor(i / COLS) * CELL + PAD;
       c.save();
@@ -928,7 +930,8 @@ export class SpriteLibrary {
       fn(c);
       c.restore();
       const url = artUrl(file);
-      if (url) art.push({ cell: i, url });
+      // tile art (soil / grass) carries a thick drawn rim: crop it off so tiles meet cleanly
+      if (url) art.push({ cell: i, url, inset: file.startsWith('tiles/') ? TILE_ART_INSET : 0 });
       else if (sheet?.url) art.push({ cell: i, url: sheet.url, part: sheet.part });
       this.cells.set(key, i++);
     };
@@ -947,12 +950,15 @@ export class SpriteLibrary {
     this.atlas.update(true);
     // hand-made PNGs replace their procedural cell as they load
     void Promise.all(
-      art.map(async ({ cell, url, part }) => {
+      art.map(async ({ cell, url, part, inset = 0 }) => {
         const img = await loadImage(url);
         if (!img) return;
         const x = (cell % COLS) * CELL + PAD, y = Math.floor(cell / COLS) * CELL + PAD;
         c.clearRect(x - PAD, y - PAD, CELL, CELL);
-        if (part === undefined) c.drawImage(img, x, y, DRAW, DRAW);
+        if (part === undefined) {
+          const ix = img.width * inset, iy = img.height * inset;
+          c.drawImage(img, ix, iy, img.width - ix * 2, img.height - iy * 2, x, y, DRAW, DRAW);
+        }
         else {
           // one cell of a 3x2 crop sheet
           const w = img.width / SHEET.cols, h = img.height / SHEET.rows;
@@ -975,7 +981,8 @@ export class SpriteLibrary {
         // blend for soft edges, but drop near-empty pixels and write depth, so overlapping
         // plants (sprites larger than their tile) layer by row instead of by draw order
         m.transparencyMode = Material.MATERIAL_ALPHATESTANDBLEND;
-        m.alphaCutOff = 0.1;
+        // high cut-off: the faint glow around drawn art must not hide the neighbouring plant
+        m.alphaCutOff = 0.45;
         m.forceDepthWrite = true;
         m.alphaMode = Constants.ALPHA_COMBINE;
       } else {

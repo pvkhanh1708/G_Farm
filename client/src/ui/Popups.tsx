@@ -249,29 +249,31 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
         </div>
       ) : (
         <>
-          <div className="inv-list">
-            {items.map((c) => (
-              <div className="inv-row" key={c}>
-                <div className="inv-art" style={{ background: CROP_BG[c] }}>
-                  <CropIcon crop={c} size={44} />
-                  <span className="inv-count">×{formatNum(s.inventory[c], 1000)}</span>
+          <div className="panel-scroll">
+            <div className="inv-list">
+              {items.map((c) => (
+                <div className="inv-row" key={c}>
+                  <div className="inv-art" style={{ background: CROP_BG[c] }}>
+                    <CropIcon crop={c} size={44} />
+                    <span className="inv-count">×{formatNum(s.inventory[c], 1000)}</span>
+                  </div>
+                  <div className="inv-info">
+                    <b>{CROPS[c].name}</b>
+                    <small>
+                      <CoinIcon size={14} /> {formatNum(CROPS[c].sellPrice)} / cái
+                    </small>
+                  </div>
+                  <div className="inv-actions">
+                    <button className="btn btn-blue small" onClick={(e) => onSell(c, 1, e.currentTarget.getBoundingClientRect())}>
+                      Bán 1
+                    </button>
+                    <button className="btn btn-orange small" onClick={(e) => onSell(c, s.inventory[c], e.currentTarget.getBoundingClientRect())}>
+                      Bán hết <CoinIcon size={16} /> {formatNum(s.inventory[c] * CROPS[c].sellPrice)}
+                    </button>
+                  </div>
                 </div>
-                <div className="inv-info">
-                  <b>{CROPS[c].name}</b>
-                  <small>
-                    <CoinIcon size={14} /> {formatNum(CROPS[c].sellPrice)} / cái
-                  </small>
-                </div>
-                <div className="inv-actions">
-                  <button className="btn btn-blue small" onClick={(e) => onSell(c, 1, e.currentTarget.getBoundingClientRect())}>
-                    Bán 1
-                  </button>
-                  <button className="btn btn-orange small" onClick={(e) => onSell(c, s.inventory[c], e.currentTarget.getBoundingClientRect())}>
-                    Bán hết <CoinIcon size={16} /> {formatNum(s.inventory[c] * CROPS[c].sellPrice)}
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           <div className="inv-total">
             Tổng giá trị: <CoinIcon size={18} /> <b>{formatNum(total)}</b>
