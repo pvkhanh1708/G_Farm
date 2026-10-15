@@ -68,6 +68,8 @@ export const pwa = {
     };
     fit();
     window.addEventListener('resize', fit);
+    // the page is now taller than iOS's (short) viewport: keep it pinned instead of position:fixed
+    window.addEventListener('scroll', () => (window.scrollX || window.scrollY) && window.scrollTo(0, 0), { passive: true });
     // iOS reports the new size a moment after rotating
     window.addEventListener('orientationchange', () => setTimeout(fit, 350));
   },

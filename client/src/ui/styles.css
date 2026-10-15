@@ -32,8 +32,10 @@ html, body { overscroll-behavior: none; position: fixed; inset: 0; }
 @media (display-mode: standalone), (display-mode: fullscreen) {
   html, body, #root { height: 100vh; }
 }
-/* iOS home-screen app: the real screen height, measured in game/pwa.ts */
-html.ios-standalone, html.ios-standalone body, html.ios-standalone #root { height: var(--app-h, 100vh); bottom: auto; }
+/* iOS home-screen app: the real screen height, measured in game/pwa.ts. No position:fixed here:
+   iOS clips fixed boxes to a layout viewport one status bar short, cutting off the bottom of the game. */
+html.ios-standalone, html.ios-standalone body { position: static; }
+html.ios-standalone, html.ios-standalone body, html.ios-standalone #root { height: var(--app-h, 100vh); }
 body { font-family: var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 input, textarea { user-select: text; -webkit-user-select: text; }
 button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
