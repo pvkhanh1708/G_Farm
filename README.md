@@ -9,7 +9,17 @@ mỗi **cột 10 ô**, mở theo thứ tự; hết một cột thì sang cột m
 **Phòng game** (nút góc phải): mở bàn cờ caro với mức cược tự đặt; người khác vào bàn hoặc chơi với máy. Người thắng nhận cả
 2 phần cược trừ 5% phí; hoà hoàn tiền; mỗi lượt 60 giây. **Tiến lên** (miền Nam): bàn tối đa 4 người, chủ bàn bấm “Bắt đầu” thì ghế trống do máy chơi; ai hết bài trước nhận cả 4 phần cược
 trừ 5% phí; mỗi lượt 30 giây (hết giờ tự bỏ lượt). Cờ vây sẽ làm sau.
-Chạm ô cây đang lớn để xem thời gian còn lại và **đào cây** (một ô, hoặc mọi ô cùng loại cây đang lớn).
+Chạm ô cây đang lớn để xem thời gian còn lại, **bón phân** (giảm một nửa thời gian còn lại, giá 35% tiền hạt) và **đào cây**
+(một ô, hoặc mọi ô cùng loại cây đang lớn). Cây chín có bong bóng ngôi sao phía trên; **kéo ngón tay** bắt đầu từ một cây chín để thu
+cả dãy, hoặc khi đang “Gieo nhanh” thì kéo qua các ô trống để gieo.
+
+**Cột nút bên phải:** *Nhiệm vụ* (3–4 nhiệm vụ mỗi ngày theo giờ Việt Nam + quà đăng nhập 7 ngày liên tiếp, tự hiện khi vào game),
+*Đơn hàng* (từ cấp 3: 3 đơn, giao đủ hàng nhận ×1,6 giá chợ và ×1,5 XP; “Đổi” để lấy đơn khác), *Chuồng* (gà từ cấp 6 đẻ trứng
+mỗi 5 phút, bò từ cấp 15 cho sữa mỗi 15 phút; chạm con vật trong chuồng bên phải nông trại để thu), *Nâng cấp* (Đất màu mỡ +10%
+sản lượng/cấp, Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (nông trại: xu / cấp / số ô đất; phòng game: số trận thắng / tiền thắng
+ròng) và *Phòng game*.
+**Thời tiết:** trời mưa theo từng khung 20 phút, giống nhau cho mọi người chơi (công thức chung client/server); khi mưa thu hoạch
+được +20% XP. **Ngày/đêm** theo giờ máy người chơi (xem thử: `?hour=20`). **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
@@ -132,7 +142,13 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | POST | `/farm/dig` | `{tiles: number[]}` — đào cây trên các ô (không hoàn tiền) |
 | POST | `/farm/sell` | `{crop, qty}` |
 | POST | `/farm/unlock` | Mở ô đất kế tiếp (kiểm tra cấp + xu) |
-| POST | `/farm/reset` | Chơi lại từ đầu |
+| POST | `/farm/reset` | Chơi lại từ đầu (không còn nút trong game) |
+| POST | `/farm/upgrade` | `{kind: soil\|sprinkler}` nâng cấp |
+| POST | `/farm/fertilize` | `{tiles}` bón phân cho cây đang lớn |
+| POST | `/farm/orders/deliver` · `/farm/orders/skip` | `{id}` giao / đổi đơn hàng |
+| POST | `/farm/quests/claim` · `/farm/login-reward` | `{index}` nhận thưởng nhiệm vụ · nhận quà đăng nhập |
+| POST | `/farm/animals/buy` · `/farm/animals/collect` | `{type}` mua gà/bò · `{which?}` thu sản phẩm |
+| GET | `/leaderboard/{coins\|level\|tiles\|wins\|winnings}` | Top 50 + hạng của mình |
 
 API nằm ở gốc domain (production: `https://api.nongtrai.io.vn/farm`…). Mọi API `/farm/*` trả `{ok, message, result, state, serverTime}`; bị từ chối thì HTTP 422 kèm `message` và `state`.
 Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập / tạo khách.

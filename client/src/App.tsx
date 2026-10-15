@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { sfx } from './game/audio/sfx';
-import { CROP_ORDER, CROPS, CropId, Quality } from './game/config';
+import { CROP_ORDER, CROPS, CropId, ItemId, itemDef, Quality } from './game/config';
 import { Game } from './game/Game';
 import { serverNow } from './game/net/clock';
 import { sync } from './game/net/sync';
@@ -12,15 +12,20 @@ import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
 import { GameRoom } from './ui/GameRoom';
+import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup, useRaining, WeatherChip } from './ui/Progress';
+import { SideButtons } from './ui/SideButtons';
+import { SkyOverlay } from './ui/SkyOverlay';
+import { music } from './game/audio/music';
+import { farmApi, FarmError } from './game/net/farm';
 import { TileOverlays } from './ui/TileOverlays';
 import { formatNum } from './ui/format';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | { type: 'upgrades' } | { type: 'orders' } | { type: 'quests' } | { type: 'login' } | { type: 'animals' } | { type: 'ranks' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
-function loadPrefs(): { quality: Quality; sound: boolean; fps: boolean } {
+function loadPrefs(): { quality: Quality; sound: boolean; music: boolean; fps: boolean } {
   const mobile = matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 700;
-  const def = { quality: (mobile ? 'medium' : 'high') as Quality, sound: true, fps: false };
+  const def = { quality: (mobile ? 'medium' : 'high') as Quality, sound: true, music: true, fps: false };
   try {
     return { ...def, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
   } catch {
@@ -42,7 +47,7 @@ function counts(tiles: TileState[]) {
 
 function hintFor(tiles: TileState[], coins: number, inv: number, tool: CropId | null): string | null {
   const c = counts(tiles);
-  if (c.ready) return c.ready > 1 ? `${c.ready} ô đã chín — bấm “Thu tất cả” hoặc chạm từng cây.` : 'Cây đã chín! Chạm vào cây để thu hoạch.';
+  if (c.ready) return c.ready > 1 ? `${c.ready} ô đã chín — bấm “Thu tất cả” hoặc kéo ngón tay qua các cây.` : 'Cây đã chín! Chạm vào cây để thu hoạch.';
   if (tool) return null;
   if (!c.growing && store.canUnlockByLevel() && coins >= store.nextUnlockCost()) return 'Bạn đủ xu để mở ô đất mới — chạm vào ô có biển “Mở khóa”.';
   if (c.empty && coins >= CROPS.carrot.seedPrice) return c.empty > 1 ? 'Chạm ô đất trống để gieo, hoặc bấm “Trồng tất cả”.' : 'Chạm vào ô đất trống để gieo hạt.';
@@ -61,6 +66,9 @@ export function App() {
   const [prefs, setPrefs] = useState(loadPrefs);
   const toolRef = useRef(tool);
   toolRef.current = tool;
+  useEffect(() => {
+    if (game) game.sowTool = tool;
+  }, [game, tool]);
   const s = useGameState();
   const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
@@ -91,7 +99,18 @@ export function App() {
       /* ignore */
     }
     sfx.setEnabled(prefs.sound);
+    music.setEnabled(prefs.music);
   }, [prefs]);
+
+  // today's login gift pops up once per session, after loading
+  const loginShown = useRef(false);
+  useEffect(() => {
+    if (loginShown.current || !netReady || !game || showcase || !s.daily || s.daily.loginClaimed) return;
+    loginShown.current = true;
+    const t = setTimeout(() => setPopup((p) => p ?? { type: 'login' }), 900);
+    return () => clearTimeout(t);
+  }, [netReady, game, s.daily, showcase]);
+  const raining = useRaining();
 
   useEffect(() => {
     sync.onReject = (msg) => fxBus.toast(msg, 'bad');
@@ -166,6 +185,22 @@ export function App() {
           setRevealed((r) => (r === e.g ? null : e.g));
           return;
         }
+      } else if (e.type === 'animalTap') {
+        const a = store.getState().animals[e.index];
+        if (!a || !animalReady(a)) {
+          sfx.tap();
+          setPopup({ type: 'animals' });
+          return;
+        }
+        farmApi.collect([e.index]).then(
+          (res) => {
+            sfx.collect();
+            fxBus.float(e.x, e.y - 20, `+${res.xp} XP`, { type: 'xp' });
+            fxBus.fly({ type: 'xp' }, { x: e.x, y: e.y }, 'level', 2, () => bump('level'));
+            fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'inventory', 1, () => bump('inventory'));
+          },
+          (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+        );
       } else if (e.type === 'view') {
         setOverview(e.overview);
       } else if (e.type === 'harvested') {
@@ -180,7 +215,7 @@ export function App() {
     });
   }, [game, plantAt]);
 
-  const sell = (crop: CropId, qty: number, from: DOMRect) => {
+  const sell = (crop: ItemId, qty: number, from: DOMRect) => {
     const res = store.sell(crop, qty);
     if (!res.ok) return fxBus.toast(res.reason, 'bad');
     sfx.coin();
@@ -190,7 +225,7 @@ export function App() {
       bump('coins');
     });
     fxBus.float(origin.x, origin.y - 30, `+${formatNum(res.value)}`, { type: 'coin' });
-    fxBus.toast(`Đã bán ${formatNum(qty)} ${CROPS[crop].name.toLowerCase()} · +${formatNum(res.value)} xu`, 'good');
+    fxBus.toast(`Đã bán ${formatNum(qty)} ${itemDef(crop).name.toLowerCase()} · +${formatNum(res.value)} xu`, 'good');
   };
 
   const close = () => {
@@ -203,8 +238,9 @@ export function App() {
   const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="app" onPointerDown={() => sfx.resume()}>
+    <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
       <canvas ref={canvasRef} className="scene" />
+      {!showcase && <SkyOverlay raining={raining} />}
       {game && !showcase && (
         <>
           <TileOverlays
@@ -216,6 +252,17 @@ export function App() {
               const res = game.dig(tiles);
               if (!res.ok) fxBus.toast(res.reason, 'bad');
               else fxBus.toast(res.value.length > 1 ? `Đã đào ${res.value.length} ô ${label}` : `Đã đào ${label}`, 'info');
+            }}
+            onFertilize={(tiles) => {
+              setRevealed(null);
+              farmApi.fertilize(tiles).then(
+                (res) => {
+                  sfx.plant();
+                  game.puff(res.fertilized);
+                  fxBus.toast(`Đã bón phân ${res.fertilized.length} ô · cây lớn nhanh gấp đôi`, 'good');
+                },
+                (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+              );
             }}
           />
           <TopBar onSettings={() => (sfx.open(), setPopup({ type: 'settings' }))} onLevel={() => (sfx.open(), setPopup({ type: 'levels' }))} />
@@ -234,8 +281,14 @@ export function App() {
               else (sfx.open(), setPopup({ type: 'shop', tile: null, bulk: true }));
             }}
             onOverview={() => (sfx.tap(), setOverview(game.toggleOverview()))}
-            onGameRoom={() => (sfx.open(), setPopup({ type: 'room' }))}
           />
+          <SideButtons
+            quests={claimableCount(s.daily)}
+            orders={s.orders.filter((o) => Object.entries(o.items).every(([id, n]) => (s.inventory[id as ItemId] ?? 0) >= (n ?? 0))).length}
+            animals={s.animals.filter((a) => animalReady(a)).length}
+            onOpen={(type) => (sfx.open(), setPopup({ type }))}
+          />
+          <WeatherChip />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
           <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}
@@ -265,6 +318,12 @@ export function App() {
       {popup?.type === 'inventory' && <Inventory onClose={close} onSell={sell} />}
       {popup?.type === 'levels' && <LevelsPopup onClose={close} />}
       {popup?.type === 'room' && <GameRoom onClose={close} />}
+      {popup?.type === 'upgrades' && <UpgradesPopup onClose={close} />}
+      {popup?.type === 'orders' && <OrdersPopup onClose={close} />}
+      {popup?.type === 'quests' && <QuestsPopup onClose={close} />}
+      {popup?.type === 'login' && <LoginRewardPopup onClose={close} />}
+      {popup?.type === 'animals' && <AnimalsPopup onClose={close} />}
+      {popup?.type === 'ranks' && <LeaderboardPopup onClose={close} />}
       {popup?.type === 'install' && <InstallPopup onClose={close} />}
       {popup?.type === 'account' && (
         <AccountPopup
@@ -296,6 +355,11 @@ export function App() {
           }}
           sound={prefs.sound}
           onSound={(on) => setPrefs({ ...prefs, sound: on })}
+          music={prefs.music}
+          onMusic={(on) => {
+            sfx.resume();
+            setPrefs({ ...prefs, music: on });
+          }}
           fps={prefs.fps}
           onFps={(on) => setPrefs({ ...prefs, fps: on })}
           onAccount={() => setPopup({ type: 'account' })}
@@ -303,12 +367,6 @@ export function App() {
             // Android/Chrome: open the real install dialog; otherwise show the manual steps
             if (pwa.canPrompt) void pwa.prompt().then((ok) => ok && setPopup(null));
             else setPopup({ type: 'install' });
-          }}
-          onReset={() => {
-            store.reset();
-            setTool(null);
-            setPopup(null);
-            game.focusCurrent();
           }}
           onClose={close}
         />

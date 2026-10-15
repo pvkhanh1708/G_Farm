@@ -1,13 +1,11 @@
-import {
-  BaseTexture,
-  Color3,
-  Material,
-  MaterialDefines,
-  MaterialPluginBase,
-  PBRMaterial,
-  Scene,
-  UniformBuffer,
-} from '@babylonjs/core';
+import { Material } from '@babylonjs/core/Materials/material.js';
+import { MaterialDefines } from '@babylonjs/core/Materials/materialDefines.js';
+import { MaterialPluginBase } from '@babylonjs/core/Materials/materialPluginBase.js';
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial.js';
+import { BaseTexture } from '@babylonjs/core/Materials/Textures/baseTexture.js';
+import { UniformBuffer } from '@babylonjs/core/Materials/uniformBuffer.js';
+import { Color3 } from '@babylonjs/core/Maths/math.color.js';
+import { Scene } from '@babylonjs/core/scene.js';
 
 /**
  * Vertex wind sway injected into PBR materials. Bend weight grows with the

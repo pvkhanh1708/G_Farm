@@ -1,14 +1,10 @@
-import {
-  Color3,
-  CreateIcoSphereVertexData,
-  Material,
-  Matrix,
-  Mesh,
-  Quaternion,
-  Scene,
-  Vector3,
-  VertexData,
-} from '@babylonjs/core';
+import { Material } from '@babylonjs/core/Materials/material.js';
+import { Color3 } from '@babylonjs/core/Maths/math.color.js';
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { CreateIcoSphereVertexData } from '@babylonjs/core/Meshes/Builders/icoSphereBuilder.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
+import { Scene } from '@babylonjs/core/scene.js';
 
 // ---------------------------------------------------------------- noise / rng
 

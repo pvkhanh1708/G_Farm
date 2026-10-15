@@ -1,4 +1,4 @@
-import { CROP_ORDER, CROPS, CropId, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
+import { AnimalId, CROPS, CropId, growMs, harvestAmount, harvestXp, ITEM_ORDER, ItemId, itemDef, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
 import { serverNow } from '../net/clock';
 
 /**
@@ -13,15 +13,52 @@ export interface Planting {
   plantedAt: number;
 }
 
+export interface Order {
+  id: string;
+  items: Partial<Record<ItemId, number>>;
+  coins: number;
+  xp: number;
+}
+
+export interface Quest {
+  type: 'harvest' | 'plant' | 'sell' | 'order';
+  name: string;
+  target: number;
+  progress: number;
+  coins: number;
+  xp: number;
+  claimed: boolean;
+}
+
+export interface Daily {
+  date: string;
+  quests: Quest[];
+  streak: number;
+  lastLogin: string | null;
+  loginClaimed: boolean;
+}
+
+export interface Animal {
+  type: AnimalId;
+  lastCollect: number;
+}
+
 export interface GameState {
   coins: number;
   level: number;
   /** XP collected toward the next level. */
   xp: number;
-  inventory: Record<CropId, number>;
+  inventory: Record<ItemId, number>;
   /** Tiles 0..unlocked-1 are owned. */
   unlocked: number;
   plantings: Record<number, Planting>;
+  /** Upgrade levels: soil adds yield, the sprinkler shortens growth. */
+  soil: number;
+  sprinkler: number;
+  /** Server-only features (online play): order board, daily quests, animals. */
+  orders: Order[];
+  daily: Daily | null;
+  animals: Animal[];
 }
 
 /** View of one tile, derived from GameState. */
@@ -42,18 +79,20 @@ export type GameAction =
   | { type: 'plant'; tiles: number[]; crop: CropId }
   | { type: 'harvest'; tiles: number[] }
   | { type: 'dig'; tiles: number[] }
-  | { type: 'sell'; crop: CropId; qty: number }
+  | { type: 'sell'; crop: ItemId; qty: number }
   | { type: 'unlock' }
   | { type: 'reset' };
 
 const SAVE_KEY = 'farm-empire:vs3';
 
 function emptyInventory() {
-  return Object.fromEntries(CROP_ORDER.map((c) => [c, 0])) as Record<CropId, number>;
+  return Object.fromEntries(ITEM_ORDER.map((c) => [c, 0])) as Record<ItemId, number>;
 }
 
+const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [] };
+
 function initialState(): GameState {
-  return { coins: STARTING_COINS, level: 1, xp: 0, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {} };
+  return { coins: STARTING_COINS, level: 1, xp: 0, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {}, ...EXTRA };
 }
 
 function load(): GameState {
@@ -62,7 +101,7 @@ function load(): GameState {
     if (raw) {
       const s = JSON.parse(raw) as GameState;
       // older saves lack newer crops' inventory slots and the level fields
-      if (typeof s.unlocked === 'number' && s.plantings) return { ...s, level: s.level ?? levelForTiles(s.unlocked), xp: s.xp ?? 0, inventory: { ...emptyInventory(), ...s.inventory } };
+      if (typeof s.unlocked === 'number' && s.plantings) return { ...EXTRA, ...s, level: s.level ?? levelForTiles(s.unlocked), xp: s.xp ?? 0, inventory: { ...emptyInventory(), ...s.inventory } };
     }
   } catch {
     /* corrupted save: start fresh */
@@ -140,7 +179,7 @@ class Store {
 
   /** Replace the whole state with the server's authoritative copy. */
   hydrate(next: GameState) {
-    this.set({ ...next, inventory: { ...emptyInventory(), ...next.inventory }, plantings: { ...next.plantings } }, 'hydrate');
+    this.set({ ...EXTRA, ...next, inventory: { ...emptyInventory(), ...next.inventory }, plantings: { ...next.plantings } }, 'hydrate');
   }
 
   private emit(a: GameAction) {
@@ -189,7 +228,7 @@ class Store {
     const p = this.state.plantings[g];
     if (!p) return { ok: false, reason: 'Không có cây để thu hoạch' };
     if (growthProgress(p, now) < 1) return { ok: false, reason: 'Cây chưa chín' };
-    const { yield: amount, xp } = CROPS[p.crop];
+    const amount = harvestAmount(p.crop, this.state.soil), xp = harvestXp(p.crop, now);
     const plantings = { ...this.state.plantings };
     delete plantings[g];
     const before = this.state.level;
@@ -209,11 +248,11 @@ class Store {
     return { ok: true, value: dug };
   }
 
-  sell(crop: CropId, qty: number): ActionResult<number> {
+  sell(crop: ItemId, qty: number): ActionResult<number> {
     const have = this.state.inventory[crop];
     const n = Math.min(qty, have);
     if (n <= 0) return { ok: false, reason: 'Kho không còn nông sản này' };
-    const earned = n * CROPS[crop].sellPrice;
+    const earned = n * itemDef(crop).sellPrice;
     this.set({ ...this.state, coins: this.state.coins + earned, inventory: { ...this.state.inventory, [crop]: have - n } });
     this.emit({ type: 'sell', crop, qty: n });
     return { ok: true, value: earned };
@@ -238,7 +277,7 @@ class Store {
 
 export function growthProgress(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
-  return Math.max(0, Math.min(1, (now - p.plantedAt) / (CROPS[p.crop].growSeconds * 1000)));
+  return Math.max(0, Math.min(1, (now - p.plantedAt) / growMs(p.crop, store.getState().sprinkler)));
 }
 
 export function growthStage(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
@@ -249,7 +288,7 @@ export function growthStage(p: { crop: CropId | null; plantedAt: number | null }
 
 export function secondsLeft(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
-  return Math.max(0, Math.ceil(CROPS[p.crop].growSeconds - (now - p.plantedAt) / 1000));
+  return Math.max(0, Math.ceil((growMs(p.crop, store.getState().sprinkler) - (now - p.plantedAt)) / 1000));
 }
 
 export const store = new Store();

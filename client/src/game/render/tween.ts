@@ -1,4 +1,4 @@
-import { Scene } from '@babylonjs/core';
+import { Scene } from '@babylonjs/core/scene.js';
 
 export type Ease = (t: number) => number;
 

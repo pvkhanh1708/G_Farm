@@ -372,6 +372,7 @@ class TienLenService
         $user = $t->seats[$winner]['user'];
         if ($user) {
             $this->pay($user, $this->payout($t));
+            Farm::where('user_id', $user)->incrementEach(['game_wins' => 1, 'game_winnings' => $this->payout($t) - $t->stake]);
         }
     }
 

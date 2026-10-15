@@ -1,4 +1,7 @@
-import { Camera, Scene, TargetCamera, Vector3 } from '@babylonjs/core';
+import { Camera } from '@babylonjs/core/Cameras/camera.js';
+import { TargetCamera } from '@babylonjs/core/Cameras/targetCamera.js';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { Scene } from '@babylonjs/core/scene.js';
 
 const MIN_R = 8;
 /** The orthographic camera sits this far from its target. */
@@ -26,9 +29,14 @@ export class CameraRig {
   private pointers = new Map<number, { x: number; y: number }>();
   private downAt = { x: 0, y: 0, t: 0 };
   private dragging = false;
+  /** This drag paints over tiles (harvest / sow) instead of panning. */
+  private painting = false;
 
   onTap: (x: number, y: number) => void = () => {};
   onHover: (x: number, y: number) => void = () => {};
+  /** A one-finger drag begins at (x, y): return true to paint with it instead of panning. */
+  onPaintStart: (x: number, y: number) => boolean = () => false;
+  onPaint: (x: number, y: number) => void = () => {};
 
   constructor(private scene: Scene, private canvas: HTMLCanvasElement) {
     this.camera = new TargetCamera('cam', Vector3.Zero(), scene);
@@ -107,9 +115,11 @@ export class CameraRig {
     if (this.pointers.size === 1) {
       this.downAt = { ...p, t: performance.now() };
       this.dragging = false;
+      this.painting = false;
       this.velocity.setAll(0);
     } else if (this.pointers.size === 2) {
       this.dragging = true;
+      this.painting = false;
     }
   };
 
@@ -124,8 +134,15 @@ export class CameraRig {
     this.pointers.set(e.pointerId, p);
     // two fingers: no zoom, just ignore
     if (this.pointers.size === 2) return;
-    if (!this.dragging && Math.hypot(p.x - this.downAt.x, p.y - this.downAt.y) > 8) this.dragging = true;
-    if (this.dragging) this.panBy(p.x - prev.x, p.y - prev.y);
+    if (!this.dragging && Math.hypot(p.x - this.downAt.x, p.y - this.downAt.y) > 8) {
+      this.dragging = true;
+      this.painting = this.onPaintStart(this.downAt.x, this.downAt.y);
+    }
+    if (this.painting) {
+      // sample along the finger's path so fast swipes do not skip tiles
+      const steps = Math.max(1, Math.ceil(Math.hypot(p.x - prev.x, p.y - prev.y) / 12));
+      for (let i = 1; i <= steps; i++) this.onPaint(prev.x + ((p.x - prev.x) * i) / steps, prev.y + ((p.y - prev.y) * i) / steps);
+    } else if (this.dragging) this.panBy(p.x - prev.x, p.y - prev.y);
   };
 
   private up = (e: PointerEvent) => {
@@ -134,7 +151,7 @@ export class CameraRig {
     const wasSingle = this.pointers.size === 1;
     this.pointers.delete(e.pointerId);
     if (wasSingle && !this.dragging && performance.now() - this.downAt.t < 600) this.onTap(p.x, p.y);
-    if (this.pointers.size === 0) this.dragging = false;
+    if (this.pointers.size === 0) this.dragging = this.painting = false;
   };
 
   /** No zoom: the wheel only stops the page from scrolling. */

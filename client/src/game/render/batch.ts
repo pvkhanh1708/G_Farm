@@ -1,4 +1,9 @@
-import { BoundingInfo, Geometry, Matrix, Mesh, Scene, ShadowGenerator, Vector3 } from '@babylonjs/core';
+import { BoundingInfo } from '@babylonjs/core/Culling/boundingInfo.js';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator.js';
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { Geometry } from '@babylonjs/core/Meshes/geometry.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { COLUMN_LENGTH, TILE_PITCH } from '../config';
 
 /**
@@ -45,6 +50,7 @@ class ThinBatch {
     const m = new Mesh(name, scene);
     shareGeometry(template, m, scene);
     m.material = template.material;
+    m.renderingGroupId = template.renderingGroupId;
     m.isPickable = false;
     // flat 2D sprites are unlit; a shadow sampler would clash with the atlas
     m.receiveShadows = false;

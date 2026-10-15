@@ -261,6 +261,7 @@ class GameRoomService
         $winnerId = $winner === 1 ? $t->host_id : ($t->vs_bot ? null : $t->guest_id);
         if ($winnerId) {
             $this->pay($winnerId, $this->payout($t));
+            Farm::where('user_id', $winnerId)->incrementEach(['game_wins' => 1, 'game_winnings' => $this->payout($t) - $t->stake]);
         }
     }
 

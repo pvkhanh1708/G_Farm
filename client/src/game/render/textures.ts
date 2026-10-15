@@ -1,4 +1,6 @@
-import { DynamicTexture, Scene, Texture } from '@babylonjs/core';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
+import { Scene } from '@babylonjs/core/scene.js';
 
 /**
  * Procedurally painted textures (no external files). These are stand-ins for

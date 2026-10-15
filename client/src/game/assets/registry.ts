@@ -1,4 +1,5 @@
-import { Mesh, Scene } from '@babylonjs/core';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { Scene } from '@babylonjs/core/scene.js';
 
 export type AssetStatus = 'placeholder' | 'integrated' | 'planned';
 
@@ -68,7 +69,7 @@ const loaded = new Map<string, Mesh>();
 export async function preloadAssets(scene: Scene, onProgress?: (k: number) => void) {
   const withGlb = ASSET_MANIFEST.filter((a) => a.glb);
   if (!withGlb.length) return;
-  const { LoadAssetContainerAsync } = await import('@babylonjs/core');
+  const { LoadAssetContainerAsync } = await import('@babylonjs/core/Loading/sceneLoader.js');
   await import('@babylonjs/loaders/glTF');
   let done = 0;
   for (const a of withGlb) {

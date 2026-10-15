@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Farm extends Model
 {
-    protected $fillable = ['coins', 'level', 'xp', 'unlocked', 'inventory'];
+    protected $fillable = ['coins', 'level', 'xp', 'unlocked', 'inventory', 'soil_level', 'sprinkler_level', 'orders', 'daily', 'animals', 'game_wins', 'game_winnings'];
 
     protected function casts(): array
     {
@@ -18,6 +18,13 @@ class Farm extends Model
             'xp' => 'integer',
             'unlocked' => 'integer',
             'inventory' => 'array',
+            'soil_level' => 'integer',
+            'sprinkler_level' => 'integer',
+            'orders' => 'array',
+            'daily' => 'array',
+            'animals' => 'array',
+            'game_wins' => 'integer',
+            'game_winnings' => 'integer',
         ];
     }
 

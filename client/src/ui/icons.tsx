@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { CropId } from '../game/config';
+import type { AnimalId, CropId, ItemId, ProductId } from '../game/config';
 import { artUrl, cropSheetUrl, SHEET } from '../game/art';
 
 /** Hand-drawn vector icons in a chunky cartoon style (thick outline, gradients). */
@@ -748,4 +748,154 @@ export function CropIcon({ crop, ...p }: P & { crop: CropId }) {
     );
   const Icon = CROP_ICONS[crop];
   return <Icon {...p} />;
+}
+
+// ------------------------------------------------------------------ animals, products, progression
+
+export function EggIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <ellipse cx="32" cy="36" rx="17" ry="21" fill="#fff4dc" stroke={OUT} strokeWidth="3" />
+      <ellipse cx="32" cy="40" rx="13" ry="14" fill="#f3dfb6" />
+      <ellipse cx="25" cy="27" rx="4" ry="7" fill="#fff" transform="rotate(20 25 27)" />
+    </Svg>
+  );
+}
+
+export function MilkIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M24 10h16v8l6 9v25a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V27l6-9z" fill="#fdfdfd" stroke={OUT} strokeWidth="3" />
+      <path d="M18 34h28v12H18z" fill="#6fb6ff" stroke={OUT} strokeWidth="2.5" />
+      <path d="M24 10h16" stroke="#e8463a" strokeWidth="5" />
+      <circle cx="29" cy="40" r="2.5" fill="#fff" />
+      <circle cx="35" cy="40" r="2.5" fill="#fff" />
+    </Svg>
+  );
+}
+
+export function ChickenIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M16 38c0-11 8-19 18-19 4 0 6-6 10-6 5 0 7 5 7 9 0 3-1 5-1 9 0 12-8 21-19 21-9 0-15-6-15-14z" fill="#fffaf0" stroke={OUT} strokeWidth="3" />
+      <path d="M41 13c1-4 5-6 7-3 3-2 6 2 3 5" fill="#e8463a" stroke={OUT} strokeWidth="2.5" />
+      <path d="M50 21l7 3-7 3z" fill="#ffb02e" stroke={OUT} strokeWidth="2.5" />
+      <circle cx="46" cy="20" r="2.2" fill={OUT} />
+      <path d="M22 36c4 4 10 4 14 0" stroke="#e2d6c0" strokeWidth="3" />
+      <path d="M28 52v6M36 52v6" stroke="#ffb02e" strokeWidth="3.5" />
+    </Svg>
+  );
+}
+
+export function CowIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M12 18c-4-2-6 2-3 5l6 3M52 18c4-2 6 2 3 5l-6 3" fill="#f2c9a8" stroke={OUT} strokeWidth="3" />
+      <rect x="14" y="14" width="36" height="34" rx="16" fill="#fff" stroke={OUT} strokeWidth="3" />
+      <path d="M17 24c3-6 9-7 11-3s-2 9-7 9-6-3-4-6zM40 16c5 0 9 4 8 9-4 1-9-2-8-9z" fill="#3a2a22" />
+      <ellipse cx="32" cy="44" rx="15" ry="10" fill="#ffb7c0" stroke={OUT} strokeWidth="3" />
+      <circle cx="26" cy="44" r="2.6" fill={OUT} />
+      <circle cx="38" cy="44" r="2.6" fill={OUT} />
+      <circle cx="24" cy="31" r="2.6" fill={OUT} />
+      <circle cx="40" cy="31" r="2.6" fill={OUT} />
+    </Svg>
+  );
+}
+
+export function OrderIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <rect x="12" y="10" width="40" height="46" rx="5" fill="#fff6dc" stroke={OUT} strokeWidth="3" />
+      <rect x="22" y="5" width="20" height="10" rx="3" fill="#c98a4a" stroke={OUT} strokeWidth="3" />
+      <path d="M20 26h24M20 35h24M20 44h14" stroke="#b9925e" strokeWidth="3.5" />
+      <path d="M38 44l4 4 8-9" stroke="#3b9d24" strokeWidth="4.5" />
+    </Svg>
+  );
+}
+
+export function QuestIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M14 12h32a6 6 0 0 1 6 6v34a4 4 0 0 1-4 4H18a6 6 0 0 1-6-6V14z" fill="#ffe9a8" stroke={OUT} strokeWidth="3" />
+      <path d="M20 24l3 3 6-6M20 36l3 3 6-6" stroke="#3b9d24" strokeWidth="3.5" />
+      <path d="M34 25h11M34 37h11M20 47h25" stroke="#b9925e" strokeWidth="3.5" />
+    </Svg>
+  );
+}
+
+export function UpgradeIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <circle cx="32" cy="34" r="24" fill="#7fd14a" stroke={OUT} strokeWidth="3" />
+      <path d="M32 16L46 32H37V48H27V32H18z" fill="#fff" stroke={OUT} strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function TrophyIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M18 14h-8c0 10 4 16 12 17M46 14h8c0 10-4 16-12 17" stroke={OUT} strokeWidth="4" />
+      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="#ffd23f" stroke={OUT} strokeWidth="3" />
+      <path d="M28 38h8v8h-8z" fill="#e0a21a" stroke={OUT} strokeWidth="3" />
+      <rect x="18" y="46" width="28" height="10" rx="3" fill="#a8652a" stroke={OUT} strokeWidth="3" />
+      <path d="M25 14v10" stroke="#fff6b8" strokeWidth="3.5" />
+    </Svg>
+  );
+}
+
+export function GiftIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <rect x="10" y="26" width="44" height="30" rx="4" fill="#ff6f7d" stroke={OUT} strokeWidth="3" />
+      <rect x="7" y="18" width="50" height="11" rx="3" fill="#ff8b96" stroke={OUT} strokeWidth="3" />
+      <path d="M32 18v38" stroke="#ffd23f" strokeWidth="7" />
+      <path d="M32 18c-6-10-18-8-13-1 3 3 9 2 13 1zM32 18c6-10 18-8 13-1-3 3-9 2-13 1z" fill="#ffd23f" stroke={OUT} strokeWidth="2.5" />
+    </Svg>
+  );
+}
+
+export function RainIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M18 38a10 10 0 0 1 2-20 13 13 0 0 1 25 2 9 9 0 0 1 1 18z" fill="#eaf4ff" stroke={OUT} strokeWidth="3" />
+      <path d="M22 46l-3 8M32 46l-3 8M42 46l-3 8" stroke="#3d9bff" strokeWidth="4" />
+    </Svg>
+  );
+}
+
+export function FertilizerIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M16 18h32l-3 36a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4z" fill="#8fd16a" stroke={OUT} strokeWidth="3" />
+      <path d="M14 12h36v8H14z" fill="#5aa83a" stroke={OUT} strokeWidth="3" />
+      <path d="M32 30c-6 4-6 12 0 16 6-4 6-12 0-16z" fill="#fff" stroke={OUT} strokeWidth="2.5" />
+    </Svg>
+  );
+}
+
+export function MusicIcon({ on, ...p }: P & { on: boolean }) {
+  return (
+    <Svg {...p}>
+      <path d="M24 46V16l26-6v30" stroke={OUT} strokeWidth="4" />
+      <ellipse cx="18" cy="46" rx="8" ry="6" fill="#ffd23f" stroke={OUT} strokeWidth="3" />
+      <ellipse cx="44" cy="40" rx="8" ry="6" fill="#ffd23f" stroke={OUT} strokeWidth="3" />
+      {!on && <path d="M10 10l44 44" stroke="#e8463a" strokeWidth="5" />}
+    </Svg>
+  );
+}
+
+const PRODUCT_ICONS: Record<ProductId, (p: P) => React.JSX.Element> = { egg: EggIcon, milk: MilkIcon };
+
+export function AnimalIcon({ type, ...p }: P & { type: AnimalId }) {
+  return type === 'chicken' ? <ChickenIcon {...p} /> : <CowIcon {...p} />;
+}
+
+/** Icon of anything in the barn: a crop or an animal product. */
+export function ItemIcon({ item, ...p }: P & { item: ItemId }) {
+  if (item in PRODUCT_ICONS) {
+    const Icon = PRODUCT_ICONS[item as ProductId];
+    return <Icon {...p} />;
+  }
+  return <CropIcon crop={item as CropId} {...p} />;
 }

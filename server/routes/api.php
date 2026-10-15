@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FarmController;
 use App\Http\Controllers\GameRoomController;
+use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\TienLenController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,8 +26,18 @@ Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {
     Route::post('/farm/sell', [FarmController::class, 'sell']);
     Route::post('/farm/unlock', [FarmController::class, 'unlock']);
     Route::post('/farm/reset', [FarmController::class, 'reset']);
+    Route::post('/farm/upgrade', [FarmController::class, 'upgrade']);
+    Route::post('/farm/fertilize', [FarmController::class, 'fertilize']);
+    Route::post('/farm/orders/deliver', [FarmController::class, 'deliver']);
+    Route::post('/farm/orders/skip', [FarmController::class, 'skip']);
+    Route::post('/farm/quests/claim', [FarmController::class, 'claimQuest']);
+    Route::post('/farm/login-reward', [FarmController::class, 'claimLogin']);
+    Route::post('/farm/animals/buy', [FarmController::class, 'buyAnimal']);
+    Route::post('/farm/animals/collect', [FarmController::class, 'collect']);
 
     // game room: betting tables (caro)
+    Route::get('/leaderboard/{board}', LeaderboardController::class)->whereIn('board', ['coins', 'level', 'tiles', 'wins', 'winnings']);
+
     Route::get('/games/tables', [GameRoomController::class, 'lobby']);
     Route::post('/games/tables', [GameRoomController::class, 'create']);
     Route::get('/games/tables/{id}', [GameRoomController::class, 'show'])->whereNumber('id');

@@ -1,4 +1,11 @@
-import { Constants, DynamicTexture, Material, Mesh, Scene, StandardMaterial, Texture, VertexData } from '@babylonjs/core';
+import { Constants } from '@babylonjs/core/Engines/constants.js';
+import { Material } from '@babylonjs/core/Materials/material.js';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { CROP_ORDER, CropId, STAGE_COUNT } from '../config';
 import { CameraRig } from './camera';
 import { mulberry } from './geometry';

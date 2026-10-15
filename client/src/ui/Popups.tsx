@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { CROP_ORDER, CROPS, CropId, CropKind, cropsUnlockedAt, levelReward, Quality, tileCap, xpToNext } from '../game/config';
+import { CROP_ORDER, CROPS, CropId, CropKind, cropsUnlockedAt, ITEM_ORDER, ItemId, itemDef, levelReward, Quality, tileCap, xpToNext } from '../game/config';
 import { store } from '../game/state/store';
 import { ApiError } from '../game/net/api';
 import { sync } from '../game/net/sync';
 import { pwa } from '../game/pwa';
 import { GOOGLE_CLIENT_ID, renderGoogleButton } from '../game/net/google';
 import { useGameState } from './Hud';
-import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon } from './icons';
+import { ClockIcon, CloseIcon, CoinIcon, CropIcon, LockIcon, SoundIcon, SproutIcon, BarnIcon, SeedBagIcon, GearIcon, LevelStar, XpIcon, ItemIcon, MusicIcon } from './icons';
 import { formatNum } from './format';
+import { artUrl } from '../game/art';
 
-function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title: string; icon: React.ReactNode; tone?: 'green' | 'orange' | 'blue'; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+export function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title: string; icon: React.ReactNode; tone?: 'green' | 'orange' | 'blue'; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -31,7 +32,8 @@ function Modal({ title, icon, tone = 'green', onClose, children, wide }: { title
   );
 }
 
-const CROP_BG: Record<CropId, string> = {
+export const CROP_BG: Record<ItemId, string> = {
+  egg: '#fff3dc', milk: '#e2f0ff',
   carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf', strawberry: '#ffd9e0', cabbage: '#dcf5cf',
   corn: '#fff3b0', eggplant: '#ecdcff', pumpkin: '#ffe0c0', sunflower: '#fff6c2',
   potato: '#f3e2c8', chili: '#ffd8d0', watermelon: '#d8f5d0', pineapple: '#fff0b8', cotton: '#eef0f4', lavender: '#e8dcff',
@@ -236,10 +238,10 @@ export function SeedShop({ tile, bulkCount, onPick, onClose }: { tile: number | 
   );
 }
 
-export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number, from: DOMRect) => void; onClose: () => void }) {
+export function Inventory({ onSell, onClose }: { onSell: (c: ItemId, qty: number, from: DOMRect) => void; onClose: () => void }) {
   const s = useGameState();
-  const items = CROP_ORDER.filter((c) => s.inventory[c] > 0);
-  const total = items.reduce((sum, c) => sum + s.inventory[c] * CROPS[c].sellPrice, 0);
+  const items = ITEM_ORDER.filter((c) => s.inventory[c] > 0);
+  const total = items.reduce((sum, c) => sum + s.inventory[c] * itemDef(c).sellPrice, 0);
   return (
     <Modal title="Kho nông sản" icon={<BarnIcon size={34} />} tone="orange" onClose={onClose}>
       {items.length === 0 ? (
@@ -254,13 +256,13 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
               {items.map((c) => (
                 <div className="inv-row" key={c}>
                   <div className="inv-art" style={{ background: CROP_BG[c] }}>
-                    <CropIcon crop={c} size={44} />
+                    <ItemIcon item={c} size={44} />
                     <span className="inv-count">×{formatNum(s.inventory[c], 1000)}</span>
                   </div>
                   <div className="inv-info">
-                    <b>{CROPS[c].name}</b>
+                    <b>{itemDef(c).name}</b>
                     <small>
-                      <CoinIcon size={14} /> {formatNum(CROPS[c].sellPrice)} / cái
+                      <CoinIcon size={14} /> {formatNum(itemDef(c).sellPrice)} / cái
                     </small>
                   </div>
                   <div className="inv-actions">
@@ -268,7 +270,7 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
                       Bán 1
                     </button>
                     <button className="btn btn-orange small" onClick={(e) => onSell(c, s.inventory[c], e.currentTarget.getBoundingClientRect())}>
-                      Bán hết <CoinIcon size={16} /> {formatNum(s.inventory[c] * CROPS[c].sellPrice)}
+                      Bán hết <CoinIcon size={16} /> {formatNum(s.inventory[c] * itemDef(c).sellPrice)}
                     </button>
                   </div>
                 </div>
@@ -284,6 +286,16 @@ export function Inventory({ onSell, onClose }: { onSell: (c: CropId, qty: number
   );
 }
 
+/** A ground tile drawn like in the farm: the tile art seen in the same 2:1 isometric view. */
+function TileArt({ kind }: { kind: 'grass' | 'soil' }) {
+  const url = artUrl(kind === 'soil' ? 'tiles/soil.png' : 'tiles/grass-1.png');
+  return (
+    <div className={`unlock-tile ${kind}`}>
+      <div className="unlock-tile-face" style={url ? { backgroundImage: `url(${url})` } : undefined} />
+    </div>
+  );
+}
+
 export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onClose: () => void }) {
   const s = useGameState();
   const cost = store.nextUnlockCost();
@@ -292,14 +304,14 @@ export function UnlockPopup({ onConfirm, onClose }: { onConfirm: () => void; onC
   return (
     <Modal title="Mở rộng đất" icon={<LockIcon size={32} />} tone="blue" onClose={onClose}>
       <div className="unlock-art">
-        <div className="unlock-tile grass" />
+        <TileArt kind="grass" />
         <span className="unlock-arrow">➜</span>
-        <div className="unlock-tile soil" />
+        <TileArt kind="soil" />
       </div>
       <p className="panel-sub">
         Ô đất thứ {s.unlocked + 1}. Dọn cỏ, làm luống mới để trồng thêm cây.
         <br />
-        Mở hết 16 ô của một mảnh thì mảnh đất kế tiếp sẽ xuất hiện.
+        Mỗi cột có 10 ô; cột mới mở ra bên trái cột cũ.
       </p>
       <div className="row-center">
         <button className="btn btn-ghost" onClick={onClose}>
@@ -590,9 +602,10 @@ export function Settings({
   onQuality,
   sound,
   onSound,
+  music,
+  onMusic,
   fps,
   onFps,
-  onReset,
   onAccount,
   onInstall,
   onClose,
@@ -601,14 +614,14 @@ export function Settings({
   onQuality: (q: Quality) => void;
   sound: boolean;
   onSound: (on: boolean) => void;
+  music: boolean;
+  onMusic: (on: boolean) => void;
   fps: boolean;
   onFps: (on: boolean) => void;
-  onReset: () => void;
   onAccount: () => void;
   onInstall: () => void;
   onClose: () => void;
 }) {
-  const [confirm, setConfirm] = useState(false);
   useSyncExternalStore(sync.subscribe, () => sync.user);
   useSyncExternalStore(pwa.subscribe, () => pwa.canPrompt);
   return (
@@ -627,6 +640,12 @@ export function Settings({
         <span>Âm thanh</span>
         <button className={`toggle ${sound ? 'on' : ''}`} onClick={() => onSound(!sound)}>
           <SoundIcon on={sound} size={26} /> {sound ? 'Bật' : 'Tắt'}
+        </button>
+      </div>
+      <div className="set-row">
+        <span>Nhạc nền</span>
+        <button className={`toggle ${music ? 'on' : ''}`} onClick={() => onMusic(!music)}>
+          <MusicIcon on={music} size={26} /> {music ? 'Bật' : 'Tắt'}
         </button>
       </div>
       <div className="set-row">
@@ -655,18 +674,6 @@ export function Settings({
         ) : (
           <button className="btn btn-blue small" onClick={onAccount}>
             {sync.user?.isGuest === false ? sync.user.name : 'Khách · Lưu tài khoản'}
-          </button>
-        )}
-      </div>
-      <div className="set-row">
-        <span>Tiến trình</span>
-        {confirm ? (
-          <button className="btn btn-red small" onClick={onReset}>
-            Xác nhận chơi lại
-          </button>
-        ) : (
-          <button className="btn btn-ghost small" onClick={() => setConfirm(true)}>
-            Chơi lại từ đầu
           </button>
         )}
       </div>

@@ -315,5 +315,103 @@
       "sellPrice": 85750,
       "xp": 886
     }
-  ]
+  ],
+  "upgrades": {
+    "soil": {
+      "name": "Đất màu mỡ",
+      "max": 10,
+      "baseCost": 1500,
+      "growth": 2.4,
+      "yieldPerLevel": 0.1,
+      "unlockLevel": 5
+    },
+    "sprinkler": {
+      "name": "Máy tưới",
+      "max": 5,
+      "baseCost": 4000,
+      "growth": 2.8,
+      "speedPerLevel": 0.06,
+      "unlockLevel": 10
+    }
+  },
+  "fertilizer": {
+    "costShare": 0.35,
+    "cut": 0.5
+  },
+  "orders": {
+    "slots": 3,
+    "coinMultiplier": 1.6,
+    "xpMultiplier": 1.5,
+    "unlockLevel": 3
+  },
+  "login": [
+    50,
+    100,
+    150,
+    250,
+    400,
+    600,
+    1000
+  ],
+  "quests": [
+    {
+      "type": "harvest",
+      "name": "Thu hoạch {n} ô",
+      "target": 20,
+      "coins": 150,
+      "xp": 10
+    },
+    {
+      "type": "plant",
+      "name": "Gieo {n} ô",
+      "target": 20,
+      "coins": 100,
+      "xp": 8
+    },
+    {
+      "type": "sell",
+      "name": "Bán được {n} xu",
+      "target": 500,
+      "coins": 200,
+      "xp": 12
+    },
+    {
+      "type": "order",
+      "name": "Giao {n} đơn hàng",
+      "target": 2,
+      "coins": 300,
+      "xp": 20
+    }
+  ],
+  "animals": [
+    {
+      "id": "chicken",
+      "name": "Gà",
+      "unlockLevel": 6,
+      "price": 400,
+      "max": 6,
+      "period": 300,
+      "product": "egg",
+      "productName": "Trứng",
+      "sellPrice": 45,
+      "xp": 3
+    },
+    {
+      "id": "cow",
+      "name": "Bò",
+      "unlockLevel": 15,
+      "price": 6000,
+      "max": 4,
+      "period": 900,
+      "product": "milk",
+      "productName": "Sữa",
+      "sellPrice": 520,
+      "xp": 18
+    }
+  ],
+  "weather": {
+    "blockMinutes": 20,
+    "rainOneIn": 5,
+    "rainXpBonus": 0.2
+  }
 }

@@ -20,6 +20,8 @@ class FarmController extends Controller
 
     public function show(Request $request): JsonResponse
     {
+        $this->farms->touch($request->user());
+
         return $this->respond($request, fn () => null);
     }
 
@@ -57,7 +59,7 @@ class FarmController extends Controller
     public function sell(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'crop' => ['required', 'string', Rule::in($this->eco->cropIds())],
+            'crop' => ['required', 'string', Rule::in($this->eco->itemIds())],
             'qty' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -67,6 +69,60 @@ class FarmController extends Controller
     public function unlock(Request $request): JsonResponse
     {
         return $this->respond($request, fn () => ['tile' => $this->farms->unlockNext($request->user())]);
+    }
+
+    public function upgrade(Request $request): JsonResponse
+    {
+        $kind = $request->validate(['kind' => ['required', Rule::in(['soil', 'sprinkler'])]])['kind'];
+
+        return $this->respond($request, fn () => ['level' => $this->farms->upgrade($request->user(), $kind)]);
+    }
+
+    public function fertilize(Request $request): JsonResponse
+    {
+        $data = $request->validate(['tiles' => ['required', 'array', 'min:1', 'max:500'], 'tiles.*' => ['integer', 'min:0']]);
+
+        return $this->respond($request, fn () => ['fertilized' => $this->farms->fertilize($request->user(), $data['tiles'])]);
+    }
+
+    public function deliver(Request $request): JsonResponse
+    {
+        $id = $request->validate(['id' => ['required', 'string', 'max:16']])['id'];
+
+        return $this->respond($request, fn () => $this->farms->deliverOrder($request->user(), $id));
+    }
+
+    public function skip(Request $request): JsonResponse
+    {
+        $id = $request->validate(['id' => ['required', 'string', 'max:16']])['id'];
+
+        return $this->respond($request, fn () => $this->farms->skipOrder($request->user(), $id));
+    }
+
+    public function claimQuest(Request $request): JsonResponse
+    {
+        $i = $request->validate(['index' => ['required', 'integer', 'min:0', 'max:10']])['index'];
+
+        return $this->respond($request, fn () => $this->farms->claimQuest($request->user(), $i));
+    }
+
+    public function claimLogin(Request $request): JsonResponse
+    {
+        return $this->respond($request, fn () => $this->farms->claimLogin($request->user()));
+    }
+
+    public function buyAnimal(Request $request): JsonResponse
+    {
+        $type = $request->validate(['type' => ['required', 'string', 'max:16']])['type'];
+
+        return $this->respond($request, fn () => ['count' => $this->farms->buyAnimal($request->user(), $type)]);
+    }
+
+    public function collect(Request $request): JsonResponse
+    {
+        $which = $request->validate(['which' => ['nullable', 'array', 'max:20'], 'which.*' => ['integer', 'min:0']])['which'] ?? null;
+
+        return $this->respond($request, fn () => $this->farms->collectAnimals($request->user(), $which));
     }
 
     public function reset(Request $request): JsonResponse

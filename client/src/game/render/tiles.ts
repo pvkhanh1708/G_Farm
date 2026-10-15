@@ -1,7 +1,13 @@
-import { Color3, Matrix, Mesh, Quaternion, Scene, StandardMaterial, Vector3, VertexData } from '@babylonjs/core';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { Color3 } from '@babylonjs/core/Maths/math.color.js';
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { CropId, SOIL_TOP, TILE_SIZE } from '../config';
 import { TileState, growthStage } from '../state/store';
 import { Handle, ThinBatch, TileBatches } from './batch';
+import { Billboards } from './billboards';
 import { Fx, SparkleField } from './fx';
 import { SpriteLibrary } from './sprites';
 import { ease, Tweens } from './tween';
@@ -12,6 +18,9 @@ const BED_Y = 0.02;
 const CROP_Y = 0.05;
 /** Crop sprites stand up facing the camera and may spill over neighbouring tiles. */
 const CROP_SPRITE = TILE_SIZE * 1.25;
+/** The "ripe" bubble floats this high above a harvestable tile. */
+const BADGE_Y = 1.75;
+const BADGE_SIZE = 0.72;
 
 // ------------------------------------------------------------------ templates
 
@@ -74,6 +83,7 @@ export interface TileContext {
   tweens: Tweens;
   batches: TileBatches;
   sparkles: SparkleField;
+  billboards: Billboards;
   /** Ripe tiles that bob gently; ticked by the Game while zoomed in. */
   bobbing: Set<TileView>;
 }
@@ -94,6 +104,8 @@ export class TileView {
   private cropBatch: ThinBatch | null = null;
   private readonly bedHandle: Handle;
   private readonly cropHandle: Handle;
+  private readonly badgeHandle: Handle;
+  private badgeBatch: ThinBatch | null = null;
   // animatable transform parts (the tile sits at x/z on the island)
   private bedY = BED_Y;
   private bedScale = new Vector3(1, 1, 1);
@@ -109,6 +121,23 @@ export class TileView {
     this.center = new Vector3(x, SOIL_TOP, z);
     this.bedHandle = ctx.batches.handle();
     this.cropHandle = ctx.batches.handle();
+    this.badgeHandle = ctx.batches.handle();
+  }
+
+  /** Show or hide the ripe bubble; `lift` bobs it up and down. */
+  private setBadge(on: boolean, lift = 0) {
+    if (!on) {
+      this.badgeBatch?.remove(this.badgeHandle);
+      this.badgeBatch = null;
+      return;
+    }
+    tmpScale.setAll(1);
+    tmpPos.set(this.x, BADGE_Y + lift, this.z);
+    Matrix.ComposeToRef(tmpScale, NO_ROTATION, tmpPos, tmpMatrix);
+    if (this.badgeBatch) return this.badgeBatch.set(this.badgeHandle, tmpMatrix);
+    const t = () => this.ctx.billboards.quad('ripe', BADGE_SIZE, { onTop: true });
+    this.badgeBatch = this.ctx.batches.get('ripe-badge', this.x, this.z, () => ({ detailed: t(), simple: t() }), false);
+    this.badgeBatch.add(this.badgeHandle, tmpMatrix);
   }
 
   private compose(scale: Vector3, y: number, dz = 0) {
@@ -133,6 +162,7 @@ export class TileView {
   dispose() {
     this.bedBatch?.remove(this.bedHandle);
     this.cropBatch?.remove(this.cropHandle);
+    this.setBadge(false);
     this.ctx.sparkles.set(this.g, null);
     this.ctx.bobbing.delete(this);
   }
@@ -187,6 +217,7 @@ export class TileView {
       this.cropBatch.add(this.cropHandle, this.composeCrop());
     }
     const ripe = stage === 4 && crop !== null;
+    this.setBadge(ripe);
     this.ctx.sparkles.set(this.g, ripe ? this.center : null);
     if (ripe) this.ctx.bobbing.add(this);
     else this.ctx.bobbing.delete(this);
@@ -212,6 +243,7 @@ export class TileView {
   playHarvest(onPeak: () => void) {
     if (!this.cropBatch) return;
     this.busy = true;
+    this.setBadge(false);
     const tw = this.ctx.tweens;
     const fx = this.ctx.fx;
     tw.add(0.16, (k) => {
@@ -289,5 +321,6 @@ export class TileView {
     const s = 1 + Math.sin(this.time * 3.2) * 0.03;
     this.cropScale.set(s, 1, s);
     this.applyCrop();
+    if (this.badgeBatch) this.setBadge(true, Math.abs(Math.sin(this.time * 2.6)) * 0.18);
   }
 }

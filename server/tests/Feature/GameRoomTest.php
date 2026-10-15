@@ -59,6 +59,22 @@ class GameRoomTest extends TestCase
             ->assertJsonPath('result.payout', 380);
         $this->assertSame(800 + 380, $this->coins($aid));
         $this->assertSame(800, $this->coins($bid));
+        $this->getJson('/leaderboard/wins', $b)->assertOk()
+            ->assertJsonPath('rows.0.id', $aid)->assertJsonPath('rows.0.value', 1)->assertJsonCount(1, 'rows')
+            ->assertJsonPath('me.value', 0);
+        $this->getJson('/leaderboard/winnings', $a)->assertJsonPath('rows.0.value', 180)->assertJsonPath('me.rank', 1);
+    }
+
+    public function test_farm_leaderboards_rank_by_coins_level_and_tiles(): void
+    {
+        [$a, $aid] = $this->player(500);
+        [$b, $bid] = $this->player(900);
+        \App\Models\Farm::where('user_id', $aid)->update(['level' => 7, 'xp' => 10, 'unlocked' => 30]);
+        \App\Models\Farm::where('user_id', $bid)->update(['level' => 7, 'xp' => 50, 'unlocked' => 12]);
+        $this->getJson('/leaderboard/coins', $a)->assertOk()->assertJsonPath('rows.0.id', $bid)->assertJsonPath('me.rank', 2)->assertJsonPath('me.value', 500);
+        $this->getJson('/leaderboard/level', $a)->assertJsonPath('rows.0.id', $bid)->assertJsonPath('me.rank', 2);
+        $this->getJson('/leaderboard/tiles', $a)->assertJsonPath('rows.0.value', 30)->assertJsonPath('me.rank', 1);
+        $this->getJson('/leaderboard/nope', $a)->assertNotFound();
     }
 
     public function test_turns_and_cells_are_enforced(): void

@@ -89,4 +89,84 @@ class Economy
     {
         return array_values(array_map(fn ($c) => $c['id'], array_filter($this->crops, fn ($c) => $c['unlockLevel'] === $level)));
     }
+
+    // ---------------------------------------------------------------- progression (mirrors client/src/game/config.ts)
+
+    public function raw(string $key): mixed
+    {
+        return $this->data[$key];
+    }
+
+    /** Coins to raise an upgrade from `level` to `level + 1`. */
+    public function upgradeCost(string $kind, int $level): int
+    {
+        $u = $this->data['upgrades'][$kind];
+
+        return (int) (round($u['baseCost'] * $u['growth'] ** $level / 10) * 10);
+    }
+
+    /** Growth time of a crop with the sprinkler at `sprinkler`. */
+    public function growMs(array $crop, int $sprinkler): int
+    {
+        return (int) round($crop['growSeconds'] * 1000 * (1 - $this->data['upgrades']['sprinkler']['speedPerLevel'] * $sprinkler));
+    }
+
+    /** Crops harvested from one tile with the soil at `soil`. */
+    public function harvestAmount(array $crop, int $soil): int
+    {
+        return $crop['yield'] + (int) round($crop['yield'] * $this->data['upgrades']['soil']['yieldPerLevel'] * $soil);
+    }
+
+    /** Rain falls in some fixed-length time blocks, the same for everyone. */
+    public function isRaining(int $ms): bool
+    {
+        $w = $this->data['weather'];
+        $block = intdiv($ms, $w['blockMinutes'] * 60_000);
+
+        // high bits of an LCG step: the low ones repeat with a short period
+        return intdiv(($block * 1103515245 + 12345) % 2147483648, 65536) % $w['rainOneIn'] === 0;
+    }
+
+    public function harvestXp(array $crop, int $ms): int
+    {
+        return (int) round($crop['xp'] * ($this->isRaining($ms) ? 1 + $this->data['weather']['rainXpBonus'] : 1));
+    }
+
+    public function fertilizerCost(array $crop): int
+    {
+        return max(1, (int) round($crop['seedPrice'] * $this->data['fertilizer']['costShare']));
+    }
+
+    /** @return array<string, mixed>|null */
+    public function animal(string $id): ?array
+    {
+        foreach ($this->data['animals'] as $a) {
+            if ($a['id'] === $id) {
+                return $a;
+            }
+        }
+
+        return null;
+    }
+
+    /** Sellable item: a crop or an animal product, as {name, sellPrice}. */
+    public function item(string $id): ?array
+    {
+        if ($c = $this->crop($id)) {
+            return $c;
+        }
+        foreach ($this->data['animals'] as $a) {
+            if ($a['product'] === $id) {
+                return ['id' => $id, 'name' => $a['productName'], 'sellPrice' => $a['sellPrice']];
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<string> */
+    public function itemIds(): array
+    {
+        return [...$this->cropIds(), ...array_column($this->data['animals'], 'product')];
+    }
 }

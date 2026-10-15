@@ -22,6 +22,11 @@ class Sfx {
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
+  /** The shared AudioContext (null until the first user gesture). */
+  get context() {
+    return this.ctx;
+  }
+
   setEnabled(on: boolean) {
     this.enabled = on;
     if (this.master) this.master.gain.value = on ? 0.55 : 0;

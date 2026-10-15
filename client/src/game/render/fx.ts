@@ -1,4 +1,8 @@
-import { Color4, ParticleSystem, Scene, Texture, Vector3 } from '@babylonjs/core';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
+import { Color4 } from '@babylonjs/core/Maths/math.color.js';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { leafParticleTexture, softDotTexture, sparkleTexture } from './textures';
 
 /**

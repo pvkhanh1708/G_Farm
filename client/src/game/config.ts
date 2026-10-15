@@ -125,3 +125,84 @@ export const QUALITY_PRESETS: Record<Quality, QualityPreset> = {
   medium: { maxPixelRatio: 1.5, shadowMapSize: 1024, shadowPcfQuality: 'medium', grassCount: 1800, flowerCount: 140, particleScale: 0.7, butterflies: 3, antialias: true },
   high: { maxPixelRatio: 2, shadowMapSize: 2048, shadowPcfQuality: 'high', grassCount: 3600, flowerCount: 260, particleScale: 1, butterflies: 5, antialias: true },
 };
+
+// ------------------------------------------------------------------ progression (mirrors server/app/Game/Economy.php)
+
+export type UpgradeKind = 'soil' | 'sprinkler';
+export type AnimalId = 'chicken' | 'cow';
+export type ProductId = 'egg' | 'milk';
+/** Anything that can sit in the barn and be sold. */
+export type ItemId = CropId | ProductId;
+
+export interface AnimalDef {
+  id: AnimalId;
+  name: string;
+  unlockLevel: number;
+  price: number;
+  max: number;
+  /** Seconds between two products. */
+  period: number;
+  product: ProductId;
+  productName: string;
+  sellPrice: number;
+  xp: number;
+}
+
+export const UPGRADES = economy.upgrades as Record<UpgradeKind, { name: string; max: number; baseCost: number; growth: number; unlockLevel: number; yieldPerLevel?: number; speedPerLevel?: number }>;
+export const ANIMALS = Object.fromEntries(economy.animals.map((a) => [a.id, a as AnimalDef])) as Record<AnimalId, AnimalDef>;
+export const ANIMAL_ORDER = economy.animals.map((a) => a.id as AnimalId);
+export const PRODUCT_ORDER = economy.animals.map((a) => a.product as ProductId);
+export const ITEM_ORDER: ItemId[] = [...CROP_ORDER, ...PRODUCT_ORDER];
+
+export function itemDef(id: ItemId): { name: string; sellPrice: number } {
+  if (id in CROPS) return CROPS[id as CropId];
+  const a = economy.animals.find((x) => x.product === id)!;
+  return { name: a.productName, sellPrice: a.sellPrice };
+}
+
+export const isProduct = (id: ItemId): id is ProductId => !(id in CROPS);
+
+/** Coins to raise an upgrade from `level` to `level + 1`. */
+export function upgradeCost(kind: UpgradeKind, level: number): number {
+  const u = UPGRADES[kind];
+  return Math.round((u.baseCost * Math.pow(u.growth, level)) / 10) * 10;
+}
+
+/** Growth time (ms) of a crop with the sprinkler at `sprinkler`. */
+export function growMs(crop: CropId, sprinkler: number): number {
+  return Math.round(CROPS[crop].growSeconds * 1000 * (1 - UPGRADES.sprinkler.speedPerLevel! * sprinkler));
+}
+
+/** Crops harvested from one tile with the soil at `soil`. */
+export function harvestAmount(crop: CropId, soil: number): number {
+  const y = CROPS[crop].yield;
+  return y + Math.round(y * UPGRADES.soil.yieldPerLevel! * soil);
+}
+
+const RAIN_BLOCK_MS = economy.weather.blockMinutes * 60_000;
+
+/** Rain falls in fixed time blocks, the same for every player (and the server). */
+export function isRaining(ms: number): boolean {
+  const block = BigInt(Math.floor(ms / RAIN_BLOCK_MS));
+  // high bits of an LCG step: the low ones repeat with a short period
+  return (((block * 1103515245n + 12345n) % 2147483648n) / 65536n) % BigInt(economy.weather.rainOneIn) === 0n;
+}
+
+/** When the current weather block ends. */
+export function weatherBlockEnd(ms: number): number {
+  return (Math.floor(ms / RAIN_BLOCK_MS) + 1) * RAIN_BLOCK_MS;
+}
+
+export function harvestXp(crop: CropId, ms: number): number {
+  return Math.round(CROPS[crop].xp * (isRaining(ms) ? 1 + economy.weather.rainXpBonus : 1));
+}
+
+export function fertilizerCost(crop: CropId): number {
+  return Math.max(1, Math.round(CROPS[crop].seedPrice * economy.fertilizer.costShare));
+}
+
+export const ORDERS_UNLOCK = economy.orders.unlockLevel;
+export const LOGIN_REWARDS = economy.login;
+
+/** Fenced animal pen on the right of the farm block (column 0 is at x = 0, columns grow toward -x). */
+export const PEN = { x0: 1.5, x1: 6.3, z0: -9.6, z1: -3.6 };

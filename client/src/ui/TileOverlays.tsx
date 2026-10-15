@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CROPS } from '../game/config';
+import { CROPS, fertilizerCost } from '../game/config';
 import type { Game } from '../game/Game';
 import { serverNow } from '../game/net/clock';
 import { growthProgress, secondsLeft, store, TileState } from '../game/state/store';
 import { useGameState } from './Hud';
-import { CoinIcon, CropIcon, LockIcon, XpIcon } from './icons';
+import { CoinIcon, CropIcon, FertilizerIcon, LockIcon, XpIcon } from './icons';
 import { formatNum } from './format';
 
 function useNow(ms: number) {
@@ -27,7 +27,7 @@ function formatLeft(sec: number) {
 }
 
 /** Shown after tapping a growing crop: progress, time left, and dig buttons. */
-function GrowCard({ tile, now, onDig }: { tile: TileState; now: number; onDig: (tiles: number[], label: string) => void }) {
+function GrowCard({ tile, now, onDig, onFertilize }: { tile: TileState; now: number; onDig: (tiles: number[], label: string) => void; onFertilize: (tiles: number[]) => void }) {
   const crop = tile.crop!;
   const def = CROPS[crop];
   const p = growthProgress(tile, now);
@@ -44,6 +44,16 @@ function GrowCard({ tile, now, onDig }: { tile: TileState; now: number; onDig: (
       </div>
       <div className="bar">
         <div className="bar-fill" style={{ width: `${Math.max(6, p * 100)}%` }} />
+      </div>
+      <div className="grow-actions">
+        <button className="btn btn-green small" onClick={() => onFertilize([tile.g])}>
+          <FertilizerIcon size={16} /> Bón phân <CoinIcon size={13} /> {formatNum(fertilizerCost(crop))}
+        </button>
+        {same.length > 1 && (
+          <button className="btn btn-green small" onClick={() => onFertilize(same)}>
+            Bón cả {same.length} ô
+          </button>
+        )}
       </div>
       <div className="grow-actions">
         <button className="btn btn-orange small" onClick={() => onDig([tile.g], def.name.toLowerCase())}>
@@ -93,7 +103,7 @@ function Tag({ tile, coins, cost, needLevel, onUnlock }: { tile: TileState; coin
  * view while zoomed in. A big farm would otherwise project hundreds of labels
  * every frame.
  */
-export function TileOverlays({ game, revealed, onUnlock, onDig }: { game: Game; revealed: number | null; onUnlock: () => void; onDig: (tiles: number[], label: string) => void }) {
+export function TileOverlays({ game, revealed, onUnlock, onDig, onFertilize }: { game: Game; revealed: number | null; onUnlock: () => void; onDig: (tiles: number[], label: string) => void; onFertilize: (tiles: number[]) => void }) {
   const s = useGameState();
   const now = useNow(250);
   const refs = useRef(new Map<string, HTMLDivElement>());
@@ -124,7 +134,7 @@ export function TileOverlays({ game, revealed, onUnlock, onDig }: { game: Game; 
     <div className="plot-overlays">
       {tiles.map((t) => (
         <div key={t.g} className="plot-anchor" ref={bind(String(t.g))}>
-          {t.g === revealed && t.crop ? <GrowCard tile={t} now={now} onDig={onDig} /> : <Tag tile={t} coins={s.coins} cost={cost} needLevel={needLevel} onUnlock={onUnlock} />}
+          {t.g === revealed && t.crop ? <GrowCard tile={t} now={now} onDig={onDig} onFertilize={onFertilize} /> : <Tag tile={t} coins={s.coins} cost={cost} needLevel={needLevel} onUnlock={onUnlock} />}
         </div>
       ))}
     </div>

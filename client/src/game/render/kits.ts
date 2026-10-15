@@ -1,4 +1,10 @@
-import { Color3, CreatePlane, Matrix, Mesh, Scene, StandardMaterial, TransformNode, Vector3 } from '@babylonjs/core';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { Color3 } from '@babylonjs/core/Maths/math.color.js';
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { blade, blob, chain, GeoBuilder, hex, jitter, lathe, mix, mulberry, tf } from './geometry';
 import { butterflyWingTexture } from './textures';
 

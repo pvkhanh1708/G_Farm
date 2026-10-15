@@ -1,21 +1,23 @@
-import {
-  Color3,
-  Color4,
-  ColorCurves,
-  DirectionalLight,
-  Engine,
-  HemisphericLight,
-  ImageProcessingConfiguration,
-  Matrix,
-  Scene,
-  SceneInstrumentation,
-  ShadowGenerator,
-  StandardMaterial,
-  Vector3,
-} from '@babylonjs/core';
+// Babylon is imported per module (tree-shaken); these add the scene features the game uses.
+import '@babylonjs/core/Culling/ray.js';
+import '@babylonjs/core/Meshes/thinInstanceMesh.js';
+import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent.js';
+import '@babylonjs/core/Engines/Extensions/engine.dynamicTexture.js';
+import '@babylonjs/core/Particles/particleSystemComponent.js';
+import { Engine } from '@babylonjs/core/Engines/engine.js';
+import { SceneInstrumentation } from '@babylonjs/core/Instrumentation/sceneInstrumentation.js';
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight.js';
+import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight.js';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator.js';
+import { ColorCurves } from '@babylonjs/core/Materials/colorCurves.js';
+import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration.js';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color.js';
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { Scene } from '@babylonjs/core/scene.js';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, ISLAND_SIZE, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
+import { CROP_ORDER, CropId, ISLAND_SIZE, PEN, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { SpriteLibrary } from './render/sprites';
 import { Fx } from './render/fx';
@@ -27,6 +29,8 @@ import { Tweens } from './render/tween';
 import { World } from './render/world';
 import { serverNow } from './net/clock';
 import { TileBatches } from './render/batch';
+import { Billboards } from './render/billboards';
+import { AnimalPen } from './render/animals';
 import type { SparkleField } from './render/fx';
 import { growthProgress, store } from './state/store';
 
@@ -36,6 +40,8 @@ export type GameEvent =
   | { type: 'tileTap'; g: number; kind: TileKind }
   | { type: 'harvested'; g: number; crop: CropId; amount: number; xp: number; x: number; y: number; bulk: boolean }
   | { type: 'ready'; g: number }
+  /** An animal in the pen was tapped (index into state.animals; x/y on screen). */
+  | { type: 'animalTap'; index: number; x: number; y: number }
   /** The camera crossed between the close farm view and the zoomed-out overview. */
   | { type: 'view'; overview: boolean };
 
@@ -76,6 +82,11 @@ export class Game {
   /** Zoomed out past one parcel: overview look (simple crops, no shadows), taps pick a parcel. */
   private far = false;
   private sparkleTimer = 0;
+  private pen: AnimalPen | null = null;
+  /** Seed of the quick-sow tool (set by the UI): dragging over empty tiles sows it. */
+  sowTool: CropId | null = null;
+  private paintMode: 'harvest' | 'sow' | null = null;
+  private painted = new Set<number>();
   quality: Quality;
 
   private constructor(private canvas: HTMLCanvasElement, quality: Quality, private showcase: boolean) {
@@ -135,6 +146,8 @@ export class Game {
     this.rig = new CameraRig(scene, this.canvas);
     this.rig.onTap = (x, y) => this.handleTap(x, y);
     this.rig.onHover = (x, y) => this.handleHover(x, y);
+    this.rig.onPaintStart = (x, y) => this.paintStart(x, y);
+    this.rig.onPaint = (x, y) => this.paint(x, y);
     this.tweens = new Tweens(scene);
     this.fx = new Fx(scene);
     this.fx.scale = preset.particleScale;
@@ -169,13 +182,15 @@ export class Game {
     this.templates.ring.setEnabled(false);
     this.batches = new TileBatches(scene);
     this.sparkles = this.fx.sparkleField();
+    const billboards = new Billboards(scene);
     await tick();
 
     progress(0.85, 'Dọn ô đất…');
     this.rebuildShadows(preset.shadowMapSize, preset.shadowPcfQuality);
-    this.tileCtx = { scene, templates: this.templates, sprites: this.sprites, fx: this.fx, tweens: this.tweens, batches: this.batches, sparkles: this.sparkles, bobbing: this.bobbing };
+    this.tileCtx = { scene, templates: this.templates, sprites: this.sprites, fx: this.fx, tweens: this.tweens, batches: this.batches, sparkles: this.sparkles, billboards, bobbing: this.bobbing };
     if (this.showcase) this.buildShowcase();
     else {
+      this.pen = new AnimalPen(scene, billboards);
       this.syncTiles(false);
       this.focusCurrent(true);
       this.unsubStore = store.subscribe(() => this.syncTiles(true));
@@ -236,6 +251,7 @@ export class Game {
     this.scene.fogEnd = this.rig.distance + r * 0.6 + 100;
     this.updateFar();
     if (!this.far) for (const v of this.bobbing) v.bob(dt);
+    this.pen?.update(dt);
     this.sparkleTimer += dt;
     if (this.sparkleTimer > 0.25) {
       this.sparkleTimer = 0;
@@ -304,6 +320,7 @@ export class Game {
         this.tiles.delete(g);
       }
     const now = serverNow();
+    this.pen?.sync(store.getState().animals, now);
     for (const t of tiles) {
       let v = this.tiles.get(t.g);
       if (!v) {
@@ -327,7 +344,8 @@ export class Game {
     const centers = Array.from({ length: this.parcels + 1 }, (_, k) => parcelCenter(k));
     const xs = centers.map((c) => c.x), zs = centers.map((c) => c.z);
     const h = ISLAND_SIZE / 2;
-    this.rig.setBounds(Math.min(...xs) - h, Math.max(...xs) + h, Math.min(...zs) - h, Math.max(...zs) + h);
+    // the animal pen sits right of the farm block
+    this.rig.setBounds(Math.min(...xs) - h, Math.max(PEN.x1 - 1, Math.max(...xs) + h), Math.min(...zs) - h, Math.max(...zs) + h);
   }
 
   /** Centre on the parcel being filled. */
@@ -403,6 +421,8 @@ export class Game {
       }
       return;
     }
+    const a = this.animalAt(x, y);
+    if (a) return this.emit({ type: 'animalTap', index: a.index, x: a.x, y: a.y });
     const g = this.tileAt(x, y);
     if (g === null) return;
     const view = this.tiles.get(g)!;
@@ -417,6 +437,53 @@ export class Game {
       view.wiggle();
       sfx.tap();
       this.emit({ type: 'tileTap', g, kind: 'growing' });
+    }
+  }
+
+  /** Animal under a screen point (the picture is about as wide as it is tall). */
+  private animalAt(x: number, y: number): { index: number; x: number; y: number } | null {
+    if (!this.pen) return null;
+    const ppu = this.rig.pixelsPerUnit;
+    let best: { index: number; x: number; y: number; d: number } | null = null;
+    this.pen.positions().forEach(({ pos, size }, index) => {
+      const p = this.project(pos.add(new Vector3(0, size * 0.45, 0)));
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < size * 0.55 * ppu && (!best || d < best.d)) best = { index, x: p.x, y: p.y, d };
+    });
+    return best;
+  }
+
+  /** Drag starting on a ripe crop harvests along the way; with the sow tool, on an empty tile it sows. */
+  private paintStart(x: number, y: number) {
+    if (this.showcase || this.far) return false;
+    const g = this.tileAt(x, y);
+    const st = g === null ? undefined : store.tile(g);
+    this.painted.clear();
+    this.paintMode = null;
+    if (!st?.unlocked) return false;
+    if (st.crop && growthProgress(st) >= 1) this.paintMode = 'harvest';
+    else if (!st.crop && this.sowTool) this.paintMode = 'sow';
+    if (this.paintMode) this.paint(x, y);
+    return this.paintMode !== null;
+  }
+
+  private paint(x: number, y: number) {
+    const g = this.tileAt(x, y);
+    if (g === null || this.painted.has(g)) return;
+    const st = store.tile(g);
+    if (!st?.unlocked) return;
+    this.painted.add(g);
+    if (this.paintMode === 'harvest' && st.crop && growthProgress(st) >= 1) this.harvest(g, this.painted.size > 1);
+    else if (this.paintMode === 'sow' && !st.crop) this.emit({ type: 'tileTap', g, kind: 'empty' });
+  }
+
+  /** Puff of soil + sparkles on tiles that were just fertilized. */
+  puff(tiles: number[]) {
+    for (const g of tiles) {
+      const v = this.tiles.get(g);
+      if (!v) continue;
+      this.fx.dustPuff(v.center.add(new Vector3(0, 0.2, 0)), 8);
+      this.fx.sparkleBurst(v.center.add(new Vector3(0, 0.5, 0)), 10);
     }
   }
 

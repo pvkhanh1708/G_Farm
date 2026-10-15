@@ -92,6 +92,11 @@ class Sync {
     if (res.state) store.hydrate(res.state);
   }
 
+  /** Resolves once every queued action has reached the server. */
+  async idle() {
+    while (this.queue.length || this.busy) await new Promise((r) => setTimeout(r, 60));
+  }
+
   /** Queue an action; consecutive harvests (and plantings of one crop) merge into one request. */
   private enqueue(a: GameAction) {
     const last = this.queue[this.queue.length - 1];

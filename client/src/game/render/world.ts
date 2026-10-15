@@ -1,5 +1,12 @@
-import { CreateGroundVertexData, DynamicTexture, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
-import { COLUMN_LENGTH, ISLAND_SIZE, QualityPreset, TILE_PITCH } from '../config';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator.js';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import { CreateGroundVertexData } from '@babylonjs/core/Meshes/Builders/groundBuilder.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import { Scene } from '@babylonjs/core/scene.js';
+import { COLUMN_LENGTH, ISLAND_SIZE, PEN, QualityPreset, TILE_PITCH } from '../config';
 import { hex, mulberry } from './geometry';
 import { bushKit, buildButterflies, flowerKit, grassKit, rockKit, roundTree, pineTree } from './kits';
 import { MaterialLibrary } from './materials';
@@ -180,7 +187,8 @@ export class World {
     const cols = Math.max(1, this.active);
     // the farm block (columns 0..cols-1, growing toward -x) stays clear of decor
     const half = TILE_PITCH / 2 + 0.25;
-    const farm = { x0: -(cols - 1) * TILE_PITCH - half, x1: half, z0: -(COLUMN_LENGTH - TILE_PITCH) - half, z1: half };
+    // the animal pen on the right is kept clear too
+    const farm = { x0: -(cols - 1) * TILE_PITCH - half, x1: PEN.x1 + 0.6, z0: -(COLUMN_LENGTH - TILE_PITCH) - half, z1: half };
     if (SHOW_PLOT_PAD) pads.push({ x: (farm.x0 + farm.x1) / 2, y: 0, z: (farm.z0 + farm.z1) / 2, s: 1, yaw: 0 });
     const M = DECOR_MARGIN;
     const cell = ISLAND_SIZE;
