@@ -1,4 +1,4 @@
-import { CreateGroundVertexData, DynamicTexture, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3, VertexData } from '@babylonjs/core';
+import { CreateGroundVertexData, DynamicTexture, Matrix, Mesh, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { ISLAND_SIZE, PARCEL_DIM, parcelCenter, QualityPreset, TILE_PITCH, TILE_SIZE } from '../config';
 import { hex, mulberry } from './geometry';
 import { bushKit, buildButterflies, flowerKit, grassKit, rockKit, roundTree, pineTree } from './kits';
@@ -7,8 +7,8 @@ import { artUrl } from '../art';
 
 /**
  * The farm lies on one endless meadow. Parcels (4x4 tiles each) sit edge to
- * edge on the parcel grid, each opened parcel framed by a narrow dirt path so
- * the 4x4 groups still read; the parcel to come is overgrown with bushes and
+ * edge on the parcel grid, each opened one on a pad of light earth so the 4x4
+ * groups still read; the parcel to come is overgrown with bushes and
  * the wild land around the farm carries trees, bushes, flowers and rocks.
  */
 
@@ -18,7 +18,6 @@ const TILES_HALF = (PARCEL_DIM * TILE_PITCH - (TILE_PITCH - TILE_SIZE)) / 2;
 const GROUND_SIZE = 1200;
 /** Wild parcels beyond the one to come that get scenery. */
 const WILD_RING = 16;
-const PATH_WIDTH = 0.16;
 
 type Placement = { x: number; y: number; z: number; s: number; yaw: number };
 
@@ -125,49 +124,10 @@ function buildPad(scene: Scene) {
   return m;
 }
 
-/** Thin dirt path around a parcel: a rounded-rectangle ribbon (drawn as thin instances, one per parcel). */
-function buildPath(scene: Scene) {
-  const half = ISLAND_SIZE / 2 - PATH_WIDTH / 2;
-  const R = 0.5, seg = 6;
-  const pts: Vector3[] = [];
-  const corners: Array<[number, number, number]> = [[half - R, half - R, 0], [-half + R, half - R, Math.PI / 2], [-half + R, -half + R, Math.PI], [half - R, -half + R, Math.PI * 1.5]];
-  for (const [cx, cz, a0] of corners)
-    for (let i = 0; i <= seg; i++) {
-      const a = a0 + (i / seg) * (Math.PI / 2);
-      pts.push(new Vector3(cx + Math.cos(a) * R, 0, cz + Math.sin(a) * R));
-    }
-  const positions: number[] = [];
-  const indices: number[] = [];
-  const w = PATH_WIDTH / 2;
-  pts.forEach((pt) => {
-    const len = Math.hypot(pt.x, pt.z);
-    const nx = pt.x / len, nz = pt.z / len;
-    positions.push(pt.x - nx * w, 0, pt.z - nz * w, pt.x + nx * w, 0, pt.z + nz * w);
-  });
-  for (let i = 0; i < pts.length; i++) {
-    const a = i * 2, b = ((i + 1) % pts.length) * 2;
-    indices.push(a, b, a + 1, a + 1, b, b + 1);
-  }
-  const vd = new VertexData();
-  vd.positions = positions;
-  vd.indices = indices;
-  const m = new Mesh('parcel-path', scene);
-  vd.applyToMesh(m);
-  const mat = new StandardMaterial('path-mat', scene);
-  mat.disableLighting = true;
-  mat.emissiveColor = hex('#a8814e');
-  mat.backFaceCulling = false;
-  m.material = mat;
-  m.position.y = 0.005;
-  m.isPickable = false;
-  return m;
-}
-
 export class World {
   private active = -1;
   private scatter: Array<{ mesh: Mesh; items: Placement[]; limit: () => number }> = [];
   private ground: Mesh;
-  private path: Mesh;
   private pad: Mesh;
   private flies;
   private casters: Mesh[] = [];
@@ -182,7 +142,6 @@ export class World {
   constructor(scene: Scene, mats: MaterialLibrary, quality: QualityPreset) {
     this.quality = quality;
     this.ground = buildGround(scene, mats);
-    this.path = buildPath(scene);
     this.pad = buildPad(scene);
     this.grassMeshes = [grassKit(80), grassKit(81)].map((g, i) => g.build(`grass-${i}`, scene, mats.grass));
     const flowerColours: Array<[string, string]> = [['#ff6fa3', '#ffe27a'], ['#ffd84a', '#e08a1e'], ['#ffffff', '#ffd23f'], ['#b98cff', '#fff3a0'], ['#ff7a45', '#7a3d1a']];
@@ -214,7 +173,6 @@ export class World {
     const bushes: Placement[][] = this.bushMeshes.map(() => []);
     const trees: Placement[][] = [[], [], []];
     const rocks: Placement[] = [];
-    const paths: Placement[] = [];
     const pads: Placement[] = [];
     const half = ISLAND_SIZE / 2 - 0.3;
     const active = this.active;
@@ -223,7 +181,6 @@ export class World {
       const r = mulberry(1000 + k * 77);
       const opened = k < active, next = k === active, wild = k > active;
       if (opened) {
-        paths.push({ x: ox, y: 0.005, z: oz, s: 1, yaw: 0 });
         pads.push({ x: ox, y: 0, z: oz, s: 1, yaw: 0 });
       }
       const inBorder = (x: number, z: number) => Math.max(Math.abs(x), Math.abs(z)) > TILES_HALF + 0.12;
@@ -263,7 +220,6 @@ export class World {
       ...this.bushMeshes.map((mesh, i) => ({ mesh, items: bushes[i], limit: () => Infinity })),
       ...trees.flatMap((list, i) => [this.treeMeshes[i * 2], this.treeMeshes[i * 2 + 1]].map((mesh) => ({ mesh, items: list, limit: () => Infinity }))),
       { mesh: this.rockMesh, items: rocks, limit: () => Infinity },
-      { mesh: this.path, items: paths, limit: () => Infinity },
       { mesh: this.pad, items: pads, limit: () => Infinity },
     ];
     this.applyScatter();
@@ -274,7 +230,6 @@ export class World {
       thin(s.mesh, s.items);
       s.mesh.thinInstanceCount = Math.max(1, Math.min(s.items.length, s.limit()));
     }
-    this.path.receiveShadows = false;
     this.pad.receiveShadows = false;
   }
 
