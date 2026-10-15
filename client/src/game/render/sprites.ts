@@ -1014,7 +1014,7 @@ export class SpriteLibrary {
       const corner = (sx: number, sy: number) => R.scale(sx).addInPlace(U.scale(sy)).addInPlace(lift).asArray();
       // drawn plants stand on a soil mound about a quarter up from the cell's bottom:
       // lower the quad so that mound lands on the tile centre
-      const y0 = -size * 0.28;
+      const y0 = -size * 0.4;
       vd.positions = [...corner(-h, y0), ...corner(h, y0), ...corner(h, y0 + size), ...corner(-h, y0 + size)];
       const n = CameraRig.toCamera.asArray();
       vd.normals = [...n, ...n, ...n, ...n];
