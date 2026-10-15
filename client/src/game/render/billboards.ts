@@ -15,8 +15,8 @@ import { CameraRig } from './camera';
  * Painted once on a canvas texture of its own.
  */
 
-/** Animal pictures come in 6 poses (see animals.ts): `chicken:0` … `cow:5`. */
-export const ANIMAL_FRAMES = 6;
+/** Animal pictures come in 12 poses (see animals.ts): `chicken:0` … `cow:11`. */
+export const ANIMAL_FRAMES = 12;
 type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk';
 export type BillboardKey = 'ripe' | 'egg' | 'milk' | `${'chicken' | 'cow'}:${number}`;
 const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];

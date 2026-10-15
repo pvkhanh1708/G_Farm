@@ -40,8 +40,8 @@ const sheets = pngs.filter((p) => {
   const out = sheetOut(p, 4);
   return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
 });
-// animal sheets animals/<id>.png (one row of 6 poses) become animals/<id>/frame-0..5.webp, see sliceAnimals()
-const ANIMAL_FRAMES = 6;
+// animal sheets animals/<id>.png (2 rows of 6 poses) become animals/<id>/frame-0..11.webp
+const ANIMAL_COLS = 6, ANIMAL_ROWS = 2, ANIMAL_FRAMES = ANIMAL_COLS * ANIMAL_ROWS;
 const frameOut = (file, f) => path.join(path.dirname(file), path.basename(file, '.png'), `frame-${f}.webp`);
 const animalSheets = pngs.filter((p) => {
   if (!isAnimalSheet(p)) return false;
@@ -229,14 +229,15 @@ for (const file of sheets) {
 }
 
 /**
- * An animal sheet is one row of poses. Each pose is the group of solid shapes whose centre lies in
- * its sixth of the sheet; specks of background left around the drawings (small shapes, faint
+ * An animal sheet is a grid of poses (6 x 2, read left to right, top to bottom). Each pose is the
+ * group of solid shapes whose centre lies in its cell; specks of background left around the drawings (small shapes, faint
  * pixels) are dropped. All frames share one scale and stand on the bottom edge of a 256 px square,
  * centred, so the animal keeps its size and footing from frame to frame.
  */
 for (const file of animalSheets) {
   const rel = relOf(file);
-  const frames = await page.evaluate(async (data, N) => {
+  const frames = await page.evaluate(async (data, C, R) => {
+    const N = C * R;
     const img = new Image();
     img.src = 'data:image/png;base64,' + data;
     await img.decode();
@@ -260,11 +261,12 @@ for (const file of animalSheets) {
       const id = comps.length;
       const stack = [i];
       label[i] = id;
-      let sx = 0, n = 0;
+      let sx = 0, sy = 0, n = 0;
       while (stack.length) {
         const j = stack.pop();
         const x = j % w;
         sx += x;
+        sy += (j / w) | 0;
         n++;
         for (const k of [j - 1, j + 1, j - w, j + w]) {
           if (k < 0 || k >= w * h || label[k] >= 0 || !mask[k]) continue;
@@ -273,7 +275,8 @@ for (const file of animalSheets) {
           stack.push(k);
         }
       }
-      comps.push({ n, frame: Math.min(N - 1, Math.floor(((sx / n) * S) / (W / N))) });
+      const col = Math.min(C - 1, Math.floor(((sx / n) * S) / (W / C))), row = Math.min(R - 1, Math.floor(((sy / n) * S) / (H / R)));
+      comps.push({ n, frame: col + row * C });
     }
     const biggest = Math.max(...comps.map((c) => c.n));
     const keep = comps.map((c) => c.n >= biggest * 0.004);
@@ -323,7 +326,7 @@ for (const file of animalSheets) {
       out.push(c.toDataURL('image/webp', 0.9).split(',')[1]);
     }
     return out;
-  }, fs.readFileSync(file).toString('base64'), ANIMAL_FRAMES);
+  }, fs.readFileSync(file).toString('base64'), ANIMAL_COLS, ANIMAL_ROWS);
   frames.forEach((b64, f) => {
     fs.mkdirSync(path.dirname(frameOut(file, f)), { recursive: true });
     fs.writeFileSync(frameOut(file, f), Buffer.from(b64, 'base64'));

@@ -45,9 +45,10 @@ client/src/assets/sprites/
     └── chicken.png, cow.png  gà, bò (nút Chuồng, cửa sổ Chuồng trại)
 ```
 
-animals/chicken.png, animals/cow.png: một hàng 6 tư thế, cùng hướng sang phải, theo thứ tự
-đứng · bước 1 · bước 2 · cúi mổ/gặm cỏ · quay lưng · đi chéo ra xa. Script tự tách thành
-animals/<con>/frame-0..5.webp (bỏ chấm nhiễu quanh hình, cùng tỉ lệ, chân chạm đáy).
+animals/chicken.png, animals/cow.png: lưới 6 cột × 2 hàng tư thế, quay sang phải, theo thứ tự
+hàng 1: đứng · vui (nhắm mắt) · bước 1 · bước 2 · bước 3 · bước 4;
+hàng 2: cúi mổ/gặm cỏ · kêu · 3/4 hướng về người xem · quay lưng · (2 ô cuối chưa dùng).
+Script tự tách thành animals/<con>/frame-0..11.webp (bỏ chấm nhiễu quanh hình, cùng tỉ lệ, chân chạm đáy).
 
 ## Cách nhanh: mỗi cây một tấm ảnh
 

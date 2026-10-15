@@ -19,10 +19,12 @@ import { mulberry } from './geometry';
 
 const SIZE = { chicken: 1.1, cow: 1.75 };
 /**
- * Poses on an animal sheet (see scripts/art.mjs): 0 standing, 1-2 walking, 3 pecking /
- * grazing, 4 seen from behind, 5 walking away three-quarters. All face right; mirrored for left.
+ * Poses on an animal sheet (6 x 2, see scripts/art.mjs), facing right (mirrored for left):
+ * 0 standing, 1 happy, 2-5 walk cycle, 6 pecking / grazing, 7 calling (cluck, moo),
+ * 8 three-quarters toward the viewer, 9 from behind. 10-11 are not used.
  */
-const POSE = { stand: 0, walk: [1, 2], eat: 3, back: 4, away: 5 };
+const POSE = { stand: 0, happy: 1, walk: [2, 3, 4, 5], eat: 6, call: 7, front: 8, back: 9 };
+type Idle = 'stand' | 'happy' | 'eat' | 'call';
 /** Walk-cycle frames per second. */
 const STEP_RATE = { chicken: 7, cow: 4 };
 const SPEED = { chicken: 0.55, cow: 0.3 };
@@ -33,8 +35,8 @@ interface Walker {
   poses: Map<string, Mesh>;
   shown: Mesh | null;
   bubble: Mesh;
-  /** What it does while standing still: look around or peck / graze. */
-  idle: 'stand' | 'eat';
+  /** What it does while standing still. */
+  idle: Idle;
   type: Animal['type'];
   pos: Vector3;
   goal: Vector3;
@@ -178,24 +180,28 @@ export class AnimalPen {
         if (w.wait <= 0) {
           w.goal = this.spot();
           w.wait = 1 + this.rand() * 4;
-          w.idle = this.rand() < 0.55 ? 'eat' : 'stand';
+          const r = this.rand();
+          w.idle = r < 0.45 ? 'eat' : r < 0.7 ? 'stand' : r < 0.85 ? 'happy' : 'call';
         }
-        // pecking chickens bob their head down and up; grazing cows keep it down
-        const peck = w.type === 'chicken' ? Math.sin(this.time * 5 + w.phase) > -0.2 : true;
-        frame = w.idle === 'eat' && peck ? POSE.eat : POSE.stand;
+        // pecking chickens bob their head down and up; grazing cows keep it down;
+        // a happy or calling animal does it in short bursts
+        const t = this.time + w.phase;
+        if (w.idle === 'eat') frame = w.type === 'cow' || Math.sin(t * 5) > -0.2 ? POSE.eat : POSE.stand;
+        else if (w.idle === 'stand') frame = POSE.stand;
+        else frame = Math.sin(t * 2.2) > 0 ? POSE[w.idle] : POSE.stand;
       } else {
         const step = Math.min(d, SPEED[w.type] * dt);
         w.pos.addInPlace(to.scale(step / d));
         // screen-right is (+x, -z) and screen-up (away from the camera) is (+x, +z)
         const right = to.x - to.z, away = to.x + to.z;
         if (Math.abs(right) > 0.01) w.facing = right > 0 ? 1 : -1;
-        if (away > 2.5 * Math.abs(right)) frame = POSE.back;
-        else if (away > 0.8 * Math.abs(right)) frame = POSE.away;
+        if (away > 1.5 * Math.abs(right)) frame = POSE.back;
+        else if (-away > 1.5 * Math.abs(right)) frame = POSE.front;
         else frame = POSE.walk[Math.floor(this.time * STEP_RATE[w.type] + w.phase) % POSE.walk.length];
       }
       const walking = d >= 0.05;
-      // back views have no walk cycle, so they waddle a little instead
-      const hop = walking && (frame === POSE.back || frame === POSE.away) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
+      // front and back views have no walk cycle, so they waddle a little instead
+      const hop = walking && (frame === POSE.back || frame === POSE.front) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
       this.show(w, frame).position.set(w.pos.x, hop, w.pos.z);
       if (w.bubble.isVisible) w.bubble.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
     }
