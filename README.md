@@ -105,7 +105,8 @@ Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập 
 Bảng dữ liệu: `users` (thêm `is_guest`, email/mật khẩu cho phép trống), `farms` (xu, cấp, XP, số ô, kho dạng JSON),
 `plantings` (ô, cây, `planted_at` ms; duy nhất theo nông trại + ô), `personal_access_tokens` (Sanctum).
 
-Kiểm thử: `cd server && php artisan test` (9 test API trên SQLite trong bộ nhớ);
+Kiểm thử: `cd server && php artisan test` (9 test API trên database MySQL riêng `farm_empire_test`, tạo bằng
+`mysql -uroot -e "create database farm_empire_test"`);
 `cd client && node scripts/online.mjs` chạy thật qua trình duyệt với API (gieo, chặn thu hoạch gian lận, thu, tải lại từ server).
 
 ## Công nghệ
