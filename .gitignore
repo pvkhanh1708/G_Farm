@@ -3,3 +3,6 @@ dist/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# hand-made art: PNG originals stay local (often 2 MB each); scripts/art.mjs ships small .webp copies
+client/src/assets/sprites/**/*.png

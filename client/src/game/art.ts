@@ -1,13 +1,14 @@
 /**
  * Hand-made art dropped into client/src/assets/sprites/ (see the README there).
- * Vite lists the files at build time, so a missing PNG simply has no URL and
- * the game keeps its procedural placeholder for it; nothing is fetched blindly.
+ * The PNG originals are converted by scripts/art.mjs into small WebP siblings,
+ * and only those ship. Vite lists them at build time, so a missing file simply
+ * has no URL and the game keeps its procedural placeholder; nothing is fetched blindly.
  */
-const files = import.meta.glob('../assets/sprites/**/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const files = import.meta.glob('../assets/sprites/**/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
-/** URL of `assets/sprites/<path>` (e.g. "crops/carrot/carrot-4.png"), or undefined when not provided. */
+/** URL of `assets/sprites/<path>` (named as the PNG, e.g. "crops/carrot.png"), or undefined when not provided. */
 export function artUrl(path: string): string | undefined {
-  return files[`../assets/sprites/${path}`];
+  return files[`../assets/sprites/${path.replace(/\.png$/, '.webp')}`];
 }
 
 /** Number of art files provided (shown in Settings). */

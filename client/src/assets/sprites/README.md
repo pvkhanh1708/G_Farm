@@ -2,7 +2,12 @@
 
 Thả file PNG đúng tên vào đúng thư mục dưới đây: game tự dùng ảnh đó thay cho hình tạm.
 Thiếu file nào thì game vẫn dùng hình tạm cho file đó, nên có thể thêm dần từng ảnh.
-Sau khi thêm ảnh: `cd client && npm run build`, commit cả `game/` rồi push.
+
+Ảnh gốc (PNG, thường ~2 MB/ảnh) **không đưa lên git**: `npm run art` tự tạo bản `.webp` nhỏ cùng tên bên cạnh
+(ô 256 px, nền 512 px, tấm cây 768×512; tổng cỡ 2 MB cho cả bộ) và game chỉ dùng bản `.webp`.
+Script chạy tự động trước `npm run dev` / `npm run build` (cần Chrome trên máy). Ảnh gốc giữ nguyên, nên tự sao lưu.
+
+Sau khi thêm hoặc sửa ảnh: `cd client && npm run build`, commit (các file `.webp` và `game/`) rồi push.
 
 Cách vẽ (prompt cho ChatGPT): xem [docs/ART-PROMPTS.md](../../../../docs/ART-PROMPTS.md).
 

@@ -4,10 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/art.mjs",
     "dev": "vite --host",
+    "prebuild": "node scripts/art.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "art": "node scripts/art.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "^8.56.2",
