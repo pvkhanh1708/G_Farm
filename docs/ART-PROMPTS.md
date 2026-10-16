@@ -7,6 +7,44 @@ Prompt viết bằng tiếng Anh vì mô hình vẽ hiểu tiếng Anh chính x�
 
 ---
 
+## Prompt dùng cho mọi hình (chỉ cần thay 2 chỗ)
+
+Muốn vẽ món gì trong tương lai: copy nguyên khối dưới, thay **`[ITEM]`** bằng mô tả món đó (tiếng Anh) và
+**`[VIEW]`** bằng một trong ba dòng góc nhìn bên dưới. Đính kèm 1–2 hình đang có trong game làm mẫu nếu được.
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw [ITEM] as a single game asset for a cozy casual mobile farming game.
+
+[VIEW]
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+Chọn một dòng cho **`[VIEW]`**:
+
+| Loại hình | Dán vào `[VIEW]` | Lưu vào thư mục |
+|---|---|---|
+| Icon nút, vật phẩm trong kho (bánh, phô mai, hộp quà…) | `Slightly angled three-quarter front view, like a shop icon.` | `ui/` |
+| Đồ vật đặt trong nông trại (nhà, máng, cây cảnh, máy móc…) | `Isometric three-quarter top-down view (camera above and in front, about 30 degrees down), standing on the ground with its base at the bottom of the image, no ground tile under it.` | `props/` |
+| Nền lặp liền (đất, cỏ, sàn chuồng…) | `Seen from directly above as a seamless tileable ground texture that fills the whole square edge to edge, even lighting, no objects, no seams when repeated.` (bỏ dòng "one object only, centred") | `ground/` |
+
+Ví dụ vẽ cái giếng nước để trang trí: `[ITEM]` = `a small stone water well with a wooden roof and a bucket`,
+`[VIEW]` = dòng "Đồ vật đặt trong nông trại", lưu thành `props/well.png`.
+
+Con vật (cần 12 tư thế) và cây trồng (5 giai đoạn) có khổ ảnh riêng: dùng mẫu C và E ở mục 3.
+
+---
+
 ## 1. Cách dùng
 
 1. Chọn đúng **mẫu prompt** theo loại hình (mục 3): icon, đồ vật, con vật, nền, cây.
