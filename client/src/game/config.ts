@@ -131,8 +131,11 @@ export const QUALITY_PRESETS: Record<Quality, QualityPreset> = {
 export type UpgradeKind = 'soil' | 'sprinkler';
 export type AnimalId = 'chicken' | 'cow';
 export type ProductId = 'egg' | 'milk';
+/** Made in the workshop machines. */
+export type GoodId = 'flour' | 'bread' | 'cake' | 'cheese' | 'yogurt';
+export type MachineId = 'mill' | 'bakery' | 'dairy';
 /** Anything that can sit in the barn and be sold. */
-export type ItemId = CropId | ProductId;
+export type ItemId = CropId | ProductId | GoodId;
 
 export interface AnimalDef {
   id: AnimalId;
@@ -146,21 +149,52 @@ export interface AnimalDef {
   productName: string;
   sellPrice: number;
   xp: number;
+  /** Eaten from the barn before each product. */
+  feed: { crop: CropId; qty: number };
 }
+
+export interface GoodDef {
+  id: GoodId;
+  name: string;
+  sellPrice: number;
+  xp: number;
+}
+
+export interface RecipeDef {
+  output: GoodId;
+  inputs: Partial<Record<ItemId, number>>;
+  seconds: number;
+}
+
+export interface MachineDef {
+  id: MachineId;
+  name: string;
+  unlockLevel: number;
+  price: number;
+  /** Batches that can wait in line. */
+  queue: number;
+  recipes: RecipeDef[];
+}
+
+export const GOODS = Object.fromEntries(economy.goods.map((g) => [g.id, g as GoodDef])) as Record<GoodId, GoodDef>;
+export const GOOD_ORDER = economy.goods.map((g) => g.id as GoodId);
+export const MACHINES = economy.machines as unknown as MachineDef[];
+export const NEIGHBORS = economy.neighbors;
 
 export const UPGRADES = economy.upgrades as Record<UpgradeKind, { name: string; max: number; baseCost: number; growth: number; unlockLevel: number; yieldPerLevel?: number; speedPerLevel?: number }>;
 export const ANIMALS = Object.fromEntries(economy.animals.map((a) => [a.id, a as AnimalDef])) as Record<AnimalId, AnimalDef>;
 export const ANIMAL_ORDER = economy.animals.map((a) => a.id as AnimalId);
 export const PRODUCT_ORDER = economy.animals.map((a) => a.product as ProductId);
-export const ITEM_ORDER: ItemId[] = [...CROP_ORDER, ...PRODUCT_ORDER];
+export const ITEM_ORDER: ItemId[] = [...CROP_ORDER, ...PRODUCT_ORDER, ...GOOD_ORDER];
 
 export function itemDef(id: ItemId): { name: string; sellPrice: number } {
   if (id in CROPS) return CROPS[id as CropId];
+  if (id in GOODS) return GOODS[id as GoodId];
   const a = economy.animals.find((x) => x.product === id)!;
   return { name: a.productName, sellPrice: a.sellPrice };
 }
 
-export const isProduct = (id: ItemId): id is ProductId => !(id in CROPS);
+export const isProduct = (id: ItemId): id is ProductId => PRODUCT_ORDER.includes(id as ProductId);
 
 /** Coins to raise an upgrade from `level` to `level + 1`. */
 export function upgradeCost(kind: UpgradeKind, level: number): number {

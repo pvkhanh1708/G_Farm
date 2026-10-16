@@ -18,10 +18,10 @@ import { CameraRig } from './camera';
 /** Animal pictures come in 12 poses (see animals.ts): `chicken:0` … `cow:11`. */
 export const ANIMAL_FRAMES = 12;
 /** Pen furniture, painted here: a hen house and feeder, hay bales and a water trough. */
-type Prop = 'coop' | 'feeder' | 'hay' | 'trough';
-type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | Prop;
-export type BillboardKey = 'ripe' | 'egg' | 'milk' | Prop | `${'chicken' | 'cow'}:${number}`;
-const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'coop', 'feeder', 'hay', 'trough', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
+type Prop = 'coop' | 'feeder' | 'hay' | 'trough' | 'doghouse';
+type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | 'hungry' | Prop;
+export type BillboardKey = 'ripe' | 'egg' | 'milk' | 'hungry' | Prop | `${'chicken' | 'cow'}:${number}`;
+const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', 'coop', 'feeder', 'hay', 'trough', 'doghouse', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
 const CELL = 256;
 /** Cells per row of the texture (2048 px wide: fine for any mobile GPU). */
 const COLS = 8;
@@ -79,6 +79,66 @@ function outlined(c: Ctx, fill: string, path: () => void, width = 7) {
 }
 
 const PAINT: Record<Picture, (c: Ctx) => void> = {
+  hungry(c) {
+    // an empty bowl with a few grains: "feed me"
+    bubble(c, (c) => {
+      outlined(c, '#c98a4a', () => {
+        c.moveTo(52, 110);
+        c.lineTo(204, 110);
+        c.quadraticCurveTo(196, 170, 128, 172);
+        c.quadraticCurveTo(60, 170, 52, 110);
+        c.closePath();
+      }, 8);
+      outlined(c, '#7a4a22', () => c.ellipse(128, 110, 76, 16, 0, 0, Math.PI * 2), 6);
+      c.fillStyle = '#f2c94c';
+      for (const [x, y] of [[104, 108], [126, 112], [148, 106], [116, 104]]) {
+        c.beginPath();
+        c.ellipse(x, y, 7, 4, 0.4, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.fillStyle = '#e8463a';
+      c.font = 'bold 54px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('!', 128, 74);
+    });
+  },
+  doghouse(c) {
+    groundShadow(c, 100);
+    outlined(c, '#b07a45', () => c.roundRect(48, 116, 160, 116, 8));
+    c.strokeStyle = 'rgba(70,35,10,.35)';
+    c.lineWidth = 3;
+    for (const y of [146, 176, 206]) {
+      c.beginPath();
+      c.moveTo(54, y);
+      c.lineTo(202, y);
+      c.stroke();
+    }
+    outlined(c, '#d9473a', () => {
+      c.moveTo(30, 126);
+      c.lineTo(128, 44);
+      c.lineTo(226, 126);
+      c.closePath();
+    });
+    outlined(c, '#3a2414', () => {
+      c.moveTo(98, 232);
+      c.lineTo(98, 184);
+      c.arc(128, 184, 30, Math.PI, 0);
+      c.lineTo(158, 232);
+      c.closePath();
+    }, 6);
+    // the dog peeking out
+    outlined(c, '#e8b878', () => c.ellipse(128, 206, 22, 20, 0, 0, Math.PI * 2), 5);
+    c.fillStyle = OUT;
+    for (const x of [120, 136]) {
+      c.beginPath();
+      c.arc(x, 200, 3.5, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.beginPath();
+    c.ellipse(128, 212, 5, 3.5, 0, 0, Math.PI * 2);
+    c.fill();
+    outlined(c, '#fff3dc', () => c.roundRect(104, 92, 48, 18, 5), 4);
+  },
   coop(c) {
     groundShadow(c, 104);
     // stilts

@@ -915,12 +915,14 @@ export function AnimalIcon({ type, ...p }: P & { type: AnimalId }) {
   return type === 'chicken' ? <ChickenIcon {...p} /> : <CowIcon {...p} />;
 }
 
-/** Icon of anything in the barn: a crop or an animal product. */
+/** Icon of anything in the barn: a crop, an animal product or a workshop good. */
 export function ItemIcon({ item, ...p }: P & { item: ItemId }) {
   if (PRODUCTS.includes(item as ProductId)) {
     const Icon = item === 'egg' ? EggIcon : MilkIcon;
     return <Icon {...p} />;
   }
+  const good = { flour: FlourIcon, bread: BreadIcon, cake: CakeIcon, cheese: CheeseIcon, yogurt: YogurtIcon }[item as string];
+  if (good) return good(p);
   return <CropIcon crop={item as CropId} {...p} />;
 }
 
@@ -942,3 +944,122 @@ export const CowIcon = withArt('cow', CowSvg);
 export const UpgradeIcon = withArt('upgrade', UpgradeSvg);
 export const QuestIcon = withArt('quests', QuestSvg);
 export const OrderIcon = withArt('orders', OrderSvg);
+
+// ------------------------------------------------------------------ workshop goods, neighbours
+
+export function DogIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M14 20c-6 2-8 14-2 18l6-4zM50 20c6 2 8 14 2 18l-6-4z" fill="#8a5a32" stroke={OUT} strokeWidth="3" />
+      <ellipse cx="32" cy="34" rx="18" ry="19" fill="#e8b878" stroke={OUT} strokeWidth="3" />
+      <ellipse cx="32" cy="44" rx="11" ry="8" fill="#fff3dc" stroke={OUT} strokeWidth="2.5" />
+      <ellipse cx="32" cy="40" rx="4.5" ry="3.2" fill={OUT} />
+      <circle cx="25" cy="30" r="2.8" fill={OUT} />
+      <circle cx="39" cy="30" r="2.8" fill={OUT} />
+      <path d="M28 48c2 3 6 3 8 0" stroke={OUT} strokeWidth="2.5" />
+      <path d="M18 50h28" stroke="#e8463a" strokeWidth="5" />
+      <circle cx="32" cy="55" r="4" fill="#ffd23f" stroke={OUT} strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function FlourIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M18 20c0-6 28-6 28 0l4 30c0 6-36 6-36 0z" fill="#fbf4e4" stroke={OUT} strokeWidth="3" />
+      <path d="M20 20c4 4 20 4 24 0" stroke={OUT} strokeWidth="3" />
+      <path d="M26 12c2 4 10 4 12 0" stroke="#c99a5e" strokeWidth="4" />
+      <path d="M32 30v16M27 34l5 4 5-4M27 40l5 4 5-4" stroke="#e2b648" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function BreadIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M8 40c0-16 12-24 24-24s24 8 24 24c0 6-4 8-8 8H16c-4 0-8-2-8-8z" fill="#e0a050" stroke={OUT} strokeWidth="3" />
+      <path d="M8 40c0 6 4 8 8 8h32c4 0 8-2 8-8" fill="#c9823a" />
+      <path d="M22 26l-4 8M32 24v9M42 26l4 8" stroke="#fbe2a8" strokeWidth="4" />
+    </Svg>
+  );
+}
+
+export function CakeIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <rect x="12" y="30" width="40" height="22" rx="5" fill="#fbe2c2" stroke={OUT} strokeWidth="3" />
+      <path d="M12 36c6 4 10-4 16 0s10-4 16 0 8 0 8 0v-6H12z" fill="#ff8fa8" stroke={OUT} strokeWidth="2.5" />
+      <path d="M12 43h40" stroke="#ffb7c8" strokeWidth="3" />
+      <path d="M32 14c-6 0-8 8-4 14 2 3 6 3 8 0 4-6 2-14-4-14z" fill="#e8463a" stroke={OUT} strokeWidth="2.5" />
+      <path d="M28 14c2-3 6-3 8 0" stroke="#5aa83a" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function CheeseIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M8 40l40-20 8 6v20c0 2-2 4-4 4H12c-2 0-4-2-4-4z" fill="#ffd23f" stroke={OUT} strokeWidth="3" />
+      <path d="M8 40l40-20 8 6L16 46z" fill="#ffe680" stroke={OUT} strokeWidth="3" />
+      <circle cx="24" cy="44" r="3" fill="#e0a21a" />
+      <circle cx="42" cy="42" r="4" fill="#e0a21a" />
+      <circle cx="34" cy="48" r="2.5" fill="#e0a21a" />
+    </Svg>
+  );
+}
+
+export function YogurtIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M16 22h32l-4 30c0 3-3 5-6 5H26c-3 0-6-2-6-5z" fill="#fff6f8" stroke={OUT} strokeWidth="3" />
+      <path d="M17 32h30l-1 8H18z" fill="#ff8fa8" />
+      <rect x="14" y="16" width="36" height="8" rx="3" fill="#ff6f8a" stroke={OUT} strokeWidth="3" />
+      <path d="M30 44c-3 0-4 4-2 6 1 1 3 1 4 0 2-2 1-6-2-6z" fill="#e8463a" />
+    </Svg>
+  );
+}
+
+export function WorkshopIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M8 28l24-16 24 16v26H8z" fill="#c8553a" stroke={OUT} strokeWidth="3" />
+      <path d="M6 30l26-18 26 18" stroke={OUT} strokeWidth="4" />
+      <rect x="24" y="36" width="16" height="18" rx="2" fill="#7a4a2a" stroke={OUT} strokeWidth="3" />
+      <rect x="42" y="10" width="8" height="14" fill="#9a9a9a" stroke={OUT} strokeWidth="3" />
+      <circle cx="48" cy="6" r="3" fill="#ddd" />
+      <circle cx="18" cy="38" r="5" fill="#ffe9a8" stroke={OUT} strokeWidth="2.5" />
+    </Svg>
+  );
+}
+
+export function NeighborIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M4 34l14-12 14 12v20H4z" fill="#ffd27a" stroke={OUT} strokeWidth="3" />
+      <path d="M30 30l16-14 16 14v24H30z" fill="#8fd16a" stroke={OUT} strokeWidth="3" />
+      <rect x="12" y="40" width="10" height="14" fill="#7a4a2a" />
+      <rect x="40" y="38" width="12" height="16" fill="#7a4a2a" />
+      <path d="M2 56h60" stroke="#5aa83a" strokeWidth="5" />
+    </Svg>
+  );
+}
+
+export function WaterIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M12 26h30v22c0 4-3 6-6 6H18c-3 0-6-2-6-6z" fill="#6fb6ff" stroke={OUT} strokeWidth="3" />
+      <path d="M42 30l14-10" stroke={OUT} strokeWidth="6" />
+      <path d="M42 30l14-10" stroke="#6fb6ff" strokeWidth="3" />
+      <path d="M18 26c0-8 18-8 18 0" stroke={OUT} strokeWidth="3" />
+      <path d="M56 26v6M52 30v6M58 34v5" stroke="#3d9bff" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+export function HandIcon(p: P) {
+  return (
+    <Svg {...p}>
+      <path d="M20 54c-6-6-10-14-10-20 0-3 4-4 6-1l4 6V14c0-3 5-3 5 0v16-20c0-3 5-3 5 0v20-18c0-3 5-3 5 0v18-14c0-3 5-3 5 0v26c0 8-4 14-10 16z" fill="#ffd9b8" stroke={OUT} strokeWidth="3" />
+    </Svg>
+  );
+}

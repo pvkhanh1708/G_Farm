@@ -35,7 +35,9 @@ interface Walker {
   /** One mesh per pose (and mirror), made on first use; only `shown` is visible. */
   poses: Map<string, Mesh>;
   shown: Mesh | null;
+  /** Floats above the animal: its product when ready, a feed bowl when hungry. */
   bubble: Mesh;
+  hungry: Mesh;
   /** What it does while standing still. */
   idle: Idle;
   type: Animal['type'];
@@ -235,7 +237,7 @@ export class AnimalPen {
 
   /** Match the walkers to the owned animals (same order as the state). */
   sync(animals: Animal[], now: number) {
-    const drop = (w: Walker) => [...w.poses.values(), w.bubble].forEach((m) => m.dispose());
+    const drop = (w: Walker) => [...w.poses.values(), w.bubble, w.hungry].forEach((m) => m.dispose());
     while (this.walkers.length > animals.length) drop(this.walkers.pop()!);
     animals.forEach((a, i) => {
       let w = this.walkers[i];
@@ -245,14 +247,28 @@ export class AnimalPen {
       }
       if (!w) {
         const bubble = this.boards.quad(ANIMALS[a.type].product, BUBBLE, { onTop: true }).clone(`animal-bubble-${i}`);
+        const hungry = this.boards.quad('hungry', BUBBLE, { onTop: true }).clone(`animal-hungry-${i}`);
         const pos = this.spot(a.type);
-        w = { poses: new Map(), shown: null, idle: 'stand', bubble, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
+        w = { poses: new Map(), shown: null, idle: 'stand', bubble, hungry, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
         this.walkers[i] = w;
       }
-      const ready = now >= a.lastCollect + ANIMALS[a.type].period * 1000;
-      w.bubble.isVisible = ready;
+      w.bubble.isVisible = a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
+      w.hungry.isVisible = a.fedAt === null;
     });
   }
+
+  /** The dog house appears once the farm has a guard dog. */
+  setDog(on: boolean) {
+    if (on && !this.dogHouse) {
+      this.dogHouse = this.boards.quad('doghouse', 1.15, { bottom: true }).clone('dog-house');
+      this.dogHouse.isVisible = true;
+      // in the gap between the chicken coop and the cow pen
+      this.dogHouse.position.set(PENS.chicken.x1 + 0.35, 0, (PENS.chicken.z0 + PENS.cow.z1) / 2);
+    }
+    if (this.dogHouse) this.dogHouse.setEnabled(on);
+  }
+
+  private dogHouse: Mesh | null = null;
 
   /** Show pose `frame` (mirrored when facing left), hiding the previous one. */
   private show(w: Walker, frame: number) {
@@ -305,6 +321,7 @@ export class AnimalPen {
       // front and back views have no walk cycle, so they waddle a little instead
       const hop = walking && (frame === POSE.back || frame === POSE.front) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
       this.show(w, frame).position.set(w.pos.x, hop, w.pos.z);
+      if (w.hungry.isVisible) w.hungry.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
       if (w.bubble.isVisible) w.bubble.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
     }
   }

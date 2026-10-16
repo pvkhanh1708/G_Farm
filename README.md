@@ -20,6 +20,14 @@ sản lượng/cấp, Máy tưới −6% thời gian lớn/cấp), *Xếp hạng
 ròng) và *Phòng game*.
 **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
+**Chăn nuôi:** gà ăn 3 lúa mì, bò ăn 2 ngô thì mới đẻ trứng / cho sữa (sau 5 / 15 phút); thu xong con vật đói lại.
+Chạm con đói trong chuồng để cho ăn, con có sản phẩm để thu. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
+**Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
+sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
+**Hàng xóm:** đi thăm nông trại người khác (nút Hàng xóm, hoặc chạm tên trong Xếp hạng): hái trộm 25% sản lượng một ô chín
+(tối đa 2 người mỗi ô, 20 lần/ngày, chủ luôn còn ít nhất 1), tưới giúp cây đang lớn (-10% thời gian còn lại, +5 xu +2 XP,
+10 lần/ngày). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
+
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:
 `5 × cấp^2.1`. Giá ô đất thứ n: `40 + 20 × (n − 4)^2.4` xu. Toàn bộ số liệu nằm trong
@@ -148,6 +156,11 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | POST | `/farm/quests/claim` · `/farm/login-reward` | `{index}` nhận thưởng nhiệm vụ · nhận quà đăng nhập |
 | POST | `/farm/animals/buy` · `/farm/animals/collect` | `{type}` mua gà/bò · `{which?}` thu sản phẩm |
 | GET | `/leaderboard/{coins\|level\|tiles\|wins\|winnings}` | Top 50 + hạng của mình |
+| POST | `/farm/animals/feed` · `/farm/dog` | `{which?}` cho ăn · mua chó canh |
+| POST | `/farm/machines/buy` · `/start` · `/collect` | `{machine}` xây máy · `{machine, output}` làm một mẻ · `{machine?}` thu hàng |
+| GET | `/farm/news` | Nhật ký hàng xóm (đánh dấu đã đọc) |
+| GET | `/neighbors` · `/neighbors/{id}` | Danh sách hàng xóm · nông trại của một người |
+| POST | `/neighbors/{id}/steal` · `/help` | `{tile}` hái trộm · tưới giúp |
 
 API nằm ở gốc domain (production: `https://api.nongtrai.io.vn/farm`…). Mọi API `/farm/*` trả `{ok, message, result, state, serverTime}`; bị từ chối thì HTTP 422 kèm `message` và `state`.
 Giới hạn 300 request/phút mỗi người chơi, 20/phút cho đăng nhập / tạo khách.

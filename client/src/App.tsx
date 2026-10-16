@@ -12,14 +12,16 @@ import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
 import { GameRoom } from './ui/GameRoom';
-import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup } from './ui/Progress';
+import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup, animalHungry, useNow } from './ui/Progress';
 import { SideButtons } from './ui/SideButtons';
+import { finishedJobs, WorkshopPopup } from './ui/Workshop';
+import { NeighborsPopup } from './ui/Neighbors';
 import { music } from './game/audio/music';
 import { farmApi, FarmError } from './game/net/farm';
 import { TileOverlays } from './ui/TileOverlays';
 import { formatNum } from './ui/format';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | { type: 'upgrades' } | { type: 'orders' } | { type: 'quests' } | { type: 'login' } | { type: 'animals' } | { type: 'ranks' } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | { type: 'upgrades' } | { type: 'orders' } | { type: 'quests' } | { type: 'login' } | { type: 'animals' } | { type: 'ranks' } | { type: 'workshop' } | { type: 'neighbors'; visit?: number } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; music: boolean; fps: boolean } {
@@ -69,6 +71,8 @@ export function App() {
     if (game) game.sowTool = tool;
   }, [game, tool]);
   const s = useGameState();
+  /** Server clock, ticking every few seconds for the badges. */
+  const clock = useNow(3000);
   const tiles = store.tiles();
   const showcase = new URLSearchParams(location.search).has('showcase');
   const [levelUp, setLevelUp] = useState<number | null>(null);
@@ -185,6 +189,17 @@ export function App() {
         }
       } else if (e.type === 'animalTap') {
         const a = store.getState().animals[e.index];
+        if (a && animalHungry(a)) {
+          // a hungry animal eats from the barn
+          farmApi.feed([e.index]).then(
+            () => {
+              sfx.plant();
+              fxBus.float(e.x, e.y - 20, 'Măm măm!', { type: 'xp' });
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+          return;
+        }
         if (!a || !animalReady(a)) {
           sfx.tap();
           setPopup({ type: 'animals' });
@@ -282,7 +297,9 @@ export function App() {
           <SideButtons
             quests={claimableCount(s.daily)}
             orders={s.orders.filter((o) => Object.entries(o.items).every(([id, n]) => (s.inventory[id as ItemId] ?? 0) >= (n ?? 0))).length}
-            animals={s.animals.filter((a) => animalReady(a)).length}
+            animals={s.animals.filter((a) => animalReady(a, clock) || animalHungry(a)).length}
+            workshop={finishedJobs(s, clock)}
+            neighbors={s.news}
             onOpen={(type) => (sfx.open(), setPopup({ type }))}
           />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
@@ -319,7 +336,9 @@ export function App() {
       {popup?.type === 'quests' && <QuestsPopup onClose={close} />}
       {popup?.type === 'login' && <LoginRewardPopup onClose={close} />}
       {popup?.type === 'animals' && <AnimalsPopup onClose={close} />}
-      {popup?.type === 'ranks' && <LeaderboardPopup onClose={close} />}
+      {popup?.type === 'ranks' && <LeaderboardPopup onClose={close} onVisit={(id) => (sfx.open(), setPopup({ type: 'neighbors', visit: id }))} />}
+      {popup?.type === 'workshop' && <WorkshopPopup onClose={close} />}
+      {popup?.type === 'neighbors' && <NeighborsPopup visit={popup.visit} onClose={close} />}
       {popup?.type === 'install' && <InstallPopup onClose={close} />}
       {popup?.type === 'account' && (
         <AccountPopup

@@ -34,6 +34,16 @@ Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {
     Route::post('/farm/login-reward', [FarmController::class, 'claimLogin']);
     Route::post('/farm/animals/buy', [FarmController::class, 'buyAnimal']);
     Route::post('/farm/animals/collect', [FarmController::class, 'collect']);
+    Route::post('/farm/animals/feed', [FarmController::class, 'feed']);
+    Route::post('/farm/dog', [FarmController::class, 'buyDog']);
+    Route::post('/farm/machines/buy', [FarmController::class, 'buyMachine']);
+    Route::post('/farm/machines/start', [FarmController::class, 'startJob']);
+    Route::post('/farm/machines/collect', [FarmController::class, 'collectGoods']);
+    Route::get('/farm/news', [FarmController::class, 'news']);
+    Route::get('/neighbors', [FarmController::class, 'neighbours']);
+    Route::get('/neighbors/{id}', [FarmController::class, 'visit'])->whereNumber('id');
+    Route::post('/neighbors/{id}/steal', [FarmController::class, 'steal'])->whereNumber('id');
+    Route::post('/neighbors/{id}/help', [FarmController::class, 'help'])->whereNumber('id');
 
     // game room: betting tables (caro)
     Route::get('/leaderboard/{board}', LeaderboardController::class)->whereIn('board', ['coins', 'level', 'tiles', 'wins', 'winnings']);

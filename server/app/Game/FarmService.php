@@ -3,6 +3,7 @@
 namespace App\Game;
 
 use App\Models\Farm;
+use App\Models\FarmEvent;
 use App\Models\Planting;
 use App\Models\User;
 use Closure;
@@ -48,7 +49,7 @@ class FarmService
         }
         $plantings = [];
         foreach ($farm->plantings()->orderBy('tile')->get() as $p) {
-            $plantings[(string) $p->tile] = ['crop' => $p->crop, 'plantedAt' => $p->planted_at];
+            $plantings[(string) $p->tile] = ['crop' => $p->crop, 'plantedAt' => $p->planted_at, 'stolen' => $p->stolen];
         }
 
         return [
@@ -63,6 +64,9 @@ class FarmService
             'orders' => $farm->orders ?? [],
             'daily' => $farm->daily,
             'animals' => $farm->animals ?? [],
+            'machines' => (object) ($farm->machines ?? []),
+            'dog' => $farm->dog,
+            'news' => FarmEvent::where('user_id', $farm->user_id)->where('seen', false)->count(),
         ];
     }
 
@@ -123,7 +127,8 @@ class FarmService
                 if (! $crop || $now < $p->planted_at + $this->eco->growMs($crop, $farm->sprinkler_level)) {
                     continue;
                 }
-                $inventory[$p->crop] = ($inventory[$p->crop] ?? 0) + $this->eco->harvestAmount($crop, $farm->soil_level);
+                // neighbours may have taken some already
+                $inventory[$p->crop] = ($inventory[$p->crop] ?? 0) + max(1, $this->eco->harvestAmount($crop, $farm->soil_level) - $p->stolen);
                 $xp += $crop['xp'];
                 $harvested[] = $p->tile;
                 $p->delete();
@@ -215,6 +220,8 @@ class FarmService
                 'orders' => null,
                 'daily' => null,
                 'animals' => null,
+                'machines' => null,
+                'dog' => false,
             ])->save();
         });
     }
@@ -290,13 +297,14 @@ class FarmService
         }
         $orders = $farm->orders ?? [];
         while (count($orders) < $cfg['slots']) {
-            $orders[] = $this->newOrder($farm->level);
+            $orders[] = $this->newOrder($farm);
         }
         $farm->orders = $orders;
     }
 
-    private function newOrder(int $level): array
+    private function newOrder(Farm $farm): array
     {
+        $level = $farm->level;
         $cfg = $this->eco->raw('orders');
         $pool = array_values(array_filter(array_map(fn ($id) => $this->eco->crop($id), $this->eco->cropIds()), fn ($c) => $c['unlockLevel'] <= $level));
         // favour the crops the player unlocked most recently
@@ -311,6 +319,20 @@ class FarmService
             $items[$c['id']] = $qty;
             $value += $qty * $c['sellPrice'];
             $xp += $qty / $c['yield'] * $c['xp'];
+        }
+        // sometimes a good from a machine the farm owns
+        $goods = [];
+        foreach (array_keys($farm->machines ?? []) as $mid) {
+            foreach ($this->eco->machine($mid)['recipes'] as $r) {
+                $goods[] = $this->eco->good($r['output']);
+            }
+        }
+        if ($goods && random_int(1, 100) <= 45) {
+            $g = $goods[array_rand($goods)];
+            $qty = random_int(1, 3);
+            $items[$g['id']] = $qty;
+            $value += $qty * $g['sellPrice'];
+            $xp += $qty * $g['xp'];
         }
 
         return ['id' => bin2hex(random_bytes(4)), 'items' => $items, 'coins' => (int) round($value * $cfg['coinMultiplier']), 'xp' => max(1, (int) round($xp * $cfg['xpMultiplier']))];
@@ -339,7 +361,7 @@ class FarmService
             $farm->inventory = $inv;
             $farm->coins += $order['coins'];
             $levelUps = $this->addXp($farm, $order['xp']);
-            $orders[$i] = $this->newOrder($farm->level);
+            $orders[$i] = $this->newOrder($farm);
             $farm->orders = $orders;
             $this->questProgress($farm, 'order', 1);
             $farm->save();
@@ -357,7 +379,7 @@ class FarmService
             if ($i === false) {
                 throw new GameException('Đơn hàng không còn');
             }
-            $orders[$i] = $this->newOrder($farm->level);
+            $orders[$i] = $this->newOrder($farm);
             $farm->orders = $orders;
             $farm->save();
         });
@@ -395,7 +417,7 @@ class FarmService
                 'claimed' => false,
             ];
         }
-        $farm->daily = [...$daily, 'date' => $today, 'quests' => $quests, 'loginClaimed' => false];
+        $farm->daily = [...$daily, 'date' => $today, 'quests' => $quests, 'loginClaimed' => false, 'steals' => 0, 'helps' => 0];
     }
 
     private function questProgress(Farm $farm, string $type, int $amount): void
@@ -482,7 +504,8 @@ class FarmService
                 throw new GameException('Không đủ xu!');
             }
             $farm->coins -= $a['price'];
-            $animals[] = ['type' => $type, 'lastCollect' => self::nowMs()];
+            // a new animal arrives fed: its first product is on the house
+            $animals[] = ['type' => $type, 'fedAt' => self::nowMs()];
             $farm->animals = $animals;
             $farm->save();
 
@@ -491,7 +514,48 @@ class FarmService
     }
 
     /**
-     * Collect every ready product (or only from the animals at `which` indexes).
+     * Feed the hungry animals (or only those at `which`) from the barn: each eats its feed
+     * crop and starts making its product.
+     *
+     * @param  list<int>|null  $which
+     * @return array{fed: int}
+     */
+    public function feedAnimals(User $user, ?array $which = null): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($which) {
+            $animals = $farm->animals ?? [];
+            $inv = $farm->inventory;
+            $fed = 0;
+            $short = null;
+            foreach ($animals as $i => $x) {
+                if (($which !== null && ! in_array($i, $which, true)) || ($x['fedAt'] ?? null) !== null) {
+                    continue;
+                }
+                $feed = $this->eco->animal($x['type'])['feed'];
+                if (($inv[$feed['crop']] ?? 0) < $feed['qty']) {
+                    $short ??= $feed;
+                    continue;
+                }
+                $inv[$feed['crop']] -= $feed['qty'];
+                $animals[$i]['fedAt'] = self::nowMs();
+                $fed++;
+            }
+            if (! $fed) {
+                throw new GameException($short
+                    ? "Cần {$short['qty']} {$this->eco->crop($short['crop'])['name']} trong kho để cho ăn"
+                    : 'Không có con nào đói');
+            }
+            $farm->animals = $animals;
+            $farm->inventory = $inv;
+            $farm->save();
+
+            return ['fed' => $fed];
+        });
+    }
+
+    /**
+     * Collect every ready product (or only from the animals at `which` indexes); the
+     * animals are hungry again afterwards.
      *
      * @param  list<int>|null  $which
      * @return array{collected: int, xp: int, levelUps: list<int>}
@@ -509,12 +573,12 @@ class FarmService
                     continue;
                 }
                 $a = $this->eco->animal($x['type']);
-                if ($now < $x['lastCollect'] + $a['period'] * 1000) {
+                if (($x['fedAt'] ?? null) === null || $now < $x['fedAt'] + $a['period'] * 1000) {
                     continue;
                 }
                 $inv[$a['product']] = ($inv[$a['product']] ?? 0) + 1;
                 $xp += $a['xp'];
-                $animals[$i]['lastCollect'] = self::nowMs();
+                $animals[$i]['fedAt'] = null;
                 $n++;
             }
             if (! $n) {
@@ -527,6 +591,303 @@ class FarmService
 
             return ['collected' => $n, 'xp' => $xp, 'levelUps' => $levelUps];
         });
+    }
+
+    public function buyDog(User $user): void
+    {
+        $this->locked($user, function (Farm $farm) {
+            $dog = $this->eco->raw('neighbors')['dog'];
+            if ($farm->dog) {
+                throw new GameException('Đã có chó canh');
+            }
+            if ($farm->level < $dog['unlockLevel']) {
+                throw new GameException("{$dog['name']} mở ở cấp {$dog['unlockLevel']}");
+            }
+            if ($farm->coins < $dog['price']) {
+                throw new GameException('Không đủ xu!');
+            }
+            $farm->coins -= $dog['price'];
+            $farm->dog = true;
+            $farm->save();
+        });
+    }
+
+    // ---------------------------------------------------------------- workshop
+
+    public function buyMachine(User $user, string $id): void
+    {
+        $this->locked($user, function (Farm $farm) use ($id) {
+            $m = $this->eco->machine($id) ?? throw new GameException('Máy không tồn tại');
+            $machines = $farm->machines ?? [];
+            if (isset($machines[$id])) {
+                throw new GameException("Đã có {$m['name']}");
+            }
+            if ($farm->level < $m['unlockLevel']) {
+                throw new GameException("{$m['name']} mở ở cấp {$m['unlockLevel']}");
+            }
+            if ($farm->coins < $m['price']) {
+                throw new GameException('Không đủ xu!');
+            }
+            $farm->coins -= $m['price'];
+            $machines[$id] = ['queue' => []];
+            $farm->machines = $machines;
+            $farm->save();
+        });
+    }
+
+    /** Queue one batch of `output` on a machine: the ingredients leave the barn now. */
+    public function startJob(User $user, string $machineId, string $output): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($machineId, $output) {
+            $m = $this->eco->machine($machineId) ?? throw new GameException('Máy không tồn tại');
+            $machines = $farm->machines ?? [];
+            if (! isset($machines[$machineId])) {
+                throw new GameException("Chưa có {$m['name']}");
+            }
+            $recipe = $this->eco->recipe($m, $output) ?? throw new GameException('Công thức không tồn tại');
+            $queue = $machines[$machineId]['queue'];
+            if (count($queue) >= $m['queue']) {
+                throw new GameException("{$m['name']} đã xếp đủ {$m['queue']} mẻ");
+            }
+            $inv = $farm->inventory;
+            foreach ($recipe['inputs'] as $item => $qty) {
+                if (($inv[$item] ?? 0) < $qty) {
+                    throw new GameException('Kho chưa đủ nguyên liệu');
+                }
+            }
+            foreach ($recipe['inputs'] as $item => $qty) {
+                $inv[$item] -= $qty;
+            }
+            // batches run one after another
+            $start = max(self::nowMs(), $queue ? end($queue)['readyAt'] : 0);
+            $queue[] = ['output' => $output, 'readyAt' => $start + $recipe['seconds'] * 1000];
+            $machines[$machineId]['queue'] = $queue;
+            $farm->machines = $machines;
+            $farm->inventory = $inv;
+            $farm->save();
+
+            return end($queue);
+        });
+    }
+
+    /** Take every finished batch (of one machine, or all) into the barn. */
+    public function collectGoods(User $user, ?string $machineId = null): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($machineId) {
+            $now = self::nowMs() + config('game.harvest_grace_ms');
+            $machines = $farm->machines ?? [];
+            $inv = $farm->inventory;
+            $got = [];
+            $xp = 0;
+            foreach ($machines as $id => $state) {
+                if ($machineId !== null && $id !== $machineId) {
+                    continue;
+                }
+                $left = [];
+                foreach ($state['queue'] as $job) {
+                    if ($job['readyAt'] > $now) {
+                        $left[] = $job;
+                        continue;
+                    }
+                    $inv[$job['output']] = ($inv[$job['output']] ?? 0) + 1;
+                    $got[$job['output']] = ($got[$job['output']] ?? 0) + 1;
+                    $xp += $this->eco->good($job['output'])['xp'];
+                }
+                $machines[$id]['queue'] = $left;
+            }
+            if (! $got) {
+                throw new GameException('Chưa có mẻ nào xong');
+            }
+            $farm->machines = $machines;
+            $farm->inventory = $inv;
+            $levelUps = $this->addXp($farm, $xp);
+            $farm->save();
+
+            return ['goods' => $got, 'xp' => $xp, 'levelUps' => $levelUps];
+        });
+    }
+
+    // ---------------------------------------------------------------- neighbours
+
+    /** Crops a thief would take from this planting right now (0 = nothing to take). */
+    private function stealable(Farm $owner, Planting $p, int $now, int $thiefId): int
+    {
+        $crop = $this->eco->crop($p->crop);
+        $cfg = $this->eco->raw('neighbors');
+        $thieves = $p->thieves ?? [];
+        if (! $crop || $now < $p->planted_at + $this->eco->growMs($crop, $owner->sprinkler_level)
+            || in_array($thiefId, $thieves, true) || count($thieves) >= $cfg['maxThieves']) {
+            return 0;
+        }
+        $left = $this->eco->harvestAmount($crop, $owner->soil_level) - $p->stolen;
+
+        // the owner always keeps at least one
+        return max(0, min($left - 1, max(1, (int) floor($this->eco->harvestAmount($crop, $owner->soil_level) * $cfg['stealShare']))));
+    }
+
+    /** Recently active farms to visit, those with crops to take first. */
+    public function neighbours(User $user): array
+    {
+        $now = self::nowMs();
+        $rows = [];
+        $farms = Farm::with(['user:id,name,avatar', 'plantings'])->where('user_id', '!=', $user->id)->orderByDesc('updated_at')->limit(40)->get();
+        foreach ($farms as $f) {
+            $ripe = $f->plantings->filter(fn (Planting $p) => $this->stealable($f, $p, $now, $user->id) > 0)->count();
+            $rows[] = ['id' => $f->user_id, 'name' => $f->user->name, 'avatar' => $f->user->avatar, 'level' => $f->level, 'ripe' => $ripe, 'dog' => $f->dog];
+        }
+        usort($rows, fn ($a, $b) => $b['ripe'] <=> $a['ripe']);
+
+        return array_slice($rows, 0, 15);
+    }
+
+    /** Another player's farm as a visitor sees it. */
+    public function visit(User $viewer, int $ownerId): array
+    {
+        $owner = Farm::with(['user:id,name,avatar', 'plantings'])->where('user_id', $ownerId)->first();
+        if (! $owner || $ownerId === $viewer->id) {
+            throw new GameException('Không tìm thấy nông trại');
+        }
+        $now = self::nowMs();
+        // read fresh: right after a theft the user's cached farm still has the old counters
+        $mine = Farm::where('user_id', $viewer->id)->first() ?? $this->farmFor($viewer);
+        $this->rollDaily($mine);
+        $cfg = $this->eco->raw('neighbors');
+
+        return [
+            'id' => $ownerId,
+            'name' => $owner->user->name,
+            'avatar' => $owner->user->avatar,
+            'level' => $owner->level,
+            'unlocked' => $owner->unlocked,
+            'dog' => $owner->dog,
+            'plantings' => $owner->plantings->sortBy('tile')->values()->map(fn (Planting $p) => [
+                'tile' => $p->tile,
+                'crop' => $p->crop,
+                'plantedAt' => $p->planted_at,
+                'growMs' => $this->eco->growMs($this->eco->crop($p->crop), $owner->sprinkler_level),
+                'steal' => $this->stealable($owner, $p, $now, $viewer->id),
+                'helped' => in_array($viewer->id, $p->helpers ?? [], true),
+            ]),
+            'stealsLeft' => max(0, $cfg['stealsPerDay'] - ($mine->daily['steals'] ?? 0)),
+            'helpsLeft' => max(0, $cfg['helpsPerDay'] - ($mine->daily['helps'] ?? 0)),
+        ];
+    }
+
+    /** Lock the visitor's and the owner's farms (always in id order, so two visits cannot deadlock). */
+    private function lockedPair(User $visitor, int $ownerId, Closure $fn): mixed
+    {
+        $this->farmFor($visitor);
+        if ($ownerId === $visitor->id) {
+            throw new GameException('Đây là nông trại của bạn');
+        }
+
+        return DB::transaction(function () use ($visitor, $ownerId, $fn) {
+            $farms = Farm::whereIn('user_id', [$visitor->id, $ownerId])->orderBy('id')->lockForUpdate()->get()->keyBy('user_id');
+            $owner = $farms[$ownerId] ?? throw new GameException('Không tìm thấy nông trại');
+            $mine = $farms[$visitor->id];
+            $this->rollDaily($mine);
+
+            return $fn($mine, $owner);
+        });
+    }
+
+    /** @return array{caught: bool, crop: string, qty: int, fine: int} */
+    public function steal(User $thief, int $ownerId, int $tile): array
+    {
+        return $this->lockedPair($thief, $ownerId, function (Farm $mine, Farm $owner) use ($thief, $tile) {
+            $cfg = $this->eco->raw('neighbors');
+            if (($mine->daily['steals'] ?? 0) >= $cfg['stealsPerDay']) {
+                throw new GameException("Hôm nay đã hái trộm đủ {$cfg['stealsPerDay']} lần");
+            }
+            $p = $owner->plantings()->where('tile', $tile)->lockForUpdate()->first() ?? throw new GameException('Ô này không có cây');
+            $qty = $this->stealable($owner, $p, self::nowMs(), $thief->id);
+            if ($qty <= 0) {
+                throw new GameException('Ô này không hái được nữa');
+            }
+            $daily = $mine->daily;
+            $daily['steals'] = ($daily['steals'] ?? 0) + 1;
+            $mine->daily = $daily;
+            $p->thieves = [...($p->thieves ?? []), $thief->id];
+            $dog = $cfg['dog'];
+            // tests pin the odds with config('game.dog_catch_chance')
+            if ($owner->dog && mt_rand() / mt_getrandmax() < (config('game.dog_catch_chance') ?? $dog['catchChance'])) {
+                // caught by the dog: no crops, and a fine paid to the owner
+                $fine = min($mine->coins, $dog['fineBase'] + $dog['finePerLevel'] * $mine->level);
+                $mine->coins -= $fine;
+                $owner->coins += $fine;
+                $p->save();
+                $mine->save();
+                $owner->save();
+                $this->event($owner, $thief, 'caught', $p->crop, 0, $fine);
+
+                return ['caught' => true, 'crop' => $p->crop, 'qty' => 0, 'fine' => $fine];
+            }
+            $p->stolen += $qty;
+            $p->save();
+            $inv = $mine->inventory;
+            $inv[$p->crop] = ($inv[$p->crop] ?? 0) + $qty;
+            $mine->inventory = $inv;
+            $mine->save();
+            $owner->touch();
+            $this->event($owner, $thief, 'steal', $p->crop, $qty, 0);
+
+            return ['caught' => false, 'crop' => $p->crop, 'qty' => $qty, 'fine' => 0];
+        });
+    }
+
+    /** Water a neighbour's growing crop: it grows faster, the helper earns a little. */
+    public function help(User $helper, int $ownerId, int $tile): array
+    {
+        return $this->lockedPair($helper, $ownerId, function (Farm $mine, Farm $owner) use ($helper, $tile) {
+            $cfg = $this->eco->raw('neighbors');
+            if (($mine->daily['helps'] ?? 0) >= $cfg['helpsPerDay']) {
+                throw new GameException("Hôm nay đã giúp đủ {$cfg['helpsPerDay']} lần");
+            }
+            $p = $owner->plantings()->where('tile', $tile)->lockForUpdate()->first() ?? throw new GameException('Ô này không có cây');
+            if (in_array($helper->id, $p->helpers ?? [], true)) {
+                throw new GameException('Bạn đã tưới ô này rồi');
+            }
+            $left = $p->planted_at + $this->eco->growMs($this->eco->crop($p->crop), $owner->sprinkler_level) - self::nowMs();
+            if ($left <= 1000) {
+                throw new GameException('Cây đã chín, không cần tưới');
+            }
+            $p->planted_at -= (int) round($left * $cfg['helpCut']);
+            $p->helpers = [...($p->helpers ?? []), $helper->id];
+            $p->save();
+            $daily = $mine->daily;
+            $daily['helps'] = ($daily['helps'] ?? 0) + 1;
+            $mine->daily = $daily;
+            $mine->coins += $cfg['helpCoins'];
+            $levelUps = $this->addXp($mine, $cfg['helpXp']);
+            $mine->save();
+            $owner->touch();
+            $this->event($owner, $helper, 'help', $p->crop, 0, 0);
+
+            return ['coins' => $cfg['helpCoins'], 'xp' => $cfg['helpXp'], 'levelUps' => $levelUps];
+        });
+    }
+
+    private function event(Farm $owner, User $actor, string $type, ?string $crop, int $qty, int $coins): void
+    {
+        FarmEvent::create(['user_id' => $owner->user_id, 'actor_id' => $actor->id, 'type' => $type, 'crop' => $crop, 'qty' => $qty, 'coins' => $coins]);
+    }
+
+    /** The latest things neighbours did on this farm; reading them marks them seen. */
+    public function news(User $user): array
+    {
+        $events = FarmEvent::with('actor:id,name,avatar')->where('user_id', $user->id)->orderByDesc('id')->limit(30)->get();
+        FarmEvent::where('user_id', $user->id)->where('seen', false)->update(['seen' => true]);
+
+        return $events->map(fn (FarmEvent $e) => [
+            'id' => $e->id,
+            'type' => $e->type,
+            'actor' => ['id' => $e->actor_id, 'name' => $e->actor?->name, 'avatar' => $e->actor?->avatar],
+            'crop' => $e->crop,
+            'qty' => $e->qty,
+            'coins' => $e->coins,
+            'seen' => $e->seen,
+            'at' => $e->created_at?->getTimestampMs(),
+        ])->all();
     }
 
     /** Add XP, rolling over into level-ups; each level grants coins. @return list<int> levels reached */

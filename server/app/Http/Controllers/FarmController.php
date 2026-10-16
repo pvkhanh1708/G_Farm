@@ -125,6 +125,69 @@ class FarmController extends Controller
         return $this->respond($request, fn () => $this->farms->collectAnimals($request->user(), $which));
     }
 
+    public function feed(Request $request): JsonResponse
+    {
+        $which = $request->validate(['which' => ['nullable', 'array', 'max:20'], 'which.*' => ['integer', 'min:0']])['which'] ?? null;
+
+        return $this->respond($request, fn () => $this->farms->feedAnimals($request->user(), $which));
+    }
+
+    public function buyDog(Request $request): JsonResponse
+    {
+        return $this->respond($request, fn () => $this->farms->buyDog($request->user()));
+    }
+
+    public function buyMachine(Request $request): JsonResponse
+    {
+        $id = $request->validate(['machine' => ['required', 'string', 'max:16']])['machine'];
+
+        return $this->respond($request, fn () => $this->farms->buyMachine($request->user(), $id));
+    }
+
+    public function startJob(Request $request): JsonResponse
+    {
+        $data = $request->validate(['machine' => ['required', 'string', 'max:16'], 'output' => ['required', 'string', 'max:16']]);
+
+        return $this->respond($request, fn () => $this->farms->startJob($request->user(), $data['machine'], $data['output']));
+    }
+
+    public function collectGoods(Request $request): JsonResponse
+    {
+        $id = $request->validate(['machine' => ['nullable', 'string', 'max:16']])['machine'] ?? null;
+
+        return $this->respond($request, fn () => $this->farms->collectGoods($request->user(), $id));
+    }
+
+    public function news(Request $request): JsonResponse
+    {
+        return $this->respond($request, fn () => $this->farms->news($request->user()));
+    }
+
+    public function neighbours(Request $request): JsonResponse
+    {
+        return $this->respond($request, fn () => $this->farms->neighbours($request->user()));
+    }
+
+    public function visit(Request $request, int $id): JsonResponse
+    {
+        return $this->respond($request, fn () => $this->farms->visit($request->user(), $id));
+    }
+
+    /** The result carries the neighbour's farm as it is after the action. */
+    public function steal(Request $request, int $id): JsonResponse
+    {
+        $tile = $request->validate(['tile' => ['required', 'integer', 'min:0']])['tile'];
+
+        return $this->respond($request, fn () => [...$this->farms->steal($request->user(), $id, $tile), 'farm' => $this->farms->visit($request->user(), $id)]);
+    }
+
+    public function help(Request $request, int $id): JsonResponse
+    {
+        $tile = $request->validate(['tile' => ['required', 'integer', 'min:0']])['tile'];
+
+        return $this->respond($request, fn () => [...$this->farms->help($request->user(), $id, $tile), 'farm' => $this->farms->visit($request->user(), $id)]);
+    }
+
     public function reset(Request $request): JsonResponse
     {
         return $this->respond($request, fn () => $this->farms->reset($request->user()));

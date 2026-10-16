@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ANIMAL_ORDER, ANIMALS, AnimalId, ItemId, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind } from '../game/config';
+import { ANIMAL_ORDER, ANIMALS, CROPS, ItemId, NEIGHBORS, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind } from '../game/config';
 import { sfx } from '../game/audio/sfx';
 import { serverNow } from '../game/net/clock';
 import { Board, BoardRow, farmApi, FarmError, leaderboard } from '../game/net/farm';
 import { sync } from '../game/net/sync';
-import type { Order } from '../game/state/store';
+import type { Animal, Order } from '../game/state/store';
 import { bump, fxBus } from './FxLayer';
 import { useGameState } from './Hud';
-import { AnimalIcon, CoinIcon, FertilizerIcon, GiftIcon, ItemIcon, LockIcon, OrderIcon, QuestIcon, RainIcon, TrophyIcon, UpgradeIcon, XpIcon } from './icons';
+import { AnimalIcon, CoinIcon, DogIcon, FertilizerIcon, GiftIcon, ItemIcon, LockIcon, OrderIcon, QuestIcon, RainIcon, TrophyIcon, UpgradeIcon, XpIcon } from './icons';
 import { CROP_BG, Modal } from './Popups';
 import { formatNum } from './format';
 
 /** Run a server call; errors become a toast. Returns the result or null. */
-async function run<T>(fn: () => Promise<T>): Promise<T | null> {
+export async function run<T>(fn: () => Promise<T>): Promise<T | null> {
   try {
     return await fn();
   } catch (e) {
@@ -23,7 +23,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 /** Coins flying from a button to the coin bar, plus level-up toasts. */
-function reward(from: DOMRect | null, coins: number, xp: number, levelUps: number[] = []) {
+export function reward(from: DOMRect | null, coins: number, xp: number, levelUps: number[] = []) {
   sfx.coin();
   if (from) {
     const o = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
@@ -38,7 +38,7 @@ function reward(from: DOMRect | null, coins: number, xp: number, levelUps: numbe
   }
 }
 
-function Locked({ level, what }: { level: number; what: string }) {
+export function Locked({ level, what }: { level: number; what: string }) {
   return (
     <div className="empty">
       <LockIcon size={64} />
@@ -49,7 +49,7 @@ function Locked({ level, what }: { level: number; what: string }) {
   );
 }
 
-function Busy({ on, children }: { on: boolean; children: React.ReactNode }) {
+export function Busy({ on, children }: { on: boolean; children: React.ReactNode }) {
   return <>{on ? '…' : children}</>;
 }
 
@@ -318,11 +318,15 @@ export function LoginRewardPopup({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- animals
 
-export function animalReady(a: { type: AnimalId; lastCollect: number }, now = serverNow()) {
-  return now >= a.lastCollect + ANIMALS[a.type].period * 1000;
+export function animalReady(a: Animal, now = serverNow()) {
+  return a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
 }
 
-function useNow(ms = 1000) {
+export function animalHungry(a: Animal) {
+  return a.fedAt === null;
+}
+
+export function useNow(ms = 1000) {
   const [now, setNow] = useState(serverNow);
   useEffect(() => {
     const t = setInterval(() => setNow(serverNow()), ms);
@@ -331,7 +335,7 @@ function useNow(ms = 1000) {
   return now;
 }
 
-function mmss(sec: number) {
+export function mmss(sec: number) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return m ? `${m}:${String(s).padStart(2, '0')}` : `${s} giây`;
 }
@@ -343,77 +347,135 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
   const now = useNow();
   const [busy, setBusy] = useState<string | null>(null);
   const ready = s.animals.filter((a) => animalReady(a, now)).length;
+  const hungry = s.animals.filter(animalHungry).length;
+  const dog = NEIGHBORS.dog;
   return (
     <Modal title="Chuồng trại" icon={<AnimalIcon type="chicken" size={34} />} tone="orange" onClose={onClose}>
-      <div className="prog-list">
-        {ANIMAL_ORDER.map((id) => {
-          const a = ANIMALS[id];
-          const mine = s.animals.filter((x) => x.type === id);
-          const locked = s.level < a.unlockLevel;
-          const soonest = mine.length ? Math.min(...mine.map((x) => x.lastCollect + a.period * 1000)) : 0;
-          return (
-            <div className="prog-row" key={id}>
-              <div className="prog-art">
-                <AnimalIcon type={id} size={46} />
+      <div className="panel-scroll">
+        <div className="prog-list">
+          {ANIMAL_ORDER.map((id) => {
+            const a = ANIMALS[id];
+            const mine = s.animals.filter((x) => x.type === id);
+            const locked = s.level < a.unlockLevel;
+            const nHungry = mine.filter(animalHungry).length;
+            const nReady = mine.filter((x) => animalReady(x, now)).length;
+            const growing = mine.filter((x) => x.fedAt !== null && !animalReady(x, now)).map((x) => x.fedAt! + a.period * 1000);
+            return (
+              <div className="prog-row" key={id}>
+                <div className="prog-art">
+                  <AnimalIcon type={id} size={46} />
+                </div>
+                <div className="prog-info">
+                  <b>
+                    {a.name} <span className="pill">{mine.length}/{a.max}</span>
+                  </b>
+                  <small>
+                    Ăn <ItemIcon item={a.feed.crop} size={16} /> {a.feed.qty} {CROPS[a.feed.crop].name.toLowerCase()} → <ItemIcon item={a.product} size={16} /> 1 {a.productName.toLowerCase()} sau {minutes(a.period)}
+                  </small>
+                  <small>
+                    Bán <CoinIcon size={14} /> {formatNum(a.sellPrice)} · trong kho có {formatNum(s.inventory[a.feed.crop])} {CROPS[a.feed.crop].name.toLowerCase()}
+                  </small>
+                  {mine.length > 0 && (
+                    <small className="next">
+                      {[nReady && `${nReady} con có sản phẩm`, nHungry && `${nHungry} con đang đói`, growing.length && `lần thu tới ${mmss(Math.max(0, Math.ceil((Math.min(...growing) - now) / 1000)))}`].filter(Boolean).join(' · ')}
+                    </small>
+                  )}
+                </div>
+                {locked ? (
+                  <span className="muted">Cấp {a.unlockLevel}</span>
+                ) : mine.length >= a.max ? (
+                  <span className="muted">Đầy chuồng</span>
+                ) : (
+                  <button
+                    className="btn btn-orange small"
+                    disabled={!!busy || s.coins < a.price}
+                    onClick={async () => {
+                      setBusy(id);
+                      const res = await run(() => farmApi.buyAnimal(id));
+                      setBusy(null);
+                      if (res) {
+                        sfx.unlock();
+                        fxBus.toast(`Đã mua ${a.name.toLowerCase()}!`, 'good');
+                      }
+                    }}
+                  >
+                    <Busy on={busy === id}>
+                      Mua <CoinIcon size={16} /> {formatNum(a.price)}
+                    </Busy>
+                  </button>
+                )}
               </div>
-              <div className="prog-info">
-                <b>
-                  {a.name} <span className="pill">{mine.length}/{a.max}</span>
-                </b>
-                <small>
-                  <ItemIcon item={a.product} size={16} /> {a.productName} mỗi {minutes(a.period)}
-                </small>
-                <small>
-                  Bán <CoinIcon size={14} /> {formatNum(a.sellPrice)}
-                </small>
-                {mine.length > 0 && <small className="next">{soonest <= now ? 'Có sản phẩm để thu!' : `Lần thu tới: ${mmss(Math.ceil((soonest - now) / 1000))}`}</small>}
-              </div>
-              {locked ? (
-                <span className="muted">Cấp {a.unlockLevel}</span>
-              ) : mine.length >= a.max ? (
-                <span className="muted">Đầy chuồng</span>
-              ) : (
-                <button
-                  className="btn btn-orange small"
-                  disabled={!!busy || s.coins < a.price}
-                  onClick={async () => {
-                    setBusy(id);
-                    const res = await run(() => farmApi.buyAnimal(id));
-                    setBusy(null);
-                    if (res) {
-                      sfx.unlock();
-                      fxBus.toast(`Đã mua ${a.name.toLowerCase()}!`, 'good');
-                    }
-                  }}
-                >
-                  <Busy on={busy === id}>
-                    Mua <CoinIcon size={16} /> {formatNum(a.price)}
-                  </Busy>
-                </button>
-              )}
+            );
+          })}
+          <div className="prog-row">
+            <div className="prog-art">
+              <DogIcon size={46} />
             </div>
-          );
-        })}
+            <div className="prog-info">
+              <b>{dog.name}</b>
+              <small>Bắt quả tang {Math.round(dog.catchChance * 100)}% kẻ hái trộm; kẻ trộm bị phạt xu, tiền phạt vào túi bạn.</small>
+            </div>
+            {s.dog ? (
+              <span className="muted">Đã có</span>
+            ) : s.level < dog.unlockLevel ? (
+              <span className="muted">Cấp {dog.unlockLevel}</span>
+            ) : (
+              <button
+                className="btn btn-orange small"
+                disabled={!!busy || s.coins < dog.price}
+                onClick={async () => {
+                  setBusy('dog');
+                  const res = await run(() => farmApi.buyDog());
+                  setBusy(null);
+                  if (res !== null) {
+                    sfx.unlock();
+                    fxBus.toast('Đã có chó canh nông trại!', 'good');
+                  }
+                }}
+              >
+                <Busy on={busy === 'dog'}>
+                  Mua <CoinIcon size={16} /> {formatNum(dog.price)}
+                </Busy>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-      <button
-        className="btn btn-green"
-        style={{ width: '100%', marginTop: 10 }}
-        disabled={!ready || !!busy}
-        onClick={async (e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          setBusy('collect');
-          const res = await run(() => farmApi.collect());
-          setBusy(null);
-          if (res) {
-            sfx.collect();
-            fxBus.fly({ type: 'xp' }, { x: r.left + r.width / 2, y: r.top }, 'level', 2, () => bump('level'));
-            fxBus.toast(`Đã thu ${res.collected} sản phẩm · +${res.xp} XP`, 'good');
-          }
-        }}
-      >
-        <Busy on={busy === 'collect'}>{ready ? `Thu ${ready} sản phẩm` : 'Chưa có sản phẩm'}</Busy>
-      </button>
-      <p className="prog-note">Chạm vào con vật trong chuồng gà, chuồng bò (bên phải nông trại) để thu trứng, sữa. Sản phẩm vào Kho để bán hoặc giao đơn.</p>
+      <div className="row-actions">
+        <button
+          className="btn btn-orange"
+          disabled={!hungry || !!busy}
+          onClick={async () => {
+            setBusy('feed');
+            const res = await run(() => farmApi.feed());
+            setBusy(null);
+            if (res) {
+              sfx.plant();
+              fxBus.toast(`Đã cho ${res.fed} con ăn`, 'good');
+            }
+          }}
+        >
+          <Busy on={busy === 'feed'}>{hungry ? `Cho ăn (${hungry})` : 'Không con nào đói'}</Busy>
+        </button>
+        <button
+          className="btn btn-green"
+          disabled={!ready || !!busy}
+          onClick={async (e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setBusy('collect');
+            const res = await run(() => farmApi.collect());
+            setBusy(null);
+            if (res) {
+              sfx.collect();
+              fxBus.fly({ type: 'xp' }, { x: r.left + r.width / 2, y: r.top }, 'level', 2, () => bump('level'));
+              fxBus.toast(`Đã thu ${res.collected} sản phẩm · +${res.xp} XP`, 'good');
+            }
+          }}
+        >
+          <Busy on={busy === 'collect'}>{ready ? `Thu (${ready})` : 'Chưa có sản phẩm'}</Busy>
+        </button>
+      </div>
+      <p className="prog-note">Con vật phải được cho ăn mới đẻ trứng, cho sữa. Chạm vào con vật trong chuồng: con đói thì cho ăn, con có sản phẩm thì thu.</p>
     </Modal>
   );
 }
@@ -432,7 +494,7 @@ const BOARDS: Record<'farm' | 'game', Array<{ id: Board; label: string; unit: (v
   ],
 };
 
-export function LeaderboardPopup({ onClose }: { onClose: () => void }) {
+export function LeaderboardPopup({ onClose, onVisit }: { onClose: () => void; onVisit: (id: number) => void }) {
   const [group, setGroup] = useState<'farm' | 'game'>('farm');
   const [board, setBoard] = useState<Board>('coins');
   const [data, setData] = useState<{ rows: BoardRow[]; me: { rank: number; value: number } | null } | null>(null);
@@ -482,7 +544,12 @@ export function LeaderboardPopup({ onClose }: { onClose: () => void }) {
           <p className="muted center">Chưa có ai trên bảng này.</p>
         ) : (
           data.rows.map((r) => (
-            <div key={r.id} className={`lb-row ${r.id === me ? 'me' : ''} ${r.rank <= 3 ? `top${r.rank}` : ''}`}>
+            <div
+              key={r.id}
+              className={`lb-row ${r.id === me ? 'me' : 'visitable'} ${r.rank <= 3 ? `top${r.rank}` : ''}`}
+              onClick={() => r.id !== me && onVisit(r.id)}
+              title={r.id === me ? undefined : 'Thăm nông trại'}
+            >
               <span className="lb-rank">{r.rank}</span>
               {r.avatar ? <img className="lb-avatar" src={r.avatar} alt="" referrerPolicy="no-referrer" /> : <span className="lb-avatar">{r.name.slice(0, 1).toUpperCase()}</span>}
               <span className="lb-name">

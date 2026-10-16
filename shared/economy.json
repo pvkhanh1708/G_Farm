@@ -394,7 +394,11 @@
       "product": "egg",
       "productName": "Trứng",
       "sellPrice": 45,
-      "xp": 3
+      "xp": 3,
+      "feed": {
+        "crop": "wheat",
+        "qty": 3
+      }
     },
     {
       "id": "cow",
@@ -406,7 +410,127 @@
       "product": "milk",
       "productName": "Sữa",
       "sellPrice": 520,
-      "xp": 18
+      "xp": 18,
+      "feed": {
+        "crop": "corn",
+        "qty": 2
+      }
     }
-  ]
+  ],
+  "goods": [
+    {
+      "id": "flour",
+      "name": "Bột mì",
+      "sellPrice": 25,
+      "xp": 3
+    },
+    {
+      "id": "bread",
+      "name": "Bánh mì",
+      "sellPrice": 110,
+      "xp": 8
+    },
+    {
+      "id": "cake",
+      "name": "Bánh dâu",
+      "sellPrice": 300,
+      "xp": 20
+    },
+    {
+      "id": "cheese",
+      "name": "Phô mai",
+      "sellPrice": 1700,
+      "xp": 40
+    },
+    {
+      "id": "yogurt",
+      "name": "Sữa chua dâu",
+      "sellPrice": 900,
+      "xp": 25
+    }
+  ],
+  "machines": [
+    {
+      "id": "mill",
+      "name": "Cối xay",
+      "unlockLevel": 4,
+      "price": 1200,
+      "queue": 3,
+      "recipes": [
+        {
+          "output": "flour",
+          "inputs": {
+            "wheat": 3
+          },
+          "seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "bakery",
+      "name": "Lò bánh",
+      "unlockLevel": 7,
+      "price": 3000,
+      "queue": 3,
+      "recipes": [
+        {
+          "output": "bread",
+          "inputs": {
+            "flour": 2
+          },
+          "seconds": 120
+        },
+        {
+          "output": "cake",
+          "inputs": {
+            "flour": 1,
+            "egg": 2,
+            "strawberry": 2
+          },
+          "seconds": 300
+        }
+      ]
+    },
+    {
+      "id": "dairy",
+      "name": "Xưởng sữa",
+      "unlockLevel": 15,
+      "price": 8000,
+      "queue": 3,
+      "recipes": [
+        {
+          "output": "cheese",
+          "inputs": {
+            "milk": 2
+          },
+          "seconds": 240
+        },
+        {
+          "output": "yogurt",
+          "inputs": {
+            "milk": 1,
+            "strawberry": 3
+          },
+          "seconds": 180
+        }
+      ]
+    }
+  ],
+  "neighbors": {
+    "stealShare": 0.25,
+    "maxThieves": 2,
+    "stealsPerDay": 20,
+    "helpsPerDay": 10,
+    "helpCut": 0.1,
+    "helpCoins": 5,
+    "helpXp": 2,
+    "dog": {
+      "name": "Chó canh",
+      "unlockLevel": 8,
+      "price": 2500,
+      "catchChance": 0.4,
+      "fineBase": 20,
+      "finePerLevel": 10
+    }
+  }
 }

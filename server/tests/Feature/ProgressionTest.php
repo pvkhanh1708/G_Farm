@@ -12,6 +12,14 @@ class ProgressionTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Several players' tokens in one test: Sanctum must not reuse the previous request's user. */
+    public function json($method, $uri, array $data = [], array $headers = [], $options = 0)
+    {
+        $this->app['auth']->forgetGuards();
+
+        return parent::json($method, $uri, $data, $headers, $options);
+    }
+
     private function guest(array $farm = []): array
     {
         $res = $this->postJson('/auth/guest')->json();
@@ -101,10 +109,84 @@ class ProgressionTest extends TestCase
         $this->postJson('/farm/animals/buy', ['type' => 'chicken'], $h)->assertOk()->assertJsonPath('state.coins', 10_000 - $hen['price']);
         $this->postJson('/farm/animals/collect', [], $h)->assertStatus(422);
         $f = Farm::where('user_id', $id)->first();
-        $f->animals = [['type' => 'chicken', 'lastCollect' => 1000]];
+        $f->animals = [['type' => 'chicken', 'fedAt' => 1000]];
         $f->save();
-        $this->postJson('/farm/animals/collect', [], $h)->assertOk()->assertJsonPath('state.inventory.egg', 1);
+        $this->postJson('/farm/animals/collect', [], $h)->assertOk()->assertJsonPath('state.inventory.egg', 1)->assertJsonPath('state.animals.0.fedAt', null);
         $this->postJson('/farm/sell', ['crop' => 'egg', 'qty' => 1], $h)->assertOk()->assertJsonPath('result.earned', $hen['sellPrice']);
+
+        // hungry now: no product until it is fed with wheat from the barn
+        $this->postJson('/farm/animals/collect', [], $h)->assertStatus(422);
+        $this->postJson('/farm/animals/feed', [], $h)->assertStatus(422)->assertJsonPath('message', 'Cần 3 Lúa mì trong kho để cho ăn');
+        Farm::where('user_id', $id)->update(['inventory' => ['wheat' => 5]]);
+        $this->postJson('/farm/animals/feed', [], $h)->assertOk()->assertJsonPath('result.fed', 1)->assertJsonPath('state.inventory.wheat', 2);
+        $this->postJson('/farm/animals/feed', [], $h)->assertStatus(422)->assertJsonPath('message', 'Không có con nào đói');
+    }
+
+    public function test_workshop_machines_queue_and_collect(): void
+    {
+        [$h, $id] = $this->guest(['coins' => 5000, 'level' => 4, 'inventory' => ['wheat' => 7]]);
+        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertStatus(422);
+        $this->postJson('/farm/machines/buy', ['machine' => 'bakery'], $h)->assertStatus(422);
+        $this->postJson('/farm/machines/buy', ['machine' => 'mill'], $h)->assertOk()->assertJsonPath('state.coins', 3800);
+        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertOk();
+        $res = $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertOk()->assertJsonPath('state.inventory.wheat', 1);
+        // the second batch waits for the first
+        $q = $res->json('state.machines.mill.queue');
+        $this->assertSame(60_000, $q[1]['readyAt'] - $q[0]['readyAt']);
+        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertStatus(422)->assertJsonPath('message', 'Kho chưa đủ nguyên liệu');
+        $this->postJson('/farm/machines/collect', [], $h)->assertStatus(422);
+
+        $f = Farm::where('user_id', $id)->first();
+        $f->machines = ['mill' => ['queue' => [['output' => 'flour', 'readyAt' => 1000], ['output' => 'flour', 'readyAt' => PHP_INT_MAX]]]];
+        $f->save();
+        $this->postJson('/farm/machines/collect', [], $h)->assertOk()
+            ->assertJsonPath('result.goods.flour', 1)->assertJsonPath('state.inventory.flour', 1)->assertJsonCount(1, 'state.machines.mill.queue');
+        $this->postJson('/farm/sell', ['crop' => 'flour', 'qty' => 1], $h)->assertOk()->assertJsonPath('result.earned', 25);
+    }
+
+    public function test_neighbours_steal_help_dog_and_news(): void
+    {
+        [$owner, $ownerId] = $this->guest(['coins' => 1000, 'level' => 5, 'unlocked' => 6]);
+        [$thief, $thiefId] = $this->guest(['coins' => 1000, 'level' => 5]);
+        [$third] = $this->guest(['coins' => 1000, 'level' => 5]);
+        $this->postJson('/farm/plant', ['tiles' => [0, 1], 'crop' => 'carrot'], $owner)->assertOk();
+        $this->postJson('/farm/plant', ['tiles' => [2], 'crop' => 'tomato'], $owner)->assertOk();
+        Planting::whereIn('tile', [0, 1])->update(['planted_at' => 1000]);
+
+        $this->getJson('/neighbors', $thief)->assertOk()->assertJsonPath('result.0.id', $ownerId)->assertJsonPath('result.0.ripe', 2);
+        $this->getJson("/neighbors/$ownerId", $thief)->assertOk()->assertJsonPath('result.plantings.0.steal', 1)->assertJsonPath('result.stealsLeft', 20);
+        $this->getJson("/neighbors/$thiefId", $thief)->assertStatus(422);
+
+        // carrots yield 4: a thief takes 25% (1), once per tile; a second thief too; then it is closed
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $thief)->assertOk()
+            ->assertJsonPath('result.caught', false)->assertJsonPath('result.qty', 1)->assertJsonPath('state.inventory.carrot', 1)
+            ->assertJsonPath('result.farm.plantings.0.steal', 0)->assertJsonPath('result.farm.stealsLeft', 19);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $thief)->assertStatus(422);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 2], $thief)->assertStatus(422);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $third)->assertOk();
+
+        // the owner harvests what is left and reads who came
+        $this->getJson('/farm', $owner)->assertJsonPath('state.news', 2)->assertJsonPath('state.plantings.0.stolen', 2);
+        $this->postJson('/farm/harvest', ['tiles' => [0, 1]], $owner)->assertOk()->assertJsonPath('state.inventory.carrot', 2 + 4);
+        $this->getJson('/farm/news', $owner)->assertOk()->assertJsonCount(2, 'result')->assertJsonPath('result.0.type', 'steal')->assertJsonPath('result.0.qty', 1);
+        $this->getJson('/farm', $owner)->assertJsonPath('state.news', 0);
+
+        // watering a growing crop: it grows faster, the helper earns a little, once per tile
+        $before = Planting::where('tile', 2)->value('planted_at');
+        $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $thief)->assertOk()->assertJsonPath('result.coins', 5)->assertJsonPath('result.farm.plantings.0.helped', true);
+        $this->assertGreaterThan(3000, $before - Planting::where('tile', 2)->value('planted_at'));
+        $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $thief)->assertStatus(422);
+
+        // a guard dog that always bites: no crops, a fine paid to the owner
+        $this->postJson('/farm/plant', ['tiles' => [3], 'crop' => 'carrot'], $owner)->assertOk();
+        Planting::where('tile', 3)->update(['planted_at' => 1000]);
+        Farm::where('user_id', $ownerId)->update(['dog' => true, 'coins' => 0]);
+        $eco = json_decode(file_get_contents(base_path('../shared/economy.json')), true);
+        config(['game.dog_catch_chance' => 1.1]);
+        $fine = $eco['neighbors']['dog']['fineBase'] + 5 * $eco['neighbors']['dog']['finePerLevel'];
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 3], $third)->assertOk()
+            ->assertJsonPath('result.caught', true)->assertJsonPath('result.fine', $fine);
+        $this->assertSame($fine, Farm::where('user_id', $ownerId)->value('coins'));
     }
 
 }

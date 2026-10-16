@@ -134,7 +134,7 @@ class Economy
         return null;
     }
 
-    /** Sellable item: a crop or an animal product, as {name, sellPrice}. */
+    /** Sellable item: a crop, an animal product or a workshop good, as {name, sellPrice}. */
     public function item(string $id): ?array
     {
         if ($c = $this->crop($id)) {
@@ -146,12 +146,54 @@ class Economy
             }
         }
 
-        return null;
+        return $this->good($id);
     }
 
     /** @return list<string> */
     public function itemIds(): array
     {
-        return [...$this->cropIds(), ...array_column($this->data['animals'], 'product')];
+        return [...$this->cropIds(), ...array_column($this->data['animals'], 'product'), ...array_column($this->data['goods'], 'id')];
+    }
+
+    /** Workshop good: {id, name, sellPrice, xp}. */
+    public function good(string $id): ?array
+    {
+        foreach ($this->data['goods'] as $g) {
+            if ($g['id'] === $id) {
+                return $g;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function machine(string $id): ?array
+    {
+        foreach ($this->data['machines'] as $m) {
+            if ($m['id'] === $id) {
+                return $m;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function machines(): array
+    {
+        return $this->data['machines'];
+    }
+
+    /** The recipe of `machine` that makes `output`. */
+    public function recipe(array $machine, string $output): ?array
+    {
+        foreach ($machine['recipes'] as $r) {
+            if ($r['output'] === $output) {
+                return $r;
+            }
+        }
+
+        return null;
     }
 }

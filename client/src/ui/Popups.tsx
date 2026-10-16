@@ -34,6 +34,7 @@ export function Modal({ title, icon, tone = 'green', onClose, children, wide }: 
 
 export const CROP_BG: Record<ItemId, string> = {
   egg: '#fff3dc', milk: '#e2f0ff',
+  flour: '#fbf2de', bread: '#ffe6c2', cake: '#ffe0e8', cheese: '#fff3b0', yogurt: '#ffe4ec',
   carrot: '#ffe2c2', wheat: '#fff1b8', tomato: '#ffd6cf', strawberry: '#ffd9e0', cabbage: '#dcf5cf',
   corn: '#fff3b0', eggplant: '#ecdcff', pumpkin: '#ffe0c0', sunflower: '#fff6c2',
   potato: '#f3e2c8', chili: '#ffd8d0', watermelon: '#d8f5d0', pineapple: '#fff0b8', cotton: '#eef0f4', lavender: '#e8dcff',

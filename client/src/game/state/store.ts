@@ -1,4 +1,4 @@
-import { AnimalId, CROPS, CropId, growMs, harvestAmount, ITEM_ORDER, ItemId, itemDef, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
+import { AnimalId, CROPS, CropId, GoodId, MachineId, growMs, harvestAmount, ITEM_ORDER, ItemId, itemDef, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
 import { serverNow } from '../net/clock';
 
 /**
@@ -11,6 +11,8 @@ import { serverNow } from '../net/clock';
 export interface Planting {
   crop: CropId;
   plantedAt: number;
+  /** Crops neighbours have taken from this tile (server-side only). */
+  stolen?: number;
 }
 
 export interface Order {
@@ -40,7 +42,14 @@ export interface Daily {
 
 export interface Animal {
   type: AnimalId;
-  lastCollect: number;
+  /** When it was fed (its product is ready a period later); null = hungry. */
+  fedAt: number | null;
+}
+
+/** One batch in a workshop machine's line. */
+export interface Job {
+  output: GoodId;
+  readyAt: number;
 }
 
 export interface GameState {
@@ -59,6 +68,12 @@ export interface GameState {
   orders: Order[];
   daily: Daily | null;
   animals: Animal[];
+  /** Workshop machines owned, each with its line of batches. */
+  machines: Partial<Record<MachineId, { queue: Job[] }>>;
+  /** A guard dog against thieves. */
+  dog: boolean;
+  /** Unread news from neighbours (thefts, help). */
+  news: number;
 }
 
 /** View of one tile, derived from GameState. */
@@ -89,7 +104,7 @@ function emptyInventory() {
   return Object.fromEntries(ITEM_ORDER.map((c) => [c, 0])) as Record<ItemId, number>;
 }
 
-const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [] };
+const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [], machines: {}, dog: false, news: 0 };
 
 function initialState(): GameState {
   return { coins: STARTING_COINS, level: 1, xp: 0, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {}, ...EXTRA };
@@ -228,7 +243,7 @@ class Store {
     const p = this.state.plantings[g];
     if (!p) return { ok: false, reason: 'Không có cây để thu hoạch' };
     if (growthProgress(p, now) < 1) return { ok: false, reason: 'Cây chưa chín' };
-    const amount = harvestAmount(p.crop, this.state.soil), xp = CROPS[p.crop].xp;
+    const amount = Math.max(1, harvestAmount(p.crop, this.state.soil) - (p.stolen ?? 0)), xp = CROPS[p.crop].xp;
     const plantings = { ...this.state.plantings };
     delete plantings[g];
     const before = this.state.level;

@@ -327,6 +327,7 @@ export class Game {
       }
     const now = serverNow();
     this.pen?.sync(store.getState().animals, now);
+    this.pen?.setDog(store.getState().dog);
     for (const t of tiles) {
       let v = this.tiles.get(t.g);
       if (!v) {

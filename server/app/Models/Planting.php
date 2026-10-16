@@ -9,13 +9,16 @@ class Planting extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['tile', 'crop', 'planted_at'];
+    protected $fillable = ['tile', 'crop', 'planted_at', 'stolen', 'thieves', 'helpers'];
 
     protected function casts(): array
     {
         return [
             'tile' => 'integer',
             'planted_at' => 'integer',
+            'stolen' => 'integer',
+            'thieves' => 'array',
+            'helpers' => 'array',
         ];
     }
 
