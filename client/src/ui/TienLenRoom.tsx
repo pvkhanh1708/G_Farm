@@ -126,6 +126,23 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
   // fly freshly played cards from the player who played them to the pile
   const seatEls = useRef(new Map<number, HTMLDivElement>());
   const handEl = useRef<HTMLDivElement>(null);
+  /** Horizontal step between cards: as wide as the hand allows (up to 90% of a card), never under 36 px. */
+  const [handStep, setHandStep] = useState(40);
+  useLayoutEffect(() => {
+    const el = handEl.current;
+    if (!el) return;
+    const fit = () => {
+      const card = el.querySelector('.card') as HTMLElement | null;
+      const n = el.children.length;
+      if (!card || n < 2) return;
+      const cw = card.offsetWidth, w = el.clientWidth - 12;
+      setHandStep(Math.round(Math.max(36, Math.min(cw * 0.9, (w - cw) / (n - 1)))));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const pileEl = useRef<HTMLDivElement>(null);
   const flown = useRef<string | null>(null);
   const actionKey = t.lastAction?.kind === 'play' ? `${t.id}:${t.lastAction.seat}:${t.lastAction.cards.join(',')}` : null;
@@ -243,7 +260,7 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
             <span>{myTurn ? `Tới lượt bạn · ${left}s` : `Đợi ${t.seats[t.turn ?? 0]?.name ?? ''}…`}</span>
             {t.firstTrick && myTurn && <span className="tl-hint">Lượt đầu phải có 3♠</span>}
           </div>
-          <div className="tl-hand" ref={handEl}>
+          <div className="tl-hand" ref={handEl} style={{ ['--step' as string]: `${handStep}px` }}>
             {t.hand.map((c) => (
               <Card key={c} id={c} selected={sel.includes(c)} onClick={() => setSel((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))} />
             ))}

@@ -566,11 +566,18 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .mark { font-weight: 900; font-size: 18px; }
 .mark.m1, .cell.m1 { color: #e2483a; }
 .mark.m2, .cell.m2 { color: #2f7ae5; }
+.zoom-board { position: relative; width: 100%; max-width: min(100%, 70vh); align-self: center; }
+.zoom-view { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; touch-action: pan-x pan-y; }
+.zoom-view.zoomed { overflow: auto; overscroll-behavior: contain; }
+.zoom-content { aspect-ratio: 1; }
+.zoom-buttons { position: absolute; right: -6px; bottom: -6px; display: flex; flex-direction: column; gap: 6px; }
+.zoom-buttons .round-btn.small { width: 40px; height: 40px; font-size: 24px; font-weight: 900; color: #6a4a22; }
+.zoom-buttons .round-btn:disabled { opacity: .45; }
 .caro-board {
-  display: grid; width: 100%; aspect-ratio: 1; max-height: 70vh; align-self: center; gap: 1px; padding: 4px; border-radius: 10px;
+  display: grid; width: 100%; aspect-ratio: 1; align-self: center; gap: 1px; padding: 4px; border-radius: 10px;
   background: #b98a52; border: 4px solid var(--wood-dark); box-shadow: 0 6px 0 rgba(0,0,0,.3);
 }
-.cell { aspect-ratio: 1; border: 0; padding: 0; background: #f6e3bd; font: 900 clamp(10px, 3.6vw, 22px)/1 system-ui, sans-serif; display: grid; place-items: center; cursor: pointer; }
+.cell { aspect-ratio: 1; border: 0; padding: 0; background: #f6e3bd; font: 900 calc(clamp(10px, 3.6vw, 22px) * var(--zoom, 1))/1 system-ui, sans-serif; display: grid; place-items: center; cursor: pointer; }
 .cell:disabled { cursor: default; }
 .cell:not(:disabled):hover { background: #fff3d6; }
 .cell.last { background: #fff3a0; }
@@ -629,16 +636,20 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 }
 
 /* tiến lên hand: one overlapping row like a real hand, with bigger cards */
-.tl-hand { flex-wrap: nowrap; padding: 22px 6px 6px; overflow: visible; }
-.tl-hand .card { margin: 0 -14px; width: 70px; height: 100px; font-size: 22px; border-radius: 9px; }
-.tl-hand .card .card-suit { font-size: 21px; }
+/* cards sit `--step` apart (set from the hand's width); a hand too long for the screen scrolls sideways */
+.tl-hand { flex-wrap: nowrap; justify-content: safe center; padding: 22px 6px 6px; overflow-x: auto; overflow-y: visible; scrollbar-width: none; }
+.tl-hand::-webkit-scrollbar { display: none; }
+.tl-hand .card { flex: none; margin: 0; width: 80px; height: 114px; font-size: 25px; border-radius: 10px; }
+.tl-hand .card + .card { margin-left: calc(var(--step, 40px) - 80px); }
+.tl-hand .card .card-suit { font-size: 24px; }
 .tl-hand .card.sel { transform: translateY(-20px); }
 .tl-actions { gap: 14px; }
 .tl-actions .btn { min-height: 46px; min-width: 96px; }
 @media (max-width: 560px) {
   /* 13 cards across a phone: ~26 px of each card shows, enough to tap its rank */
-  .tl-hand .card { margin: 0 -15px; width: 56px; height: 82px; font-size: 19px; }
-  .tl-hand .card .card-suit { font-size: 17px; }
+  .tl-hand .card { width: 64px; height: 92px; font-size: 21px; }
+  .tl-hand .card + .card { margin-left: calc(var(--step, 36px) - 64px); }
+  .tl-hand .card .card-suit { font-size: 19px; }
   .tl-board { min-height: 220px; }
 }
 

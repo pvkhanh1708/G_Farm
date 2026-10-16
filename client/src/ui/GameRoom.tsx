@@ -1,4 +1,5 @@
 import { TienLenRoom } from './TienLenRoom';
+import { ZoomBoard } from './ZoomBoard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { serverNow } from '../game/net/clock';
 import { ApiError } from '../game/net/api';
@@ -291,6 +292,7 @@ function CaroTable({ table: t, busy, run, onLeave }: { table: TableView; busy: b
           </div>
         ))}
       </div>
+      <ZoomBoard>
       <div className="caro-board" style={{ gridTemplateColumns: `repeat(${t.size}, 1fr)` }}>
         {t.board.map((v, i) => (
           <button
@@ -307,6 +309,7 @@ function CaroTable({ table: t, busy, run, onLeave }: { table: TableView; busy: b
           </button>
         ))}
       </div>
+      </ZoomBoard>
       {result ? (
         <div className={`caro-result ${t.winner === me ? 'won' : t.winner === 0 ? 'draw' : 'lost'}`}>
           <b>{result}</b>
