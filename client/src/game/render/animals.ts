@@ -1,14 +1,15 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
 import { Color3 } from '@babylonjs/core/Maths/math.color.js';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder.js';
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
-import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData.js';
 import { Scene } from '@babylonjs/core/scene.js';
 import { AnimalId, ANIMALS, PENS } from '../config';
 import type { Animal } from '../state/store';
-import { Billboards } from './billboards';
+import { BillboardKey, Billboards } from './billboards';
 import { mulberry } from './geometry';
 
 /**
@@ -47,12 +48,6 @@ interface Walker {
 
 type Rect = { x0: number; x1: number; z0: number; z1: number };
 
-/** Ground look per pen: straw for the coop, dry grass for the cows. */
-const FLOOR: Record<AnimalId, { ground: string; tufts: string }> = {
-  chicken: { ground: '#cfae63', tufts: '#b8973e' },
-  cow: { ground: '#a9b85e', tufts: '#7f9440' },
-};
-
 function fence(scene: Scene, mat: StandardMaterial, id: string, { x0, x1, z0, z1 }: Rect) {
   const parts: Mesh[] = [];
   const post = (x: number, z: number) => {
@@ -84,40 +79,121 @@ function fence(scene: Scene, mat: StandardMaterial, id: string, { x0, x1, z0, z1
   return m;
 }
 
+/** The floor reaches this far past the fence, fading into the meadow. */
+const FLOOR_BLEED = 0.45;
+/** Texture pixels per world unit. */
+const FLOOR_PPU = 96;
+
+type Ctx = CanvasRenderingContext2D;
+
+function blotches(c: Ctx, r: () => number, W: number, H: number, n: number, colours: string[], min: number, max: number) {
+  for (let i = 0; i < n; i++) {
+    c.fillStyle = colours[Math.floor(r() * colours.length)];
+    c.beginPath();
+    c.ellipse(r() * W, r() * H, min + r() * (max - min), (min + r() * (max - min)) * (0.5 + r() * 0.5), r() * Math.PI, 0, Math.PI * 2);
+    c.fill();
+  }
+}
+
+function strands(c: Ctx, r: () => number, W: number, H: number, n: number, colours: string[], len: number, width: number) {
+  c.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = r() * W, y = r() * H, a = r() * Math.PI, l = len * (0.5 + r());
+    const bend = (r() - 0.5) * l * 0.6;
+    c.strokeStyle = colours[Math.floor(r() * colours.length)];
+    c.lineWidth = width * (0.6 + r() * 0.8);
+    c.beginPath();
+    c.moveTo(x - Math.cos(a) * l, y - Math.sin(a) * l);
+    c.quadraticCurveTo(x - Math.sin(a) * bend, y + Math.cos(a) * bend, x + Math.cos(a) * l, y + Math.sin(a) * l);
+    c.stroke();
+  }
+}
+
+/** Chicken run: packed earth strewn with straw, grain and a few pebbles. */
+function paintCoopFloor(c: Ctx, r: () => number, W: number, H: number) {
+  c.fillStyle = '#c9a466';
+  c.fillRect(0, 0, W, H);
+  blotches(c, r, W, H, 90, ['rgba(160,118,62,.35)', 'rgba(226,196,130,.4)', 'rgba(140,100,52,.25)'], 14, 60);
+  strands(c, r, W, H, 520, ['#f0d27a', '#e2bb55', '#d1a544', '#fbe7a6'], 9, 2.4);
+  blotches(c, r, W, H, 60, ['#8f8578', '#a89f92', '#7a6f62'], 2, 5);
+  // scattered grain
+  blotches(c, r, W, H, 140, ['#f6d55c', '#e8b93a'], 1.2, 2.4);
+}
+
+/** Cow pen: trampled grass with bare earth along the walking tracks and a muddy puddle. */
+function paintPastureFloor(c: Ctx, r: () => number, W: number, H: number) {
+  c.fillStyle = '#93b850';
+  c.fillRect(0, 0, W, H);
+  blotches(c, r, W, H, 70, ['rgba(120,160,60,.5)', 'rgba(170,200,90,.45)', 'rgba(110,140,50,.35)'], 20, 70);
+  blotches(c, r, W, H, 16, ['rgba(176,140,86,.45)', 'rgba(160,124,74,.35)'], 16, 40);
+  strands(c, r, W, H, 700, ['#6f9a36', '#a6cc5c', '#7fae3e', '#c3df7a'], 6, 2);
+  // muddy puddle with a bright rim of wet earth
+  const px = W * 0.3, py = H * 0.68;
+  c.fillStyle = '#a8865a';
+  c.beginPath();
+  c.ellipse(px, py, W * 0.11, H * 0.065, -0.3, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = '#8c7458';
+  c.beginPath();
+  c.ellipse(px, py, W * 0.085, H * 0.047, -0.3, 0, Math.PI * 2);
+  c.fill();
+  // a film of water reflecting the sky
+  c.fillStyle = 'rgba(170,205,235,.55)';
+  c.beginPath();
+  c.ellipse(px - W * 0.01, py - H * 0.006, W * 0.06, H * 0.03, -0.3, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = 'rgba(255,255,255,.6)';
+  c.beginPath();
+  c.ellipse(px - W * 0.03, py - H * 0.015, W * 0.025, H * 0.007, -0.3, 0, Math.PI * 2);
+  c.fill();
+  blotches(c, r, W, H, 40, ['#8f8578', '#a89f92'], 2, 5);
+}
+
+/**
+ * Pen floor painted on a canvas: its own texture per pen, slightly larger than the fence,
+ * with a ragged edge that fades into the meadow instead of a hard rectangle.
+ */
 function floor(scene: Scene, id: AnimalId, pen: Rect) {
-  const w = pen.x1 - pen.x0, d = pen.z1 - pen.z0;
+  const w = pen.x1 - pen.x0 + FLOOR_BLEED * 2, d = pen.z1 - pen.z0 + FLOOR_BLEED * 2;
+  const W = Math.round(w * FLOOR_PPU), H = Math.round(d * FLOOR_PPU);
+  const tex = new DynamicTexture(`pen-floor-tex-${id}`, { width: W, height: H }, scene, true);
+  tex.hasAlpha = true;
+  tex.wrapU = tex.wrapV = Texture.CLAMP_ADDRESSMODE;
+  const c = tex.getContext() as unknown as Ctx;
+  const r = mulberry(id === 'cow' ? 78 : 77);
+  (id === 'cow' ? paintPastureFloor : paintCoopFloor)(c, r, W, H);
+  // ragged, soft edge: opaque inside the fence, fading out over the bleed margin
+  const img = c.getImageData(0, 0, W, H);
+  const fade = FLOOR_BLEED * FLOOR_PPU;
+  const wobble = (t: number, seed: number) => Math.sin(t * 0.045 + seed) * 6 + Math.sin(t * 0.13 + seed * 2) * 3;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const edge = Math.min(x + wobble(y, 1), W - x + wobble(y, 4), y + wobble(x, 7), H - y + wobble(x, 9));
+      const k = Math.max(0, Math.min(1, (edge - fade * 0.25) / (fade * 0.75)));
+      img.data[(y * W + x) * 4 + 3] = Math.round(255 * k * k * (3 - 2 * k));
+    }
+  c.putImageData(img, 0, 0);
+  tex.update(true);
   const g = CreateGround(`pen-floor-${id}`, { width: w, height: d }, scene);
   g.position.set((pen.x0 + pen.x1) / 2, 0.004, (pen.z0 + pen.z1) / 2);
   const mat = new StandardMaterial(`pen-floor-mat-${id}`, scene);
+  mat.diffuseTexture = tex;
+  mat.emissiveTexture = tex;
+  mat.useAlphaFromDiffuseTexture = true;
   mat.disableLighting = true;
-  mat.emissiveColor = Color3.FromHexString(FLOOR[id].ground);
+  mat.emissiveColor.set(1, 1, 1);
   mat.disableDepthWrite = true;
   g.material = mat;
   g.isPickable = false;
-  // a few straw tufts
-  const r = mulberry(id === 'cow' ? 78 : 77);
-  const pos: number[] = [], idx: number[] = [];
-  for (let i = 0; i < Math.round(w * d * 3); i++) {
-    const x = (r() - 0.5) * (w - 0.3), z = (r() - 0.5) * (d - 0.3), a = r() * Math.PI, l = 0.12 + r() * 0.12;
-    const b = pos.length / 3;
-    const dx = Math.cos(a) * l, dz = Math.sin(a) * l;
-    pos.push(x - dx, 0.01, z - dz, x + dx, 0.01, z + dz, x + dx + 0.02, 0.01, z + dz + 0.03, x - dx + 0.02, 0.01, z - dz + 0.03);
-    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
-  }
-  const straw = new Mesh(`pen-straw-${id}`, scene);
-  const vd = new VertexData();
-  vd.positions = pos;
-  vd.indices = idx;
-  vd.applyToMesh(straw);
-  straw.parent = g;
-  const sm = new StandardMaterial(`straw-mat-${id}`, scene);
-  sm.disableLighting = true;
-  sm.emissiveColor = Color3.FromHexString(FLOOR[id].tufts);
-  sm.backFaceCulling = false;
-  straw.material = sm;
-  straw.isPickable = false;
   return g;
 }
+
+/** Props standing in each pen: [picture, size, x, z] as fractions of the pen (0 = x0/z0). */
+const PROPS: Record<AnimalId, Array<[BillboardKey, number, number, number]>> = {
+  // the far corner is at (x1, z1): it is the top of the screen
+  chicken: [['coop', 1.7, 0.78, 0.8], ['feeder', 1.0, 0.3, 0.35]],
+  cow: [['hay', 1.3, 0.8, 0.86], ['trough', 1.5, 0.84, 0.3], ['hay', 1.0, 0.18, 0.88]],
+};
 
 export class AnimalPen {
   private walkers: Walker[] = [];
@@ -130,15 +206,31 @@ export class AnimalPen {
     wood.emissiveColor = Color3.FromHexString('#4a2f18');
     wood.specularColor = Color3.Black();
     for (const id of Object.keys(PENS) as AnimalId[]) {
-      fence(scene, wood, id, PENS[id]);
-      floor(scene, id, PENS[id]);
+      const pen = PENS[id];
+      fence(scene, wood, id, pen);
+      floor(scene, id, pen);
+      for (const [key, size, fx, fz] of PROPS[id]) {
+        const at = new Vector3(pen.x0 + fx * (pen.x1 - pen.x0), 0, pen.z0 + fz * (pen.z1 - pen.z0));
+        const m = boards.quad(key, size, { bottom: true }).clone(`pen-${id}-${key}`);
+        m.isVisible = true;
+        m.position.copyFrom(at);
+        this.obstacles.push({ type: id, at, radius: size * 0.42 });
+      }
     }
   }
 
-  /** A random point inside the pen of this kind of animal. */
+  /** Footprints of the props, kept clear when animals pick where to walk. */
+  private obstacles: Array<{ type: AnimalId; at: Vector3; radius: number }> = [];
+
+  /** A random point inside the pen of this kind of animal, off the props. */
   private spot(type: AnimalId) {
     const p = PENS[type], m = 0.5;
-    return new Vector3(p.x0 + m + this.rand() * (p.x1 - p.x0 - 2 * m), 0, p.z0 + m + this.rand() * (p.z1 - p.z0 - 2 * m));
+    let v = new Vector3();
+    for (let tries = 0; tries < 12; tries++) {
+      v = new Vector3(p.x0 + m + this.rand() * (p.x1 - p.x0 - 2 * m), 0, p.z0 + m + this.rand() * (p.z1 - p.z0 - 2 * m));
+      if (!this.obstacles.some((o) => o.type === type && Vector3.Distance(o.at, v) < o.radius + 0.3)) break;
+    }
+    return v;
   }
 
   /** Match the walkers to the owned animals (same order as the state). */

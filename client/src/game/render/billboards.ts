@@ -17,9 +17,11 @@ import { CameraRig } from './camera';
 
 /** Animal pictures come in 12 poses (see animals.ts): `chicken:0` … `cow:11`. */
 export const ANIMAL_FRAMES = 12;
-type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk';
-export type BillboardKey = 'ripe' | 'egg' | 'milk' | `${'chicken' | 'cow'}:${number}`;
-const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
+/** Pen furniture, painted here: a hen house and feeder, hay bales and a water trough. */
+type Prop = 'coop' | 'feeder' | 'hay' | 'trough';
+type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | Prop;
+export type BillboardKey = 'ripe' | 'egg' | 'milk' | Prop | `${'chicken' | 'cow'}:${number}`;
+const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'coop', 'feeder', 'hay', 'trough', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
 const CELL = 256;
 /** Cells per row of the texture (2048 px wide: fine for any mobile GPU). */
 const COLS = 8;
@@ -57,7 +59,183 @@ function star(c: Ctx, x: number, y: number, r: number) {
   c.closePath();
 }
 
+/** Soft contact shadow under a prop standing on the bottom edge. */
+function groundShadow(c: Ctx, w: number) {
+  c.fillStyle = 'rgba(40,30,10,.22)';
+  c.beginPath();
+  c.ellipse(128, 238, w, 12, 0, 0, Math.PI * 2);
+  c.fill();
+}
+
+function outlined(c: Ctx, fill: string, path: () => void, width = 7) {
+  c.beginPath();
+  path();
+  c.fillStyle = fill;
+  c.fill();
+  c.lineWidth = width;
+  c.strokeStyle = OUT;
+  c.lineJoin = 'round';
+  c.stroke();
+}
+
 const PAINT: Record<Picture, (c: Ctx) => void> = {
+  coop(c) {
+    groundShadow(c, 104);
+    // stilts
+    c.fillStyle = '#6b4220';
+    for (const x of [62, 186]) c.fillRect(x, 200, 12, 38);
+    // walls with planks
+    outlined(c, '#c8553a', () => c.roundRect(46, 112, 164, 98, 8));
+    c.strokeStyle = 'rgba(90,30,20,.35)';
+    c.lineWidth = 3;
+    for (let x = 70; x < 206; x += 22) {
+      c.beginPath();
+      c.moveTo(x, 118);
+      c.lineTo(x, 206);
+      c.stroke();
+    }
+    // white trim on the corners
+    c.fillStyle = '#fff3dc';
+    c.fillRect(48, 114, 9, 94);
+    c.fillRect(199, 114, 9, 94);
+    // roof
+    outlined(c, '#7a4a2a', () => {
+      c.moveTo(28, 124);
+      c.lineTo(128, 34);
+      c.lineTo(228, 124);
+      c.closePath();
+    });
+    c.strokeStyle = 'rgba(40,20,8,.35)';
+    c.lineWidth = 4;
+    for (const y of [70, 96]) {
+      const half = ((y - 34) / 90) * 100;
+      c.beginPath();
+      c.moveTo(128 - half, y);
+      c.lineTo(128 + half, y);
+      c.stroke();
+    }
+    // round window in the gable
+    outlined(c, '#ffe9a8', () => c.arc(128, 92, 13, 0, Math.PI * 2), 5);
+    // arched door with a ramp
+    outlined(c, '#3a2414', () => {
+      c.moveTo(106, 210);
+      c.lineTo(106, 168);
+      c.arc(128, 168, 22, Math.PI, 0);
+      c.lineTo(150, 210);
+      c.closePath();
+    }, 6);
+    outlined(c, '#c99a5e', () => {
+      c.moveTo(108, 208);
+      c.lineTo(150, 208);
+      c.lineTo(168, 240);
+      c.lineTo(122, 240);
+      c.closePath();
+    }, 5);
+    // straw spilling out of the door
+    c.strokeStyle = '#f0d27a';
+    c.lineWidth = 3;
+    for (let i = 0; i < 9; i++) {
+      c.beginPath();
+      c.moveTo(100 + i * 7, 236 - (i % 3) * 2);
+      c.lineTo(108 + i * 7, 228 + (i % 2) * 6);
+      c.stroke();
+    }
+  },
+  feeder(c) {
+    groundShadow(c, 96);
+    outlined(c, '#a86c38', () => {
+      c.moveTo(30, 170);
+      c.lineTo(226, 170);
+      c.lineTo(206, 226);
+      c.lineTo(50, 226);
+      c.closePath();
+    });
+    // grain heaped in the tray
+    outlined(c, '#f2c94c', () => c.ellipse(128, 170, 96, 22, 0, Math.PI, 0), 5);
+    c.fillStyle = '#d9a52c';
+    for (let i = 0; i < 26; i++) {
+      c.beginPath();
+      c.arc(52 + ((i * 37) % 152), 156 + ((i * 13) % 14), 3.2, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.strokeStyle = 'rgba(70,35,10,.4)';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(44, 198);
+    c.lineTo(212, 198);
+    c.stroke();
+  },
+  hay(c) {
+    // a round bale lying on its side: the body, then the rolled-up end facing the viewer
+    groundShadow(c, 108);
+    outlined(c, '#e2b648', () => c.roundRect(26, 104, 150, 132, 40));
+    c.strokeStyle = 'rgba(150,100,20,.45)';
+    c.lineWidth = 3;
+    for (let i = 0; i < 7; i++) {
+      const y = 122 + i * 16;
+      c.beginPath();
+      c.moveTo(40, y);
+      c.quadraticCurveTo(100, y - 8 + (i % 2) * 10, 160, y);
+      c.stroke();
+    }
+    outlined(c, '#f3d77a', () => c.ellipse(170, 170, 60, 66, 0, 0, Math.PI * 2));
+    c.strokeStyle = 'rgba(170,120,30,.6)';
+    c.lineWidth = 4;
+    c.beginPath();
+    for (let a = 0; a < Math.PI * 7; a += 0.2) {
+      const k = a / (Math.PI * 7);
+      const x = 170 + Math.cos(a) * 54 * k, y = 170 + Math.sin(a) * 60 * k;
+      if (a === 0) c.moveTo(x, y);
+      else c.lineTo(x, y);
+    }
+    c.stroke();
+    // twine around the body
+    c.strokeStyle = '#9a5a26';
+    c.lineWidth = 6;
+    for (const x of [70, 120]) {
+      c.beginPath();
+      c.moveTo(x, 106);
+      c.lineTo(x, 234);
+      c.stroke();
+    }
+    // loose wisps
+    c.strokeStyle = '#fbe7a6';
+    c.lineWidth = 3;
+    for (let i = 0; i < 6; i++) {
+      c.beginPath();
+      c.moveTo(48 + i * 22, 108);
+      c.lineTo(56 + i * 22, 90 + (i % 2) * 8);
+      c.stroke();
+    }
+  },
+  trough(c) {
+    groundShadow(c, 110);
+    // legs
+    c.fillStyle = '#6b4220';
+    for (const x of [44, 198]) c.fillRect(x, 196, 14, 42);
+    // box, water surface, planks
+    outlined(c, '#a86c38', () => {
+      c.moveTo(22, 140);
+      c.lineTo(234, 140);
+      c.lineTo(220, 210);
+      c.lineTo(36, 210);
+      c.closePath();
+    });
+    outlined(c, '#62b8f2', () => c.ellipse(128, 142, 104, 16, 0, 0, Math.PI * 2), 5);
+    c.fillStyle = 'rgba(255,255,255,.7)';
+    c.beginPath();
+    c.ellipse(96, 138, 30, 4, 0, 0, Math.PI * 2);
+    c.ellipse(160, 145, 18, 3, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(70,35,10,.4)';
+    c.lineWidth = 3;
+    for (const y of [168, 190]) {
+      c.beginPath();
+      c.moveTo(30 + (y - 140) * 0.2, y);
+      c.lineTo(226 - (y - 140) * 0.2, y);
+      c.stroke();
+    }
+  },
   ripe(c) {
     bubble(c, (c) => {
       c.fillStyle = '#ffd23f';
