@@ -16,8 +16,8 @@ import { mulberry } from './geometry';
 
 /**
  * Fenced pens on the right of the farm block, one for chickens and one for cows.
- * Each owned animal is a camera-facing picture that wanders inside its own pen; a bubble with its product floats
- * above it while one is ready to collect.
+ * Each owned animal is a camera-facing picture that wanders inside its own pen. Products wait at a
+ * fixed spot of the pen (egg nest, milk can) until collected.
  */
 
 const SIZE = { chicken: 1.1, cow: 1.75 };
@@ -37,10 +37,8 @@ interface Walker {
   /** One mesh per pose (and mirror), made on first use; only `shown` is visible. */
   poses: Map<string, Mesh>;
   shown: Mesh | null;
-  /** Floats above the animal: its product when ready, a feed bowl when hungry. */
-  bubble: Mesh;
+  /** A feed bowl floating above the animal while it is hungry. */
   hungry: Mesh;
-  product: Mesh;
   /** What it does while standing still. */
   idle: Idle;
   type: Animal['type'];
@@ -197,21 +195,20 @@ function floor(scene: Scene, id: AnimalId, pen: Rect) {
  * Furniture in each pen: [kind, size, x, z] with x/z as fractions of the pen (0 = x0/z0; the
  * far corner (x1, z1) is the top of the screen). The feeder and the water show full or empty.
  */
-type PropKind = 'coop' | 'hay' | 'feeder' | 'water';
+type PropKind = 'coop' | 'hay' | 'feeder' | 'water' | 'product';
 const PROPS: Record<AnimalId, Array<[PropKind, number, number, number]>> = {
-  chicken: [['coop', 2.0, 0.8, 0.82], ['feeder', 1.1, 0.28, 0.42], ['water', 0.8, 0.62, 0.2]],
-  cow: [['hay', 1.15, 0.82, 0.88], ['hay', 0.9, 0.15, 0.9], ['water', 1.6, 0.84, 0.32], ['feeder', 1.6, 0.4, 0.17]],
+  // the product spot (egg nest, milk can) only shows while something is ready to collect
+  chicken: [['coop', 2.0, 0.8, 0.82], ['feeder', 1.1, 0.28, 0.42], ['water', 0.8, 0.62, 0.2], ['product', 0.75, 0.5, 0.72]],
+  cow: [['hay', 1.15, 0.82, 0.88], ['hay', 0.9, 0.15, 0.9], ['water', 1.6, 0.84, 0.32], ['feeder', 1.6, 0.4, 0.17], ['product', 0.8, 0.58, 0.78]],
 };
-const PROP_KEY = (type: AnimalId, kind: PropKind, full: boolean): BillboardKey =>
-  kind === 'coop' || kind === 'hay' ? kind : (`${type}-${kind}${full ? '' : '-empty'}` as BillboardKey);
-/** Products lying next to an animal while ready to collect. */
 const PRODUCT_KEY: Record<AnimalId, BillboardKey> = { chicken: 'egg-nest', cow: 'milk-can' };
-const PRODUCT_SIZE: Record<AnimalId, number> = { chicken: 0.5, cow: 0.6 };
+const PROP_KEY = (type: AnimalId, kind: PropKind, full: boolean): BillboardKey =>
+  kind === 'coop' || kind === 'hay' ? kind : kind === 'product' ? PRODUCT_KEY[type] : (`${type}-${kind}${full ? '' : '-empty'}` as BillboardKey);
 
-/** A feeder or water the player can tap. */
+/** A feeder, water trough or product spot the player can tap. */
 export interface Station {
   type: AnimalId;
-  kind: 'feeder' | 'water';
+  kind: 'feeder' | 'water' | 'product';
   at: Vector3;
   size: number;
 }
@@ -241,6 +238,11 @@ export class AnimalPen {
         const full = make(true);
         if (kind === 'feeder' || kind === 'water') {
           this.stations.push({ type: id, kind, at, size, full, empty: make(false) });
+        } else if (kind === 'product') {
+          // nothing to show while empty
+          const bubble = boards.quad(ANIMALS[id].product, BUBBLE, { onTop: true }).clone(`pen-${id}-product-bubble`);
+          bubble.position.set(at.x, size + 0.3, at.z);
+          this.stations.push({ type: id, kind, at, size, full, empty: bubble });
         }
         this.obstacles.push({ type: id, at, radius: size * 0.42 });
       });
@@ -251,14 +253,21 @@ export class AnimalPen {
   private obstacles: Array<{ type: AnimalId; at: Vector3; radius: number }> = [];
   private stations: Array<Station & { full: Mesh; empty: Mesh }> = [];
 
-  /** Feeders and water troughs, for picking taps. */
+  /** Feeders, water troughs and the products waiting to be collected, for picking taps. */
   get pickable(): Station[] {
-    return this.stations;
+    return this.stations.filter((s) => s.kind !== 'product' || s.full.isVisible);
   }
 
   /** Feeder full while any animal of the pen has eaten; water full until it runs dry. */
   private showStations(animals: Animal[], water: Partial<Record<AnimalId, number>>, now: number) {
     for (const s of this.stations) {
+      if (s.kind === 'product') {
+        // the nest / can appears with a bubble above it while any animal of the pen has a product
+        const ready = animals.some((a) => a.type === s.type && a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000);
+        s.full.isVisible = ready;
+        s.empty.isVisible = ready;
+        continue;
+      }
       const full = s.kind === 'water' ? (water[s.type] ?? 0) + WATER_MS > now : animals.some((a) => a.type === s.type && a.fedAt !== null);
       s.full.isVisible = full;
       s.empty.isVisible = !full;
@@ -279,7 +288,7 @@ export class AnimalPen {
   /** Match the walkers to the owned animals (same order as the state). */
   sync(animals: Animal[], water: Partial<Record<AnimalId, number>>, now: number) {
     this.showStations(animals, water, now);
-    const drop = (w: Walker) => [...w.poses.values(), w.bubble, w.hungry, w.product].forEach((m) => m.dispose());
+    const drop = (w: Walker) => [...w.poses.values(), w.hungry].forEach((m) => m.dispose());
     while (this.walkers.length > animals.length) drop(this.walkers.pop()!);
     animals.forEach((a, i) => {
       let w = this.walkers[i];
@@ -288,17 +297,11 @@ export class AnimalPen {
         w = undefined as unknown as Walker;
       }
       if (!w) {
-        const bubble = this.boards.quad(ANIMALS[a.type].product, BUBBLE, { onTop: true }).clone(`animal-bubble-${i}`);
         const hungry = this.boards.quad('hungry', BUBBLE, { onTop: true }).clone(`animal-hungry-${i}`);
-        const product = this.boards.quad(PRODUCT_KEY[a.type], PRODUCT_SIZE[a.type], { bottom: true }).clone(`animal-product-${i}`);
         const pos = this.spot(a.type);
-        w = { poses: new Map(), shown: null, idle: 'stand', bubble, hungry, product, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
+        w = { poses: new Map(), shown: null, idle: 'stand', hungry, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
         this.walkers[i] = w;
       }
-      // the product lies on the ground beside the animal; the bubble says "tap me" above it
-      const ready = a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
-      w.bubble.isVisible = ready;
-      w.product.isVisible = ready;
       w.hungry.isVisible = a.fedAt === null;
     });
   }
@@ -368,9 +371,6 @@ export class AnimalPen {
       const hop = walking && (frame === POSE.back || frame === POSE.front) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
       this.show(w, frame).position.set(w.pos.x, hop, w.pos.z);
       if (w.hungry.isVisible) w.hungry.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
-      // in front of the animal (toward the viewer: -x, -z), a little to the side it faces
-      if (w.product.isVisible) w.product.position.set(w.pos.x - 0.3 + w.facing * 0.2, 0, w.pos.z - 0.3 - w.facing * 0.2);
-      if (w.bubble.isVisible) w.bubble.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
     }
   }
 

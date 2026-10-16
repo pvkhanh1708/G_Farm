@@ -188,7 +188,19 @@ export function App() {
           return;
         }
       } else if (e.type === 'stationTap') {
-        if (e.kind === 'water') {
+        if (e.kind === 'product') {
+          // the egg nest / milk can collects every ready product of that pen
+          const which = store.getState().animals.flatMap((a, i) => (a.type === e.pen && animalReady(a) ? [i] : []));
+          farmApi.collect(which).then(
+            (res) => {
+              sfx.collect();
+              fxBus.float(e.x, e.y - 20, `+${res.collected} · +${res.xp} XP`, { type: 'xp' });
+              fxBus.fly({ type: 'xp' }, { x: e.x, y: e.y }, 'level', 2, () => bump('level'));
+              fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'inventory', Math.min(res.collected, 4), () => bump('inventory'));
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+        } else if (e.kind === 'water') {
           farmApi.water(e.pen).then(
             () => {
               sfx.plant();
@@ -220,20 +232,8 @@ export function App() {
           );
           return;
         }
-        if (!a || !animalReady(a)) {
-          sfx.tap();
-          setPopup({ type: 'animals' });
-          return;
-        }
-        farmApi.collect([e.index]).then(
-          (res) => {
-            sfx.collect();
-            fxBus.float(e.x, e.y - 20, `+${res.xp} XP`, { type: 'xp' });
-            fxBus.fly({ type: 'xp' }, { x: e.x, y: e.y }, 'level', 2, () => bump('level'));
-            fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'inventory', 1, () => bump('inventory'));
-          },
-          (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
-        );
+        sfx.tap();
+        setPopup({ type: 'animals' });
       } else if (e.type === 'view') {
         setOverview(e.overview);
       } else if (e.type === 'harvested') {

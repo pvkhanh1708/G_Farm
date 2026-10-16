@@ -21,7 +21,7 @@ ròng) và *Phòng game*.
 **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
 **Chăn nuôi:** gà ăn 3 lúa mì, bò ăn 2 ngô thì mới đẻ trứng / cho sữa (sau 5 / 15 phút); thu xong con vật đói lại.
-Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng / bình sữa nằm cạnh con vật khi có sản phẩm, chạm để thu. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
+Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng nằm ở ổ rơm cạnh nhà gà, sữa ở bình sữa trong chuồng bò (chỉ hiện khi có sản phẩm); chạm vào đó để thu cả chuồng. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
 sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
 **Hàng xóm:** đi thăm nông trại người khác (nút Hàng xóm, hoặc chạm tên trong Xếp hạng): hái trộm 25% sản lượng một ô chín

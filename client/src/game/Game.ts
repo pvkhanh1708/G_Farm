@@ -43,7 +43,7 @@ export type GameEvent =
   /** An animal in the pen was tapped (index into state.animals; x/y on screen). */
   | { type: 'animalTap'; index: number; x: number; y: number }
   /** A pen's feeder or water was tapped. */
-  | { type: 'stationTap'; pen: AnimalId; kind: 'feeder' | 'water'; x: number; y: number }
+  | { type: 'stationTap'; pen: AnimalId; kind: 'feeder' | 'water' | 'product'; x: number; y: number }
   /** The camera crossed between the close farm view and the zoomed-out overview. */
   | { type: 'view'; overview: boolean };
 
