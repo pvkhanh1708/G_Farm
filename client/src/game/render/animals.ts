@@ -1,9 +1,7 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture.js';
 import { Texture } from '@babylonjs/core/Materials/Textures/texture.js';
-import { Color3 } from '@babylonjs/core/Maths/math.color.js';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
-import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder.js';
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { Scene } from '@babylonjs/core/scene.js';
@@ -13,9 +11,10 @@ const WATER_MS = ECONOMY.water.minutes * 60_000;
 import type { Animal } from '../state/store';
 import { BillboardKey, Billboards } from './billboards';
 import { mulberry } from './geometry';
+import { artUrl, loadImage } from '../art';
 
 /**
- * Fenced pens on the right of the farm block, one for chickens and one for cows.
+ * Pens (open ground, no fence) on the right of the farm block, one for chickens and one for cows.
  * Each owned animal is a camera-facing picture that wanders inside its own pen. Products wait at a
  * fixed spot of the pen (egg nest, milk can) until collected.
  */
@@ -50,37 +49,6 @@ interface Walker {
 }
 
 type Rect = { x0: number; x1: number; z0: number; z1: number };
-
-function fence(scene: Scene, mat: StandardMaterial, id: string, { x0, x1, z0, z1 }: Rect) {
-  const parts: Mesh[] = [];
-  const post = (x: number, z: number) => {
-    const p = CreateBox('post', { width: 0.12, depth: 0.12, height: 0.62 }, scene);
-    p.position.set(x, 0.31, z);
-    parts.push(p);
-  };
-  const rail = (ax: number, az: number, bx: number, bz: number, y: number) => {
-    const len = Math.hypot(bx - ax, bz - az);
-    const r = CreateBox('rail', { width: len, depth: 0.06, height: 0.08 }, scene);
-    r.position.set((ax + bx) / 2, y, (az + bz) / 2);
-    r.rotation.y = -Math.atan2(bz - az, bx - ax);
-    parts.push(r);
-  };
-  const side = (ax: number, az: number, bx: number, bz: number) => {
-    const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 1.2));
-    for (let i = 0; i < n; i++) post(ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n);
-    rail(ax, az, bx, bz, 0.25);
-    rail(ax, az, bx, bz, 0.48);
-  };
-  side(x0, z0, x1, z0);
-  side(x1, z0, x1, z1);
-  side(x1, z1, x0, z1);
-  side(x0, z1, x0, z0);
-  const m = Mesh.MergeMeshes(parts, true)!;
-  m.name = `pen-fence-${id}`;
-  m.material = mat;
-  m.isPickable = false;
-  return m;
-}
 
 /** The floor reaches this far past the fence, fading into the meadow. */
 const FLOOR_BLEED = 0.45;
@@ -165,18 +133,30 @@ function floor(scene: Scene, id: AnimalId, pen: Rect) {
   const c = tex.getContext() as unknown as Ctx;
   const r = mulberry(id === 'cow' ? 78 : 77);
   (id === 'cow' ? paintPastureFloor : paintCoopFloor)(c, r, W, H);
-  // ragged, soft edge: opaque inside the fence, fading out over the bleed margin
-  const img = c.getImageData(0, 0, W, H);
-  const fade = FLOOR_BLEED * FLOOR_PPU;
-  const wobble = (t: number, seed: number) => Math.sin(t * 0.045 + seed) * 6 + Math.sin(t * 0.13 + seed * 2) * 3;
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const edge = Math.min(x + wobble(y, 1), W - x + wobble(y, 4), y + wobble(x, 7), H - y + wobble(x, 9));
-      const k = Math.max(0, Math.min(1, (edge - fade * 0.25) / (fade * 0.75)));
-      img.data[(y * W + x) * 4 + 3] = Math.round(255 * k * k * (3 - 2 * k));
-    }
-  c.putImageData(img, 0, 0);
-  tex.update(true);
+  // ragged, soft edge: opaque inside the pen, fading out over the bleed margin
+  const fadeEdge = () => {
+    const img = c.getImageData(0, 0, W, H);
+    const fade = FLOOR_BLEED * FLOOR_PPU;
+    const wobble = (t: number, seed: number) => Math.sin(t * 0.045 + seed) * 6 + Math.sin(t * 0.13 + seed * 2) * 3;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const edge = Math.min(x + wobble(y, 1), W - x + wobble(y, 4), y + wobble(x, 7), H - y + wobble(x, 9));
+        const k = Math.max(0, Math.min(1, (edge - fade * 0.25) / (fade * 0.75)));
+        img.data[(y * W + x) * 4 + 3] = Math.round(255 * k * k * (3 - 2 * k));
+      }
+    c.putImageData(img, 0, 0);
+    tex.update(true);
+  };
+  fadeEdge();
+  // the hand-drawn ground (assets/sprites/ground/pen-<id>.png) replaces the painted one, tiled at ~4 units
+  const url = artUrl(`ground/pen-${id}.png`);
+  if (url)
+    void loadImage(url).then((img) => {
+      if (!img) return;
+      const tile = 4 * FLOOR_PPU;
+      for (let y = 0; y < H; y += tile) for (let x = 0; x < W; x += tile) c.drawImage(img, x, y, tile, tile);
+      fadeEdge();
+    });
   const g = CreateGround(`pen-floor-${id}`, { width: w, height: d }, scene);
   g.position.set((pen.x0 + pen.x1) / 2, 0.004, (pen.z0 + pen.z1) / 2);
   const mat = new StandardMaterial(`pen-floor-mat-${id}`, scene);
@@ -221,13 +201,8 @@ export class AnimalPen {
   private rand = mulberry(4242);
 
   constructor(scene: Scene, private boards: Billboards) {
-    const wood = new StandardMaterial('fence-mat', scene);
-    wood.diffuseColor = Color3.FromHexString('#b07a45');
-    wood.emissiveColor = Color3.FromHexString('#4a2f18');
-    wood.specularColor = Color3.Black();
     for (const id of Object.keys(PENS) as AnimalId[]) {
       const pen = PENS[id];
-      fence(scene, wood, id, pen);
       floor(scene, id, pen);
       PROPS[id].forEach(([kind, size, fx, fz], n) => {
         const at = new Vector3(pen.x0 + fx * (pen.x1 - pen.x0), 0, pen.z0 + fz * (pen.z1 - pen.z0));
