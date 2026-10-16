@@ -13,19 +13,19 @@ Chạm ô cây đang lớn để xem thời gian còn lại, **bón phân** (gi�
 (một ô, hoặc mọi ô cùng loại cây đang lớn). Cây chín có bong bóng ngôi sao phía trên; **kéo ngón tay** bắt đầu từ một cây chín để thu
 cả dãy, hoặc khi đang “Gieo nhanh” thì kéo qua các ô trống để gieo.
 
-**Cột nút bên phải:** *Nhiệm vụ* (3–4 nhiệm vụ mỗi ngày theo giờ Việt Nam + quà đăng nhập 7 ngày liên tiếp, tự hiện khi vào game),
-*Đơn hàng* (từ cấp 3: 3 đơn, giao đủ hàng nhận ×1,6 giá chợ và ×1,5 XP; “Đổi” để lấy đơn khác), *Chuồng* (gà từ cấp 6 đẻ trứng
-mỗi 5 phút, bò từ cấp 15 cho sữa mỗi 15 phút; chuồng gà và chuồng bò riêng, bên phải nông trại; chạm con vật để thu), *Nâng cấp* (Đất màu mỡ +10%
-sản lượng/cấp, Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (nông trại: xu / cấp / số ô đất; phòng game: số trận thắng / tiền thắng
-ròng) và *Phòng game*.
+**Nút bên phải** chỉ còn *Nhiệm vụ*, *Đơn hàng* và *Thêm* (Hàng xóm, Chuồng trại, Xưởng, Nâng cấp, Xếp hạng,
+Phòng game). Xưởng chế biến, nhà gà (chuồng trại) và máy tưới (nâng cấp) còn là **công trình trong nông trại**,
+chạm vào để mở; xưởng có bong bóng khi có mẻ hàng xong. *Nhiệm vụ* (nhiệm vụ ngày + quà đăng nhập 7 ngày),
+*Đơn hàng* (từ cấp 3: giao đủ hàng nhận ×1,6 giá chợ và ×1,5 XP), *Nâng cấp* (Đất màu mỡ +10% sản lượng/cấp,
+Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (xu / cấp / ô đất; số trận thắng / tiền thắng).
 **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
 **Chăn nuôi:** gà ăn 3 lúa mì, bò ăn 2 ngô thì mới đẻ trứng / cho sữa (sau 5 / 15 phút); thu xong con vật đói lại.
 Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng nằm ở ổ rơm cạnh nhà gà, sữa ở bình sữa trong chuồng bò (chỉ hiện khi có sản phẩm); chạm vào đó để thu cả chuồng. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
 sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
-**Hàng xóm:** đi thăm nông trại người khác (nút Hàng xóm, hoặc chạm tên trong Xếp hạng): hái trộm 25% sản lượng một ô chín
-(tối đa 2 người mỗi ô, 20 lần/ngày, chủ luôn còn ít nhất 1), tưới giúp cây đang lớn (-10% thời gian còn lại, +5 xu +2 XP,
+**Hàng xóm:** đi thăm nông trại người khác (Thêm → Hàng xóm, hoặc chạm tên trong Xếp hạng): nông trại của họ hiện ra như nhà mình, chạm cây chín để hái trộm 25% sản lượng
+(tối đa 2 người mỗi ô, 20 lần/ngày, chủ luôn còn ít nhất 1), chạm cây đang lớn để tưới giúp (-10% thời gian còn lại, +5 xu +2 XP,
 10 lần/ngày). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**

@@ -26,13 +26,13 @@ export type Prop =
   | 'coop' | 'hay' | 'doghouse'
   | 'chicken-feeder' | 'chicken-feeder-empty' | 'chicken-water' | 'chicken-water-empty'
   | 'cow-feeder' | 'cow-feeder-empty' | 'cow-water' | 'cow-water-empty'
-  | 'egg-nest' | 'milk-can';
-const PROPS: Prop[] = ['coop', 'hay', 'doghouse', 'chicken-feeder', 'chicken-feeder-empty', 'chicken-water', 'chicken-water-empty', 'cow-feeder', 'cow-feeder-empty', 'cow-water', 'cow-water-empty', 'egg-nest', 'milk-can'];
+  | 'egg-nest' | 'milk-can' | 'workshop' | 'sprinkler';
+const PROPS: Prop[] = ['workshop', 'sprinkler', 'coop', 'hay', 'doghouse', 'chicken-feeder', 'chicken-feeder-empty', 'chicken-water', 'chicken-water-empty', 'cow-feeder', 'cow-feeder-empty', 'cow-water', 'cow-water-empty', 'egg-nest', 'milk-can'];
 /** Ground products fall back to the UI icons until their own picture is provided. */
-const PROP_FALLBACK: Partial<Record<Prop, string>> = { 'egg-nest': 'ui/egg.png', 'milk-can': 'ui/milk.png' };
+const PROP_FALLBACK: Partial<Record<Prop, string>> = { 'egg-nest': 'ui/egg.png', 'milk-can': 'ui/milk.png', workshop: 'ui/workshop.png', sprinkler: 'ui/sprinkler.png' };
 type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | 'hungry' | 'coop' | 'hay' | 'doghouse' | 'feeder' | 'trough';
-export type BillboardKey = 'ripe' | 'egg' | 'milk' | 'hungry' | Prop | `${'chicken' | 'cow'}:${number}`;
-const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', ...PROPS, ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
+export type BillboardKey = 'ripe' | 'egg' | 'milk' | 'hungry' | 'goods' | Prop | `${'chicken' | 'cow'}:${number}`;
+const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', 'goods', ...PROPS, ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
 const CELL = 256;
 /** Cells per row of the texture (2048 px wide: fine for any mobile GPU). */
 const COLS = 8;
@@ -41,7 +41,7 @@ const cellX = (i: number) => (i % COLS) * CELL;
 const cellY = (i: number) => Math.floor(i / COLS) * CELL;
 const OUT = '#5a3214';
 /** Bubbles whose picture comes from the hand-drawn UI art when it is provided. */
-const BUBBLE_ART: Partial<Record<string, string>> = { ripe: 'ui/harvest.png', egg: 'ui/egg.png', milk: 'ui/milk.png', hungry: 'ui/feed-bowl.png' };
+const BUBBLE_ART: Partial<Record<string, string>> = { ripe: 'ui/harvest.png', egg: 'ui/egg.png', milk: 'ui/milk.png', hungry: 'ui/feed-bowl.png', goods: 'ui/bread.png' };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -533,7 +533,7 @@ export class Billboards {
       c.restore();
     };
     // painted stand-ins: props without one stay blank until their picture loads
-    const STAND_IN: Partial<Record<string, Picture>> = { 'chicken-feeder': 'feeder', 'chicken-feeder-empty': 'feeder', 'cow-water': 'trough', 'cow-water-empty': 'trough', 'egg-nest': 'egg', 'milk-can': 'milk' };
+    const STAND_IN: Partial<Record<string, Picture>> = { goods: 'ripe',  'chicken-feeder': 'feeder', 'chicken-feeder-empty': 'feeder', 'cow-water': 'trough', 'cow-water-empty': 'trough', 'egg-nest': 'egg', 'milk-can': 'milk' };
     KEYS.forEach((k, i) => {
       const pic = (STAND_IN[k] ?? k.split(':')[0]) as Picture;
       if (PAINT[pic]) inCell(i, () => PAINT[pic](c));

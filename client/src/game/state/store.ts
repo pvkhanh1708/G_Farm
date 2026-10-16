@@ -87,6 +87,10 @@ export interface TileState {
   next: boolean;
   crop: CropId | null;
   plantedAt: number | null;
+  /** Growth time when it is not the player's own (a neighbour's farm, with their sprinkler). */
+  growMs?: number;
+  /** Ripe but nothing to take any more (a neighbour's tile): no "harvest me" bubble. */
+  noBadge?: boolean;
 }
 
 export type ActionResult<T = void> = { ok: true; value: T } | { ok: false; reason: string };
@@ -292,20 +296,22 @@ class Store {
   }
 }
 
-export function growthProgress(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
+type Growing = { crop: CropId | null; plantedAt: number | null; growMs?: number };
+
+export function growthProgress(p: Growing, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
-  return Math.max(0, Math.min(1, (now - p.plantedAt) / growMs(p.crop, store.getState().sprinkler)));
+  return Math.max(0, Math.min(1, (now - p.plantedAt) / (p.growMs ?? growMs(p.crop, store.getState().sprinkler))));
 }
 
-export function growthStage(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
+export function growthStage(p: Growing, now = serverNow()): number {
   const k = growthProgress(p, now);
   if (k >= 1) return STAGE_COUNT - 1;
   return Math.min(STAGE_COUNT - 2, Math.floor(k * (STAGE_COUNT - 1)));
 }
 
-export function secondsLeft(p: { crop: CropId | null; plantedAt: number | null }, now = serverNow()): number {
+export function secondsLeft(p: Growing, now = serverNow()): number {
   if (!p.crop || p.plantedAt == null) return 0;
-  return Math.max(0, Math.ceil((growMs(p.crop, store.getState().sprinkler) - (now - p.plantedAt)) / 1000));
+  return Math.max(0, Math.ceil(((p.growMs ?? growMs(p.crop, store.getState().sprinkler)) - (now - p.plantedAt)) / 1000));
 }
 
 export const store = new Store();

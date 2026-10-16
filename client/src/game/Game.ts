@@ -15,9 +15,10 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial.js'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color.js';
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { Scene } from '@babylonjs/core/scene.js';
+import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { AnimalId, CROP_ORDER, CropId, ISLAND_SIZE, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
+import { AnimalId, CROP_ORDER, CropId, ISLAND_SIZE, PENS, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { SpriteLibrary } from './render/sprites';
 import { Fx } from './render/fx';
@@ -32,7 +33,7 @@ import { TileBatches } from './render/batch';
 import { Billboards } from './render/billboards';
 import { AnimalPen } from './render/animals';
 import type { SparkleField } from './render/fx';
-import { growthProgress, store } from './state/store';
+import { growthProgress, store, TileState } from './state/store';
 
 export type TileKind = 'locked' | 'next' | 'empty' | 'growing';
 
@@ -42,10 +43,28 @@ export type GameEvent =
   | { type: 'ready'; g: number }
   /** An animal in the pen was tapped (index into state.animals; x/y on screen). */
   | { type: 'animalTap'; index: number; x: number; y: number }
+  /** A building in the scene was tapped. */
+  | { type: 'buildingTap'; kind: Building['kind'] }
+  /** While visiting a neighbour: a ripe tile (take some) or a growing one (water it). */
+  | { type: 'visitTap'; g: number; action: 'steal' | 'help'; x: number; y: number }
   /** A pen's feeder or water was tapped. */
   | { type: 'stationTap'; pen: AnimalId; kind: 'feeder' | 'water' | 'product'; x: number; y: number }
   /** The camera crossed between the close farm view and the zoomed-out overview. */
   | { type: 'view'; overview: boolean };
+
+/** A neighbour's farm shown in place of the player's own. */
+export interface VisitFarm {
+  unlocked: number;
+  plantings: Array<{ tile: number; crop: CropId; plantedAt: number; growMs: number; steal: number; helped: boolean }>;
+}
+
+/** Things standing on the farm that open a window when tapped. */
+interface Building {
+  kind: 'workshop' | 'upgrades' | 'pens';
+  at: Vector3;
+  size: number;
+  mesh: Mesh | null;
+}
 
 export interface ScreenPoint {
   x: number;
@@ -88,6 +107,10 @@ export class Game {
   /** Seed of the quick-sow tool (set by the UI): dragging over empty tiles sows it. */
   sowTool: CropId | null = null;
   private paintMode: 'harvest' | 'sow' | null = null;
+  /** A neighbour's farm on show instead of ours (null = at home). */
+  private visit: { tiles: TileState[]; unlocked: number; plantings: VisitFarm['plantings'] } | null = null;
+  private buildings: Building[] = [];
+  private goodsBubble: Mesh | null = null;
   private painted = new Set<number>();
   quality: Quality;
 
@@ -197,6 +220,7 @@ export class Game {
     if (this.showcase) this.buildShowcase();
     else {
       this.pen = new AnimalPen(scene, billboards);
+      this.buildBuildings(billboards);
       this.syncTiles(false);
       this.focusCurrent(true);
       this.unsubStore = store.subscribe(() => this.syncTiles(true));
@@ -313,9 +337,14 @@ export class Game {
     return null;
   }
 
+  /** Tiles on show: ours, or the neighbour's we are visiting. */
+  private get shownTiles() {
+    return this.visit?.tiles ?? store.tiles();
+  }
+
   private syncTiles(animate: boolean) {
-    const tiles = store.tiles();
-    const parcels = store.parcelCount();
+    const tiles = this.shownTiles;
+    const parcels = this.visit ? Math.floor(this.visit.unlocked / TILES_PER_PARCEL) + 1 : store.parcelCount();
     if (parcels !== this.parcels) {
       this.parcels = parcels;
       this.world.setParcels(parcels);
@@ -328,8 +357,11 @@ export class Game {
         this.tiles.delete(g);
       }
     const now = serverNow();
-    this.pen?.sync(store.getState().animals, store.getState().water, now);
-    this.pen?.setDog(store.getState().dog);
+    const home = !this.visit;
+    // a visit shows the neighbour's fields; their pens stay empty
+    this.pen?.sync(home ? store.getState().animals : [], home ? store.getState().water : {}, now);
+    this.pen?.setDog(home && store.getState().dog);
+    this.syncBuildings(now);
     for (const t of tiles) {
       let v = this.tiles.get(t.g);
       if (!v) {
@@ -354,12 +386,12 @@ export class Game {
     const xs = centers.map((c) => c.x), zs = centers.map((c) => c.z);
     const h = ISLAND_SIZE / 2;
     // the animal pen sits right of the farm block
-    this.rig.setBounds(Math.min(...xs) - h, Math.max(PENS_X1 - 1, Math.max(...xs) + h), Math.min(...zs) - h, Math.max(...zs) + h);
+    this.rig.setBounds(Math.min(...xs) - h, Math.max(PENS_X1 + 1.2, Math.max(...xs) + h), Math.min(...zs) - h, Math.max(...zs) + h);
   }
 
   /** Centre on the parcel being filled. */
   focusCurrent(immediate = false) {
-    const k = Math.min(this.parcels - 1, Math.floor(store.getState().unlocked / TILES_PER_PARCEL));
+    const k = Math.min(this.parcels - 1, Math.floor((this.visit?.unlocked ?? store.getState().unlocked) / TILES_PER_PARCEL));
     const c = parcelCenter(Math.max(0, k));
     this.overview = false;
     this.rig.focus(new Vector3(c.x, 0, c.z), this.parcelRadius, immediate);
@@ -430,10 +462,16 @@ export class Game {
       }
       return;
     }
+    if (this.visit) return this.visitTap(x, y);
     const a = this.animalAt(x, y);
     if (a) return this.emit({ type: 'animalTap', index: a.index, x: a.x, y: a.y });
     const station = this.stationAt(x, y);
     if (station) return this.emit({ type: 'stationTap', pen: station.type, kind: station.kind, x: station.x, y: station.y });
+    const b = this.buildingAt(x, y);
+    if (b) {
+      sfx.tap();
+      return this.emit({ type: 'buildingTap', kind: b.kind });
+    }
     const g = this.tileAt(x, y);
     if (g === null) return;
     const view = this.tiles.get(g)!;
@@ -464,6 +502,108 @@ export class Game {
     return best;
   }
 
+  // ---------------------------------------------------------------- buildings
+
+  private buildBuildings(boards: Billboards) {
+    const spot = (kind: Building['kind'], key: 'workshop' | 'sprinkler' | null, x: number, z: number, size: number) => {
+      let mesh: Mesh | null = null;
+      if (key) {
+        mesh = boards.quad(key, size, { bottom: true }).clone(`building-${kind}`);
+        mesh.isVisible = true;
+        mesh.position.set(x, 0, z);
+      }
+      this.buildings.push({ kind, at: new Vector3(x, 0, z), size, mesh });
+    };
+    // the workshop beside the chicken coop, the sprinkler (upgrades) in front of the first field
+    spot('workshop', 'workshop', PENS_X1 + 2.1, -1.9, 2.6);
+    spot('upgrades', 'sprinkler', 0, 1.9, 1.1);
+    // the coop itself opens the pens window (it is drawn by the pen)
+    spot('pens', null, PENS.chicken.x0 + 0.74 * (PENS.chicken.x1 - PENS.chicken.x0), PENS.chicken.z0 + 0.82 * (PENS.chicken.z1 - PENS.chicken.z0), 2.1);
+    this.goodsBubble = boards.quad('goods', 0.62, { onTop: true }).clone('workshop-bubble');
+    this.goodsBubble.position.set(PENS_X1 + 2.1, 2.9, -1.9);
+  }
+
+  /** Buildings hide while visiting; the workshop shows a bubble when batches are done. */
+  private syncBuildings(now: number) {
+    for (const b of this.buildings) b.mesh?.setEnabled(!this.visit);
+    if (!this.goodsBubble) return;
+    const machines = store.getState().machines;
+    const done = Object.values(machines).some((m) => m?.queue.some((j) => j.readyAt <= now));
+    this.goodsBubble.isVisible = !this.visit && done;
+    if (this.goodsBubble.isVisible) this.goodsBubble.position.y = 2.9 + Math.abs(Math.sin(this.time * 2.6)) * 0.15;
+  }
+
+  private buildingAt(x: number, y: number) {
+    const ppu = this.rig.pixelsPerUnit;
+    for (const b of this.buildings) {
+      const p = this.project(b.at.add(new Vector3(0, b.size * 0.4, 0)));
+      if (Math.abs(p.x - x) < b.size * 0.45 * ppu && Math.abs(p.y - y) < b.size * 0.45 * ppu) return b;
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------- visiting a neighbour
+
+  /** Show a neighbour's farm in place of ours (null: back home). */
+  setVisit(farm: VisitFarm | null) {
+    const fresh = !this.visit !== !farm || (farm && this.visit && farm.unlocked !== this.visit.unlocked);
+    if (!farm) this.visit = null;
+    else {
+      const now = serverNow();
+      const at = new Map(farm.plantings.map((p) => [p.tile, p]));
+      const tiles: TileState[] = [];
+      const parcels = Math.floor(farm.unlocked / TILES_PER_PARCEL) + 1;
+      for (let g = 0; g < parcels * TILES_PER_PARCEL; g++) {
+        const p = at.get(g);
+        tiles.push({
+          g, parcel: Math.floor(g / TILES_PER_PARCEL), unlocked: g < farm.unlocked, next: false,
+          crop: p?.crop ?? null, plantedAt: p?.plantedAt ?? null, growMs: p?.growMs,
+          // ripe already and nothing left for us: no bubble
+          noBadge: !!p && p.steal === 0 && p.plantedAt + p.growMs <= now,
+        });
+      }
+      this.visit = { tiles, unlocked: farm.unlocked, plantings: farm.plantings };
+    }
+    if (fresh) {
+      // a different farm: rebuild every tile view without the pop-in animations
+      for (const v of this.tiles.values()) v.dispose();
+      this.tiles.clear();
+      this.readySet.clear();
+      this.parcels = 0;
+    }
+    this.syncTiles(!fresh);
+    if (fresh) this.focusCurrent(true);
+  }
+
+  get visiting() {
+    return this.visit !== null;
+  }
+
+  private visitTap(x: number, y: number) {
+    const g = this.tileAt(x, y);
+    const v = this.visit!;
+    if (g === null) return;
+    const t = v.tiles[g];
+    const p = v.plantings.find((q) => q.tile === g);
+    const view = this.tiles.get(g);
+    if (!t?.crop || !p || !view) return;
+    const pt = this.tileAnchor(g, 0.8);
+    if (growthProgress(t) >= 1) this.emit({ type: 'visitTap', g, action: 'steal', x: pt.x, y: pt.y });
+    else {
+      view.wiggle();
+      if (!p.helped) this.emit({ type: 'visitTap', g, action: 'help', x: pt.x, y: pt.y });
+      else sfx.tap();
+    }
+  }
+
+  /** The visitor took crops from a tile: the same burst as a harvest. */
+  stolen(g: number) {
+    const v = this.tiles.get(g);
+    if (!v) return;
+    this.fx.sparkleBurst(v.center.add(new Vector3(0, 0.6, 0)), 20);
+    this.fx.leafBurst(v.center.add(new Vector3(0, 0.35, 0)), 10);
+  }
+
   /** Feeder or water trough under a screen point. */
   private stationAt(x: number, y: number) {
     if (!this.pen) return null;
@@ -477,7 +617,7 @@ export class Game {
 
   /** Drag starting on a ripe crop harvests along the way; with the sow tool, on an empty tile it sows. */
   private paintStart(x: number, y: number) {
-    if (this.showcase || this.far) return false;
+    if (this.showcase || this.far || this.visit) return false;
     const g = this.tileAt(x, y);
     const st = g === null ? undefined : store.tile(g);
     this.painted.clear();

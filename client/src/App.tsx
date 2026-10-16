@@ -13,7 +13,9 @@ import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedS
 import { NetBadge } from './ui/NetBadge';
 import { GameRoom } from './ui/GameRoom';
 import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup, animalHungry, useNow } from './ui/Progress';
-import { SideButtons } from './ui/SideButtons';
+import { MoreMenu, SideButtons } from './ui/SideButtons';
+import { VisitBar } from './ui/VisitBar';
+import type { NeighbourFarm } from './game/net/farm';
 import { finishedJobs, WorkshopPopup } from './ui/Workshop';
 import { NeighborsPopup } from './ui/Neighbors';
 import { music } from './game/audio/music';
@@ -21,7 +23,7 @@ import { farmApi, FarmError } from './game/net/farm';
 import { TileOverlays } from './ui/TileOverlays';
 import { formatNum } from './ui/format';
 
-type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | { type: 'upgrades' } | { type: 'orders' } | { type: 'quests' } | { type: 'login' } | { type: 'animals' } | { type: 'ranks' } | { type: 'workshop' } | { type: 'neighbors'; visit?: number } | null;
+type Popup = { type: 'shop'; tile: number | null; bulk?: boolean } | { type: 'inventory' } | { type: 'unlock' } | { type: 'settings' } | { type: 'levels' } | { type: 'account' } | { type: 'install' } | { type: 'room' } | { type: 'upgrades' } | { type: 'orders' } | { type: 'quests' } | { type: 'login' } | { type: 'animals' } | { type: 'ranks' } | { type: 'workshop' } | { type: 'neighbors' } | { type: 'more' } | null;
 
 const PREFS_KEY = 'farm-empire:prefs';
 function loadPrefs(): { quality: Quality; sound: boolean; music: boolean; fps: boolean } {
@@ -65,6 +67,8 @@ export function App() {
   const [tool, setTool] = useState<CropId | null>(null);
   const [overview, setOverview] = useState(false);
   const [prefs, setPrefs] = useState(loadPrefs);
+  /** The neighbour's farm being visited (shown in place of ours). */
+  const [visiting, setVisiting] = useState<NeighbourFarm | null>(null);
   const toolRef = useRef(tool);
   toolRef.current = tool;
   useEffect(() => {
@@ -187,6 +191,42 @@ export function App() {
           setRevealed((r) => (r === e.g ? null : e.g));
           return;
         }
+      } else if (e.type === 'buildingTap') {
+        sfx.open();
+        setPopup({ type: e.kind === 'pens' ? 'animals' : e.kind });
+      } else if (e.type === 'visitTap') {
+        const farm = visitRef.current;
+        if (!farm) return;
+        if (e.action === 'steal') {
+          if (farm.stealsLeft <= 0) return fxBus.toast('Hôm nay đã hái trộm đủ lượt', 'info');
+          farmApi.steal(farm.id, e.g).then(
+            (res) => {
+              setVisiting(res.farm);
+              if (res.caught) {
+                sfx.error();
+                fxBus.toast(`Gâu gâu! Bị chó bắt, nộp phạt ${formatNum(res.fine)} xu`, 'bad');
+              } else {
+                sfx.harvest();
+                game?.stolen(e.g);
+                fxBus.float(e.x, e.y - 20, `+${formatNum(res.qty)}`, { type: 'crop', crop: res.crop });
+                fxBus.fly({ type: 'crop', crop: res.crop }, { x: e.x, y: e.y }, 'inventory', Math.min(res.qty, 4), () => bump('inventory'));
+              }
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+        } else {
+          if (farm.helpsLeft <= 0) return fxBus.toast('Hôm nay đã tưới giúp đủ lượt', 'info');
+          farmApi.help(farm.id, e.g).then(
+            (res) => {
+              setVisiting(res.farm);
+              sfx.plant();
+              game?.puff([e.g]);
+              fxBus.float(e.x, e.y - 20, `+${res.xp} XP`, { type: 'xp' });
+              fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'coins', 3, () => bump('coins'));
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+        }
       } else if (e.type === 'stationTap') {
         if (e.kind === 'product') {
           // the egg nest / milk can collects every ready product of that pen
@@ -261,6 +301,22 @@ export function App() {
     fxBus.toast(`Đã bán ${formatNum(qty)} ${itemDef(crop).name.toLowerCase()} · +${formatNum(res.value)} xu`, 'good');
   };
 
+  const visitRef = useRef(visiting);
+  visitRef.current = visiting;
+  useEffect(() => {
+    game?.setVisit(visiting);
+  }, [game, visiting]);
+  /** Go to a neighbour's farm (from the neighbours list, the news log or the leaderboard). */
+  const goVisit = (id: number) => {
+    setPopup(null);
+    setTool(null);
+    setRevealed(null);
+    farmApi.visit(id).then(
+      (f) => (sfx.open(), setVisiting(f)),
+      (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Không mở được nông trại', 'bad'),
+    );
+  };
+
   const close = () => {
     sfx.close();
     setPopup(null);
@@ -273,7 +329,8 @@ export function App() {
   return (
     <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
       <canvas ref={canvasRef} className="scene" />
-      {game && !showcase && (
+      {game && !showcase && visiting && <VisitBar farm={visiting} onHome={() => (sfx.close(), setVisiting(null))} />}
+      {game && !showcase && !visiting && (
         <>
           <TileOverlays
             game={game}
@@ -317,10 +374,9 @@ export function App() {
           <SideButtons
             quests={claimableCount(s.daily)}
             orders={s.orders.filter((o) => Object.entries(o.items).every(([id, n]) => (s.inventory[id as ItemId] ?? 0) >= (n ?? 0))).length}
-            animals={s.animals.filter((a) => animalReady(a, clock) || animalHungry(a)).length}
-            workshop={finishedJobs(s, clock)}
-            neighbors={s.news}
+            more={s.news}
             onOpen={(type) => (sfx.open(), setPopup({ type }))}
+            onMore={() => (sfx.open(), setPopup({ type: 'more' }))}
           />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
           <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
@@ -356,9 +412,16 @@ export function App() {
       {popup?.type === 'quests' && <QuestsPopup onClose={close} />}
       {popup?.type === 'login' && <LoginRewardPopup onClose={close} />}
       {popup?.type === 'animals' && <AnimalsPopup onClose={close} />}
-      {popup?.type === 'ranks' && <LeaderboardPopup onClose={close} onVisit={(id) => (sfx.open(), setPopup({ type: 'neighbors', visit: id }))} />}
+      {popup?.type === 'ranks' && <LeaderboardPopup onClose={close} onVisit={goVisit} />}
+      {popup?.type === 'more' && (
+        <MoreMenu
+          badges={{ neighbors: s.news, animals: s.animals.filter((a) => animalReady(a, clock) || animalHungry(a)).length, workshop: finishedJobs(s, clock) }}
+          onOpen={(type) => setPopup({ type })}
+          onClose={close}
+        />
+      )}
       {popup?.type === 'workshop' && <WorkshopPopup onClose={close} />}
-      {popup?.type === 'neighbors' && <NeighborsPopup visit={popup.visit} onClose={close} />}
+      {popup?.type === 'neighbors' && <NeighborsPopup onVisit={goVisit} onClose={close} />}
       {popup?.type === 'install' && <InstallPopup onClose={close} />}
       {popup?.type === 'account' && (
         <AccountPopup

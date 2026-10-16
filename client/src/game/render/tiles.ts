@@ -183,12 +183,13 @@ export class TileView {
       if (state.unlocked && this.unlocked === false && animate) return this.playUnlock();
       this.setUnlocked(state.unlocked);
     }
-    const key = state.crop ? `${state.crop}:${growthStage(state, now)}` : null;
+    const key = state.crop ? `${state.crop}:${growthStage(state, now)}${state.noBadge ? ':nb' : ''}` : null;
     if (key === this.cropKey) return;
     if (!key) return this.setCrop(null, 0);
-    const [crop, stageStr] = key.split(':') as [CropId, string];
+    const [crop, stageStr, nb] = key.split(':') as [CropId, string, string?];
     const fresh = this.cropKey === null;
-    this.setCrop(crop, Number(stageStr));
+    this.setCrop(crop, Number(stageStr), !nb);
+    this.cropKey = key;
     if (animate) this.popIn(fresh);
   }
 
@@ -205,7 +206,7 @@ export class TileView {
     this.bedBatch.add(this.bedHandle, this.compose(this.bedScale, this.bedY));
   }
 
-  private setCrop(crop: CropId | null, stage: number) {
+  private setCrop(crop: CropId | null, stage: number, badge = true) {
     this.cropBatch?.remove(this.cropHandle);
     this.cropBatch = null;
     this.cropKey = crop ? `${crop}:${stage}` : null;
@@ -217,7 +218,7 @@ export class TileView {
       this.cropBatch.add(this.cropHandle, this.composeCrop());
     }
     const ripe = stage === 4 && crop !== null;
-    this.setBadge(ripe);
+    this.setBadge(ripe && badge);
     this.ctx.sparkles.set(this.g, ripe ? this.center : null);
     if (ripe) this.ctx.bobbing.add(this);
     else this.ctx.bobbing.delete(this);
