@@ -14,7 +14,6 @@ import { NetBadge } from './ui/NetBadge';
 import { GameRoom } from './ui/GameRoom';
 import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup } from './ui/Progress';
 import { SideButtons } from './ui/SideButtons';
-import { SkyOverlay } from './ui/SkyOverlay';
 import { music } from './game/audio/music';
 import { farmApi, FarmError } from './game/net/farm';
 import { TileOverlays } from './ui/TileOverlays';
@@ -239,7 +238,6 @@ export function App() {
   return (
     <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
       <canvas ref={canvasRef} className="scene" />
-      {!showcase && <SkyOverlay />}
       {game && !showcase && (
         <>
           <TileOverlays

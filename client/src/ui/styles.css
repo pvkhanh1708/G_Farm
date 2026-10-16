@@ -705,8 +705,6 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .lb-mine { margin: 8px 0 0; }
 .center { text-align: center; }
 
-/* ------------------------------------------------------------ time of day */
-.sky-tint { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; transition: opacity 2s, background 2s; z-index: 0; }
 
 /* hand-drawn UI icons (assets/sprites/ui) */
 img.ui-art { object-fit: contain; flex: none; vertical-align: middle; }
