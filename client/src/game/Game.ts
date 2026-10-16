@@ -106,7 +106,9 @@ export class Game {
   private pen: AnimalPen | null = null;
   /** Seed of the quick-sow tool (set by the UI): dragging over empty tiles sows it. */
   sowTool: CropId | null = null;
-  private paintMode: 'harvest' | 'sow' | null = null;
+  private paintMode: 'harvest' | 'sow' | 'visit' | null = null;
+  /** While visiting: what a tap or a swipe over the crops does (null: steal ripe ones, water the others). */
+  visitTool: 'steal' | 'help' | null = null;
   /** A neighbour's farm on show instead of ours (null = at home). */
   private visit: { tiles: TileState[]; unlocked: number; plantings: VisitFarm['plantings'] } | null = null;
   private buildings: Building[] = [];
@@ -581,18 +583,26 @@ export class Game {
 
   private visitTap(x: number, y: number) {
     const g = this.tileAt(x, y);
+    if (g !== null) this.visitAct(g);
+  }
+
+  /** Steal from / water one tile of the visited farm, as the picked tool (or the tile's state) says. */
+  private visitAct(g: number) {
     const v = this.visit!;
-    if (g === null) return;
     const t = v.tiles[g];
     const p = v.plantings.find((q) => q.tile === g);
     const view = this.tiles.get(g);
     if (!t?.crop || !p || !view) return;
     const pt = this.tileAnchor(g, 0.8);
-    if (growthProgress(t) >= 1) this.emit({ type: 'visitTap', g, action: 'steal', x: pt.x, y: pt.y });
-    else {
+    const ripe = growthProgress(t) >= 1;
+    const action = this.visitTool ?? (ripe ? 'steal' : 'help');
+    if (action === 'steal' && ripe && !t.noBadge) this.emit({ type: 'visitTap', g, action, x: pt.x, y: pt.y });
+    else if (action === 'help' && !ripe && !p.helped) {
       view.wiggle();
-      if (!p.helped) this.emit({ type: 'visitTap', g, action: 'help', x: pt.x, y: pt.y });
-      else sfx.tap();
+      this.emit({ type: 'visitTap', g, action, x: pt.x, y: pt.y });
+    } else if (!this.visitTool) {
+      view.wiggle();
+      sfx.tap();
     }
   }
 
@@ -617,7 +627,15 @@ export class Game {
 
   /** Drag starting on a ripe crop harvests along the way; with the sow tool, on an empty tile it sows. */
   private paintStart(x: number, y: number) {
-    if (this.showcase || this.far || this.visit) return false;
+    if (this.showcase || this.far) return false;
+    if (this.visit) {
+      // with a tool picked, a swipe over the neighbour's crops steals / waters each one it crosses
+      if (!this.visitTool) return false;
+      this.painted.clear();
+      this.paintMode = 'visit';
+      this.paint(x, y);
+      return true;
+    }
     const g = this.tileAt(x, y);
     const st = g === null ? undefined : store.tile(g);
     this.painted.clear();
@@ -632,6 +650,10 @@ export class Game {
   private paint(x: number, y: number) {
     const g = this.tileAt(x, y);
     if (g === null || this.painted.has(g)) return;
+    if (this.paintMode === 'visit') {
+      this.painted.add(g);
+      return this.visitAct(g);
+    }
     const st = store.tile(g);
     if (!st?.unlocked) return;
     this.painted.add(g);

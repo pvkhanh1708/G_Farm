@@ -2,7 +2,7 @@ import type { NeighbourFarm } from '../game/net/farm';
 import { DogIcon, HandIcon, WaterIcon } from './icons';
 
 /** Top bar while visiting a neighbour's farm: whose farm, today's turns left, and the way home. */
-export function VisitBar({ farm, onHome }: { farm: NeighbourFarm; onHome: () => void }) {
+export function VisitBar({ farm, tool, onTool, onHome }: { farm: NeighbourFarm; tool: 'steal' | 'help' | null; onTool: (t: 'steal' | 'help') => void; onHome: () => void }) {
   return (
     <>
       <div className="visit-bar">
@@ -23,13 +23,18 @@ export function VisitBar({ farm, onHome }: { farm: NeighbourFarm; onHome: () => 
           Về nhà
         </button>
       </div>
-      <div className="visit-turns">
-        <span>
-          <HandIcon size={22} /> Hái trộm: {farm.stealsLeft}
-        </span>
-        <span>
-          <WaterIcon size={22} /> Tưới giúp: {farm.helpsLeft}
-        </span>
+      {/* pick a tool, then swipe over the crops: each one crossed is stolen / watered */}
+      <div className="visit-tools">
+        <button className={`visit-tool ${tool === 'steal' ? 'on' : ''}`} onClick={() => onTool('steal')}>
+          <HandIcon size={40} />
+          <b>Trộm</b>
+          <small>còn {farm.stealsLeft}</small>
+        </button>
+        <button className={`visit-tool ${tool === 'help' ? 'on' : ''}`} onClick={() => onTool('help')}>
+          <WaterIcon size={40} />
+          <b>Tưới</b>
+          <small>còn {farm.helpsLeft}</small>
+        </button>
       </div>
     </>
   );

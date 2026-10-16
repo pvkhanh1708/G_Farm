@@ -58,6 +58,10 @@ export function App() {
   const [prefs, setPrefs] = useState(loadPrefs);
   /** The neighbour's farm being visited (shown in place of ours). */
   const [visiting, setVisiting] = useState<NeighbourFarm | null>(null);
+  /** The visit tool picked in the top bar: a swipe steals / waters every crop it crosses. */
+  const [visitTool, setVisitTool] = useState<'steal' | 'help' | null>(null);
+  /** Neighbour actions go to the server one at a time (a swipe fires many). */
+  const visitQueue = useRef(Promise.resolve());
   const toolRef = useRef(tool);
   toolRef.current = tool;
   useEffect(() => {
@@ -158,6 +162,45 @@ export function App() {
     [game],
   );
 
+  const visitRef = useRef(visiting);
+  visitRef.current = visiting;
+  /** One steal / water on the visited farm; resolves when the server answered. */
+  const visitAct = (e: { g: number; action: 'steal' | 'help'; x: number; y: number }): Promise<void> => {
+    const farm = visitRef.current;
+    if (!farm) return Promise.resolve();
+    if (e.action === 'steal') {
+      if (farm.stealsLeft <= 0) return void fxBus.toast('Hôm nay đã hái trộm đủ lượt', 'info'), Promise.resolve();
+      return farmApi.steal(farm.id, e.g).then(
+        (res) => {
+          setVisiting(res.farm);
+          visitRef.current = res.farm;
+          if (res.caught) {
+            sfx.error();
+            fxBus.toast(`Gâu gâu! Bị chó bắt, nộp phạt ${formatNum(res.fine)} xu`, 'bad');
+          } else {
+            sfx.harvest();
+            game?.stolen(e.g);
+            fxBus.float(e.x, e.y - 20, `+${formatNum(res.qty)}`, { type: 'crop', crop: res.crop });
+            fxBus.fly({ type: 'crop', crop: res.crop }, { x: e.x, y: e.y }, 'inventory', Math.min(res.qty, 4), () => bump('inventory'));
+          }
+        },
+        (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+      );
+    }
+    if (farm.helpsLeft <= 0) return void fxBus.toast('Hôm nay đã tưới giúp đủ lượt', 'info'), Promise.resolve();
+    return farmApi.help(farm.id, e.g).then(
+      (res) => {
+        setVisiting(res.farm);
+        visitRef.current = res.farm;
+        sfx.plant();
+        game?.puff([e.g]);
+        fxBus.float(e.x, e.y - 20, `+${res.xp} XP`, { type: 'xp' });
+        fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'coins', 3, () => bump('coins'));
+      },
+      (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+    );
+  };
+
   useEffect(() => {
     if (!game) return;
     return game.on((e) => {
@@ -184,38 +227,7 @@ export function App() {
         sfx.open();
         setPopup({ type: e.kind === 'pens' ? 'animals' : e.kind });
       } else if (e.type === 'visitTap') {
-        const farm = visitRef.current;
-        if (!farm) return;
-        if (e.action === 'steal') {
-          if (farm.stealsLeft <= 0) return fxBus.toast('Hôm nay đã hái trộm đủ lượt', 'info');
-          farmApi.steal(farm.id, e.g).then(
-            (res) => {
-              setVisiting(res.farm);
-              if (res.caught) {
-                sfx.error();
-                fxBus.toast(`Gâu gâu! Bị chó bắt, nộp phạt ${formatNum(res.fine)} xu`, 'bad');
-              } else {
-                sfx.harvest();
-                game?.stolen(e.g);
-                fxBus.float(e.x, e.y - 20, `+${formatNum(res.qty)}`, { type: 'crop', crop: res.crop });
-                fxBus.fly({ type: 'crop', crop: res.crop }, { x: e.x, y: e.y }, 'inventory', Math.min(res.qty, 4), () => bump('inventory'));
-              }
-            },
-            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
-          );
-        } else {
-          if (farm.helpsLeft <= 0) return fxBus.toast('Hôm nay đã tưới giúp đủ lượt', 'info');
-          farmApi.help(farm.id, e.g).then(
-            (res) => {
-              setVisiting(res.farm);
-              sfx.plant();
-              game?.puff([e.g]);
-              fxBus.float(e.x, e.y - 20, `+${res.xp} XP`, { type: 'xp' });
-              fxBus.fly({ type: 'coin' }, { x: e.x, y: e.y }, 'coins', 3, () => bump('coins'));
-            },
-            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
-          );
-        }
+        visitQueue.current = visitQueue.current.then(() => visitAct(e));
       } else if (e.type === 'stationTap') {
         if (e.kind === 'product') {
           // the egg nest / milk can collects every ready product of that pen
@@ -290,11 +302,13 @@ export function App() {
     fxBus.toast(`Đã bán ${formatNum(qty)} ${itemDef(crop).name.toLowerCase()} · +${formatNum(res.value)} xu`, 'good');
   };
 
-  const visitRef = useRef(visiting);
-  visitRef.current = visiting;
   useEffect(() => {
     game?.setVisit(visiting);
   }, [game, visiting]);
+  useEffect(() => {
+    if (game) game.visitTool = visiting ? visitTool : null;
+    if (!visiting) setVisitTool(null);
+  }, [game, visiting, visitTool]);
   /** Go to a neighbour's farm (from the neighbours list, the news log or the leaderboard). */
   const goVisit = (id: number) => {
     setPopup(null);
@@ -317,7 +331,7 @@ export function App() {
   return (
     <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
       <canvas ref={canvasRef} className="scene" />
-      {game && !showcase && visiting && <VisitBar farm={visiting} onHome={() => (sfx.close(), setVisiting(null))} />}
+      {game && !showcase && visiting && <VisitBar farm={visiting} tool={visitTool} onTool={(t) => (sfx.tap(), setVisitTool((cur) => (cur === t ? null : t)))} onHome={() => (sfx.close(), setVisiting(null))} />}
       {game && !showcase && !visiting && (
         <>
           <TileOverlays
