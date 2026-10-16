@@ -48,7 +48,7 @@ export function MoreMenu({ badges, onOpen, onClose }: { badges: Partial<Record<M
           </button>
         ))}
       </div>
-      <p className="prog-note">Xưởng, chuồng trại và máy tưới (nâng cấp) cũng có ngay trong nông trại: chạm vào để mở.</p>
+      <p className="prog-note">Chạm nhà gà trong nông trại cũng mở được Chuồng trại.</p>
     </Modal>
   );
 }

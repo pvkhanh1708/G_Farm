@@ -17,6 +17,7 @@ import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { Scene } from '@babylonjs/core/scene.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { sfx } from './audio/sfx';
+import { artUrl } from './art';
 import { preloadAssets } from './assets/registry';
 import { AnimalId, CROP_ORDER, CropId, ISLAND_SIZE, PENS, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
@@ -509,6 +510,8 @@ export class Game {
   private buildBuildings(boards: Billboards) {
     const spot = (kind: Building['kind'], key: 'workshop' | 'sprinkler' | null, x: number, z: number, size: number) => {
       let mesh: Mesh | null = null;
+      // only with a picture drawn for the scene (props/<key>.png, isometric); a shop icon looks wrong there
+      if (key && !artUrl(`props/${key}.png`)) return;
       if (key) {
         mesh = boards.quad(key, size, { bottom: true }).clone(`building-${kind}`);
         mesh.isVisible = true;
@@ -521,6 +524,7 @@ export class Game {
     spot('upgrades', 'sprinkler', 0, 1.9, 1.1);
     // the coop itself opens the pens window (it is drawn by the pen)
     spot('pens', null, PENS.chicken.x0 + 0.74 * (PENS.chicken.x1 - PENS.chicken.x0), PENS.chicken.z0 + 0.82 * (PENS.chicken.z1 - PENS.chicken.z0), 2.1);
+    if (!this.buildings.some((b) => b.kind === 'workshop')) return;
     this.goodsBubble = boards.quad('goods', 0.62, { onTop: true }).clone('workshop-bubble');
     this.goodsBubble.position.set(PENS_X1 + 2.1, 2.9, -1.9);
   }

@@ -29,7 +29,7 @@ export type Prop =
   | 'egg-nest' | 'milk-can' | 'workshop' | 'sprinkler';
 const PROPS: Prop[] = ['workshop', 'sprinkler', 'coop', 'hay', 'doghouse', 'chicken-feeder', 'chicken-feeder-empty', 'chicken-water', 'chicken-water-empty', 'cow-feeder', 'cow-feeder-empty', 'cow-water', 'cow-water-empty', 'egg-nest', 'milk-can'];
 /** Ground products fall back to the UI icons until their own picture is provided. */
-const PROP_FALLBACK: Partial<Record<Prop, string>> = { 'egg-nest': 'ui/egg.png', 'milk-can': 'ui/milk.png', workshop: 'ui/workshop.png', sprinkler: 'ui/sprinkler.png' };
+const PROP_FALLBACK: Partial<Record<Prop, string>> = { 'egg-nest': 'ui/egg.png', 'milk-can': 'ui/milk.png' };
 type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | 'hungry' | 'coop' | 'hay' | 'doghouse' | 'feeder' | 'trough';
 export type BillboardKey = 'ripe' | 'egg' | 'milk' | 'hungry' | 'goods' | Prop | `${'chicken' | 'cow'}:${number}`;
 const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', 'goods', ...PROPS, ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
