@@ -1,0 +1,5 @@
+{
+  "cols": 4,
+  "rows": 2,
+  "cells": ["ui/cake.png", "ui/cheese.png", "ui/yogurt.png", "ui/gift.png", "ui/sprinkler.png", "ui/fertilizer.png", "ui/lock.png", "ui/clock.png"]
+}

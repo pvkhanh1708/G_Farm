@@ -317,13 +317,17 @@ async function sliceGrid(file, cols, rows, ownScale) {
       const id = comps.length;
       const stack = [i];
       label[i] = id;
-      let sx = 0, sy = 0, n = 0;
+      let sx = 0, sy = 0, n = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
       while (stack.length) {
         const j = stack.pop();
-        const x = j % w;
+        const x = j % w, y = (j / w) | 0;
         sx += x;
-        sy += (j / w) | 0;
+        sy += y;
         n++;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
         for (const k of [j - 1, j + 1, j - w, j + w]) {
           if (k < 0 || k >= w * h || label[k] >= 0 || !mask[k]) continue;
           if ((k === j - 1 && x === 0) || (k === j + 1 && x === w - 1)) continue;
@@ -332,10 +336,51 @@ async function sliceGrid(file, cols, rows, ownScale) {
         }
       }
       const col = Math.min(C - 1, Math.floor(((sx / n) * S) / (W / C))), row = Math.min(R - 1, Math.floor(((sy / n) * S) / (H / R)));
-      comps.push({ n, frame: col + row * C });
+      comps.push({ n, cx: sx / n, cy: sy / n, x0, x1, y0, y1, frame: col + row * C });
     }
     const biggest = Math.max(...comps.map((c) => c.n));
     const keep = comps.map((c) => c.n >= biggest * 0.004);
+    // small loose bits (water drops, sparkles) belong to the nearest big drawing, even when they fly over into
+    // the next cell: spread every big drawing outward pixel by pixel and see which one reaches each bit first
+    const isBig = comps.map((c) => c.n >= biggest * 0.05);
+    const near = new Int32Array(w * h).fill(-1);
+    const dist = new Int32Array(w * h);
+    let wave = [];
+    for (let i = 0; i < w * h; i++) if (label[i] >= 0 && isBig[label[i]]) (near[i] = label[i]), wave.push(i);
+    while (wave.length) {
+      const next = [];
+      for (const j of wave) {
+        const x = j % w;
+        for (const k of [j - 1, j + 1, j - w, j + w]) {
+          if (k < 0 || k >= w * h || near[k] >= 0) continue;
+          if ((k === j - 1 && x === 0) || (k === j + 1 && x === w - 1)) continue;
+          near[k] = near[j];
+          dist[k] = dist[j] + 1;
+          next.push(k);
+        }
+      }
+      wave = next;
+    }
+    // distance from each bit to the nearest big drawing (its closest pixel, not its centre)
+    const gap = comps.map(() => Infinity);
+    for (let i = 0; i < w * h; i++) {
+      const l = label[i];
+      if (l >= 0 && !isBig[l] && near[i] >= 0) {
+        // the bit's own pixels are not reached by the wave: look at its neighbours
+        for (const k of [i - 1, i + 1, i - w, i + w]) {
+          if (k < 0 || k >= w * h || label[k] === l) continue;
+          if (near[k] >= 0 && dist[k] + 1 < gap[l]) (gap[l] = dist[k] + 1), (comps[l].owner = near[k]);
+        }
+      }
+    }
+    // bits right next to a drawing follow it; a stray one far from every drawing is dropped (on a sheet
+    // of items it is a splash that flew over from a neighbour and would show up in the wrong picture)
+    const reach = Math.round(Math.min(W / C, H / R) / S * 0.04);
+    comps.forEach((c, l) => {
+      if (isBig[l] || c.owner === undefined) return;
+      if (gap[l] <= reach) c.frame = comps[c.owner].frame;
+      else if (own) keep[l] = false;
+    });
     // owner of each mask cell, grown by 2 cells so antialiased outlines survive
     let owner = new Int8Array(w * h).fill(-1);
     for (let i = 0; i < w * h; i++) if (label[i] >= 0 && keep[label[i]]) owner[i] = comps[label[i]].frame;
