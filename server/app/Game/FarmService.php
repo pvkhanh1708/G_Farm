@@ -49,7 +49,7 @@ class FarmService
         }
         $plantings = [];
         foreach ($farm->plantings()->orderBy('tile')->get() as $p) {
-            $plantings[(string) $p->tile] = ['crop' => $p->crop, 'plantedAt' => $p->planted_at, 'stolen' => $p->stolen];
+            $plantings[(string) $p->tile] = ['crop' => $p->crop, 'plantedAt' => $p->planted_at, 'stolen' => $p->stolen, 'fertilized' => $p->fertilized];
         }
 
         return [
@@ -269,7 +269,8 @@ class FarmService
             foreach ($farm->plantings()->whereIn('tile', $tiles)->get() as $p) {
                 $crop = $this->eco->crop($p->crop);
                 $left = $p->planted_at + $this->eco->growMs($crop, $farm->sprinkler_level) - $now;
-                if ($left <= 1000) {
+                // once per planting
+                if ($left <= 1000 || $p->fertilized) {
                     continue;
                 }
                 $cost = $this->eco->fertilizerCost($crop);
@@ -278,11 +279,12 @@ class FarmService
                 }
                 $farm->coins -= $cost;
                 $p->planted_at -= (int) round($left * $this->eco->raw('fertilizer')['cut']);
+                $p->fertilized = true;
                 $p->save();
                 $done[] = $p->tile;
             }
             if (! $done) {
-                throw new GameException('Không bón được: cây đã chín hoặc thiếu xu');
+                throw new GameException('Không bón được: cây đã chín, đã bón rồi hoặc thiếu xu');
             }
             $farm->save();
 

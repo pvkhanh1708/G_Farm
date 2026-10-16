@@ -13,6 +13,8 @@ export interface Planting {
   plantedAt: number;
   /** Crops neighbours have taken from this tile (server-side only). */
   stolen?: number;
+  /** Fertilizer already used on it (it works once per planting). */
+  fertilized?: boolean;
 }
 
 export interface Order {

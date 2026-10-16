@@ -9,7 +9,7 @@ class Planting extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['tile', 'crop', 'planted_at', 'stolen', 'thieves', 'helpers'];
+    protected $fillable = ['tile', 'crop', 'planted_at', 'stolen', 'thieves', 'helpers', 'fertilized'];
 
     protected function casts(): array
     {
@@ -19,6 +19,7 @@ class Planting extends Model
             'stolen' => 'integer',
             'thieves' => 'array',
             'helpers' => 'array',
+            'fertilized' => 'boolean',
         ];
     }
 

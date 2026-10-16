@@ -60,6 +60,8 @@ class ProgressionTest extends TestCase
         $this->postJson('/farm/fertilize', ['tiles' => [0]], $h)->assertOk()->assertJsonPath('result.fertilized', [0]);
         $moved = $before - Planting::where('tile', 0)->value('planted_at');
         $this->assertEqualsWithDelta(45_000 / 2, $moved, 1500);
+        // once per planting: repeating it used to make crops ripen almost at once
+        $this->postJson('/farm/fertilize', ['tiles' => [0]], $h)->assertStatus(422)->assertJsonPath('state.plantings.0.fertilized', true);
     }
 
     public function test_orders_deliver_and_skip(): void

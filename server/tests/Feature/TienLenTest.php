@@ -28,7 +28,7 @@ class TienLenTest extends TestCase
     private function player(int $coins): array
     {
         $res = $this->postJson('/auth/guest')->json();
-        Farm::where('user_id', $res['user']['id'])->update(['coins' => $coins]);
+        Farm::where('user_id', $res['user']['id'])->update(['coins' => $coins, 'level' => 10]);
 
         return [['Authorization' => 'Bearer '.$res['token']], $res['user']['id']];
     }
@@ -155,9 +155,17 @@ class TienLenTest extends TestCase
         $res = $this->postJson("/games/tienlen/$id/play", ['cards' => [51]], $a);
         if ($res->status() === 200) {
             $res->assertJsonPath('result.status', 'finished')->assertJsonPath('result.winner', 0);
-            $this->assertSame(9000 + 3800, Farm::where('user_id', $aid)->value('coins'));
+            // two players' stakes plus half a stake per bot seat, minus the 5% fee
+            $this->assertSame(9000 + 2850, Farm::where('user_id', $aid)->value('coins'));
             $this->assertSame(9000, Farm::where('user_id', $bid)->value('coins'));
         }
+    }
+
+    public function test_stake_with_bots_is_capped_by_level(): void
+    {
+        [$a] = $this->player(100_000);
+        $id = $this->postJson('/games/tienlen', ['stake' => 5000], $a)->json('result.id');
+        $this->postJson("/games/tienlen/$id/start", [], $a)->assertStatus(422)->assertJsonPath('message', 'Có ghế máy chơi thì cược tối đa 1.000 xu');
     }
 
     public function test_leave_refunds_and_timeout_auto_plays(): void

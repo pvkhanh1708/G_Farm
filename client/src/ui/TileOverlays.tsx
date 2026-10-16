@@ -35,6 +35,10 @@ function GrowCard({ tile, now, onDig, onFertilize }: { tile: TileState; now: num
     .tiles()
     .filter((t) => t.crop === crop && growthProgress(t, now) < 1)
     .map((t) => t.g);
+  // fertilizer works once per planting
+  const plantings = store.getState().plantings;
+  const canFeed = same.filter((g) => !plantings[g]?.fertilized);
+  const fed = !!plantings[tile.g]?.fertilized;
   return (
     <div className="grow-card" onPointerDown={(e) => e.stopPropagation()}>
       <div className="grow-card-head">
@@ -46,12 +50,16 @@ function GrowCard({ tile, now, onDig, onFertilize }: { tile: TileState; now: num
         <div className="bar-fill" style={{ width: `${Math.max(6, p * 100)}%` }} />
       </div>
       <div className="grow-actions">
-        <button className="btn btn-green small" onClick={() => onFertilize([tile.g])}>
-          <FertilizerIcon size={16} /> Bón phân <CoinIcon size={13} /> {formatNum(fertilizerCost(crop))}
-        </button>
-        {same.length > 1 && (
-          <button className="btn btn-green small" onClick={() => onFertilize(same)}>
-            Bón cả {same.length} ô
+        {fed ? (
+          <span className="muted grow-fed">Đã bón phân</span>
+        ) : (
+          <button className="btn btn-green small" onClick={() => onFertilize([tile.g])}>
+            <FertilizerIcon size={16} /> Bón phân <CoinIcon size={13} /> {formatNum(fertilizerCost(crop))}
+          </button>
+        )}
+        {canFeed.length > 1 && (
+          <button className="btn btn-green small" onClick={() => onFertilize(canFeed)}>
+            Bón cả {canFeed.length} ô
           </button>
         )}
       </div>
