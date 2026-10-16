@@ -253,7 +253,7 @@ class Store {
     const p = this.state.plantings[g];
     if (!p) return { ok: false, reason: 'Không có cây để thu hoạch' };
     if (growthProgress(p, now) < 1) return { ok: false, reason: 'Cây chưa chín' };
-    const amount = Math.max(1, harvestAmount(p.crop, this.state.soil) - (p.stolen ?? 0)), xp = CROPS[p.crop].xp;
+    const amount = Math.max(0, harvestAmount(p.crop, this.state.soil) - (p.stolen ?? 0)), xp = CROPS[p.crop].xp;
     const plantings = { ...this.state.plantings };
     delete plantings[g];
     const before = this.state.level;

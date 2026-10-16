@@ -130,7 +130,7 @@ class FarmService
                     continue;
                 }
                 // neighbours may have taken some already
-                $inventory[$p->crop] = ($inventory[$p->crop] ?? 0) + max(1, $this->eco->harvestAmount($crop, $farm->soil_level) - $p->stolen);
+                $inventory[$p->crop] = ($inventory[$p->crop] ?? 0) + max(0, $this->eco->harvestAmount($crop, $farm->soil_level) - $p->stolen);
                 $xp += $crop['xp'];
                 $harvested[] = $p->tile;
                 $p->delete();
@@ -797,20 +797,27 @@ class FarmService
     // ---------------------------------------------------------------- neighbours
 
     /** Crops a thief would take from this planting right now (0 = nothing to take). */
+    /** Whether a thief may still try this crop: ripe, and nobody has tried it yet (a miss counts). */
     private function stealable(Farm $owner, Planting $p, int $now, int $thiefId): int
     {
         $crop = $this->eco->crop($p->crop);
-        $cfg = $this->eco->raw('neighbors');
-        $thieves = $p->thieves ?? [];
-        if (! $crop || $now < $p->planted_at + $this->eco->growMs($crop, $owner->sprinkler_level)
-            // each crop can be stolen from once, by one neighbour
-            || $thieves) {
-            return 0;
-        }
-        $left = $this->eco->harvestAmount($crop, $owner->soil_level) - $p->stolen;
 
-        // the owner always keeps at least one
-        return max(0, min($left - 1, max(1, (int) floor($this->eco->harvestAmount($crop, $owner->soil_level) * $cfg['stealShare']))));
+        return $crop && $now >= $p->planted_at + $this->eco->growMs($crop, $owner->sprinkler_level) && ! $p->thieves ? 1 : 0;
+    }
+
+    /**
+     * What one theft takes: 25% of the tile on average. The whole part is taken, the rest is a chance,
+     * so a one-fruit durian is taken 1 time in 4 and missed otherwise. A tile of several keeps at least one.
+     */
+    private function stealRoll(Farm $owner, Planting $p): int
+    {
+        $full = $this->eco->harvestAmount($this->eco->crop($p->crop), $owner->soil_level);
+        $share = $full * $this->eco->raw('neighbors')['stealShare'];
+        // tests pin the roll with config('game.steal_roll')
+        $roll = config('game.steal_roll') ?? mt_rand() / mt_getrandmax();
+        $qty = (int) floor($share) + ($roll < $share - floor($share) ? 1 : 0);
+
+        return $full > 1 ? min($qty, $full - 1) : $qty;
     }
 
     /** Recently active farms to visit, those with crops to take first. */
@@ -884,10 +891,10 @@ class FarmService
         return $this->lockedPair($thief, $ownerId, function (Farm $mine, Farm $owner) use ($thief, $tile) {
             $cfg = $this->eco->raw('neighbors');
             $p = $owner->plantings()->where('tile', $tile)->lockForUpdate()->first() ?? throw new GameException('Ô này không có cây');
-            $qty = $this->stealable($owner, $p, self::nowMs(), $thief->id);
-            if ($qty <= 0) {
+            if (! $this->stealable($owner, $p, self::nowMs(), $thief->id)) {
                 throw new GameException('Ô này không hái được nữa');
             }
+            $qty = $this->stealRoll($owner, $p);
             $p->thieves = [...($p->thieves ?? []), $thief->id];
             $dog = $cfg['dog'];
             // tests pin the odds with config('game.dog_catch_chance')

@@ -21,7 +21,7 @@ function ago(ms: number, now: number) {
 function newsText(n: NewsItem) {
   const who = n.actor.name ?? 'Ai đó';
   const crop = n.crop ? CROPS[n.crop]?.name.toLowerCase() : '';
-  if (n.type === 'steal') return `${who} đã hái trộm ${n.qty} ${crop} của bạn`;
+  if (n.type === 'steal') return n.qty ? `${who} đã hái trộm ${n.qty} ${crop} của bạn` : `${who} định hái trộm ${crop} của bạn nhưng hụt`;
   if (n.type === 'caught') return `${who} định hái trộm ${crop} nhưng bị chó bắt, nộp phạt ${formatNum(n.coins)} xu cho bạn`;
   return `${who} đã tưới giúp ${crop} của bạn`;
 }

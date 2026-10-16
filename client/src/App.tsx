@@ -176,6 +176,10 @@ export function App() {
           if (res.caught) {
             sfx.error();
             fxBus.toast(`Gâu gâu! Bị chó bắt, nộp phạt ${formatNum(res.fine)} xu`, 'bad');
+          } else if (res.qty === 0) {
+            // a miss: the tile is closed all the same
+            sfx.tap();
+            fxBus.float(e.x, e.y - 20, 'Trộm hụt!', { type: 'xp' });
           } else {
             sfx.harvest();
             game?.stolen(e.g);

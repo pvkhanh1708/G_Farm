@@ -27,8 +27,8 @@ có 1 ô làm, ô 2 và 3 mở thêm (cối xay cấp 6/9, lò bánh 10/14, xư�
 Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng nằm ở ổ rơm cạnh nhà gà, sữa ở bình sữa trong chuồng bò (chỉ hiện khi có sản phẩm); chạm vào đó để thu cả chuồng. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
 sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
-**Hàng xóm:** đi thăm nông trại người khác (Thêm → Hàng xóm, hoặc chạm tên trong Xếp hạng): nông trại của họ hiện ra như nhà mình, chạm cây chín để hái trộm 25% sản lượng
-(mỗi cây chỉ bị trộm 1 lần, chủ luôn còn ít nhất 1; không giới hạn lượt trong ngày), chạm cây đang lớn để tưới giúp (-10% thời gian còn lại, +5 xu +2 XP, mỗi cây được tưới 1 lần). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
+**Hàng xóm:** đi thăm nông trại người khác (Thêm → Hàng xóm, hoặc chạm tên trong Xếp hạng): nông trại của họ hiện ra như nhà mình, chạm cây chín để hái trộm 25% sản lượng (ô ít quả tính theo may rủi: sầu riêng 1 quả thì 1/4 cơ hội lấy được)
+(mỗi cây chỉ bị trộm 1 lần, trộm hụt cũng tính; ô nhiều quả chủ luôn còn ít nhất 1; không giới hạn lượt trong ngày), chạm cây đang lớn để tưới giúp (-10% thời gian còn lại, +5 xu +2 XP, mỗi cây được tưới 1 lần). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:

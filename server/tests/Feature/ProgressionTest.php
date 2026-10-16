@@ -196,6 +196,18 @@ class ProgressionTest extends TestCase
         $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $thief)->assertStatus(422);
         $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $third)->assertStatus(422)->assertJsonPath('message', 'Cây này đã được tưới rồi');
 
+        // a one-fruit durian: a 25% chance to take it, and a miss still closes the tile
+        Farm::where('user_id', $ownerId)->update(['level' => 50, 'coins' => 100_000]);
+        $this->postJson('/farm/plant', ['tiles' => [4, 5], 'crop' => 'durian'], $owner)->assertOk();
+        Planting::whereIn('tile', [4, 5])->update(['planted_at' => 1000]);
+        config(['game.steal_roll' => 0.9]);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 4], $thief)->assertOk()->assertJsonPath('result.qty', 0);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 4], $third)->assertStatus(422);
+        config(['game.steal_roll' => 0.1]);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 5], $thief)->assertOk()->assertJsonPath('result.qty', 1)->assertJsonPath('state.inventory.durian', 1);
+        $this->postJson('/farm/harvest', ['tiles' => [4, 5]], $owner)->assertOk()->assertJsonPath('state.inventory.durian', 1);
+        config(['game.steal_roll' => null]);
+
         // a guard dog that always bites: no crops, a fine paid to the owner
         $this->postJson('/farm/plant', ['tiles' => [3], 'crop' => 'carrot'], $owner)->assertOk();
         Planting::where('tile', 3)->update(['planted_at' => 1000]);
