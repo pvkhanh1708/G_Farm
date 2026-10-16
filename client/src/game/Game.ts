@@ -629,8 +629,10 @@ export class Game {
   private paintStart(x: number, y: number) {
     if (this.showcase || this.far) return false;
     if (this.visit) {
-      // with a tool picked, a swipe over the neighbour's crops steals / waters each one it crosses
-      if (!this.visitTool) return false;
+      // with a tool picked, a swipe that starts on a crop steals / waters each one it crosses;
+      // starting anywhere else pans the view as usual
+      const start = this.tileAt(x, y);
+      if (!this.visitTool || start === null || !this.visit.tiles[start]?.crop) return false;
       this.painted.clear();
       this.paintMode = 'visit';
       this.paint(x, y);
