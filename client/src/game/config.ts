@@ -142,7 +142,8 @@ export interface AnimalDef {
   name: string;
   unlockLevel: number;
   price: number;
-  max: number;
+  /** Places in the pen, opened one by one: each needs a level and costs coins. */
+  slots: Array<{ level: number; cost: number }>;
   /** Seconds between two products. */
   period: number;
   product: ProductId;
@@ -171,8 +172,8 @@ export interface MachineDef {
   name: string;
   unlockLevel: number;
   price: number;
-  /** Batches that can wait in line. */
-  queue: number;
+  /** Batch places after the first one (which comes with the machine), each opened with a level and coins. */
+  slots: Array<{ level: number; cost: number }>;
   recipes: RecipeDef[];
 }
 

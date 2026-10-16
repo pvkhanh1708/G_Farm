@@ -69,13 +69,15 @@ export interface GameState {
   daily: Daily | null;
   animals: Animal[];
   /** Workshop machines owned, each with its line of batches. */
-  machines: Partial<Record<MachineId, { queue: Job[] }>>;
+  machines: Partial<Record<MachineId, { queue: Job[]; slots?: number }>>;
   /** A guard dog against thieves. */
   dog: boolean;
   /** Unread news from neighbours (thefts, help). */
   news: number;
   /** When each pen's water was last filled (ms); it runs dry after ECONOMY.water.minutes. */
   water: Partial<Record<AnimalId, number>>;
+  /** Places opened in each pen. */
+  penSlots: Partial<Record<AnimalId, number>>;
 }
 
 /** View of one tile, derived from GameState. */
@@ -110,7 +112,7 @@ function emptyInventory() {
   return Object.fromEntries(ITEM_ORDER.map((c) => [c, 0])) as Record<ItemId, number>;
 }
 
-const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [], machines: {}, dog: false, news: 0, water: {} };
+const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [], machines: {}, dog: false, news: 0, water: {}, penSlots: {} };
 
 function initialState(): GameState {
   return { coins: STARTING_COINS, level: 1, xp: 0, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {}, ...EXTRA };

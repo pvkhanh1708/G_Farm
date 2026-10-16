@@ -389,7 +389,6 @@
       "name": "Gà",
       "unlockLevel": 6,
       "price": 400,
-      "max": 6,
       "period": 300,
       "product": "egg",
       "productName": "Trứng",
@@ -398,14 +397,39 @@
       "feed": {
         "crop": "wheat",
         "qty": 3
-      }
+      },
+      "slots": [
+        {
+          "level": 6,
+          "cost": 300
+        },
+        {
+          "level": 7,
+          "cost": 600
+        },
+        {
+          "level": 9,
+          "cost": 1200
+        },
+        {
+          "level": 12,
+          "cost": 2500
+        },
+        {
+          "level": 15,
+          "cost": 4500
+        },
+        {
+          "level": 19,
+          "cost": 8000
+        }
+      ]
     },
     {
       "id": "cow",
       "name": "Bò",
       "unlockLevel": 15,
       "price": 6000,
-      "max": 4,
       "period": 900,
       "product": "milk",
       "productName": "Sữa",
@@ -414,7 +438,25 @@
       "feed": {
         "crop": "corn",
         "qty": 2
-      }
+      },
+      "slots": [
+        {
+          "level": 15,
+          "cost": 4000
+        },
+        {
+          "level": 18,
+          "cost": 8000
+        },
+        {
+          "level": 22,
+          "cost": 15000
+        },
+        {
+          "level": 27,
+          "cost": 30000
+        }
+      ]
     }
   ],
   "goods": [
@@ -455,7 +497,6 @@
       "name": "Cối xay",
       "unlockLevel": 4,
       "price": 1200,
-      "queue": 3,
       "recipes": [
         {
           "output": "flour",
@@ -464,6 +505,16 @@
           },
           "seconds": 60
         }
+      ],
+      "slots": [
+        {
+          "level": 6,
+          "cost": 800
+        },
+        {
+          "level": 9,
+          "cost": 2000
+        }
       ]
     },
     {
@@ -471,7 +522,6 @@
       "name": "Lò bánh",
       "unlockLevel": 7,
       "price": 3000,
-      "queue": 3,
       "recipes": [
         {
           "output": "bread",
@@ -489,6 +539,16 @@
           },
           "seconds": 300
         }
+      ],
+      "slots": [
+        {
+          "level": 10,
+          "cost": 2500
+        },
+        {
+          "level": 14,
+          "cost": 6000
+        }
       ]
     },
     {
@@ -496,7 +556,6 @@
       "name": "Xưởng sữa",
       "unlockLevel": 15,
       "price": 8000,
-      "queue": 3,
       "recipes": [
         {
           "output": "cheese",
@@ -512,6 +571,16 @@
             "strawberry": 3
           },
           "seconds": 180
+        }
+      ],
+      "slots": [
+        {
+          "level": 18,
+          "cost": 8000
+        },
+        {
+          "level": 24,
+          "cost": 20000
         }
       ]
     }

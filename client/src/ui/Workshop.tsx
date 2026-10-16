@@ -5,7 +5,7 @@ import { farmApi } from '../game/net/farm';
 import type { GameState } from '../game/state/store';
 import { fxBus } from './FxLayer';
 import { useGameState } from './Hud';
-import { BreadIcon, CheeseIcon, ClockIcon, CoinIcon, FlourIcon, ItemIcon, WorkshopIcon, XpIcon } from './icons';
+import { BreadIcon, CheeseIcon, ClockIcon, CoinIcon, FlourIcon, ItemIcon, LockIcon, WorkshopIcon, XpIcon } from './icons';
 import { CROP_BG, Modal } from './Popups';
 import { Busy, mmss, reward, run, useNow } from './Progress';
 import { formatNum } from './format';
@@ -23,6 +23,8 @@ function Machine({ m, now }: { m: MachineDef; now: number }) {
   const owned = s.machines[m.id];
   const Icon = MACHINE_ICON[m.id];
   const queue = owned?.queue ?? [];
+  /** batch places opened on this machine (the first comes with it) */
+  const places = owned?.slots ?? 1;
   const done = queue.filter((j) => j.readyAt <= now).length;
   return (
     <div className="machine">
@@ -78,8 +80,35 @@ function Machine({ m, now }: { m: MachineDef; now: number }) {
       {owned && (
         <>
           <div className="machine-queue">
-            {Array.from({ length: m.queue }, (_, i) => {
+            {Array.from({ length: 1 + m.slots.length }, (_, i) => {
               const job = queue[i];
+              if (i >= places) {
+                // a locked place: the next one can be opened with its level and coins
+                const cost = m.slots[i - 1];
+                const next = i === places;
+                return (
+                  <button
+                    key={i}
+                    className="job locked"
+                    disabled={!next || !!busy || s.level < cost.level || s.coins < cost.cost}
+                    onClick={async () => {
+                      setBusy('slot');
+                      const res = await run(() => farmApi.expandMachine(m.id));
+                      setBusy(null);
+                      if (res) sfx.unlock();
+                    }}
+                  >
+                    <LockIcon size={20} />
+                    {s.level < cost.level ? (
+                      <span>Cấp {cost.level}</span>
+                    ) : (
+                      <span>
+                        <CoinIcon size={12} /> {formatNum(cost.cost)}
+                      </span>
+                    )}
+                  </button>
+                );
+              }
               if (!job) return <div key={i} className="job empty" />;
               const recipe = m.recipes.find((r) => r.output === job.output)!;
               const start = i === 0 ? job.readyAt - recipe.seconds * 1000 : Math.max(queue[i - 1].readyAt, job.readyAt - recipe.seconds * 1000);
@@ -103,7 +132,7 @@ function Machine({ m, now }: { m: MachineDef; now: number }) {
               const g = GOODS[r.output];
               const inputs = Object.entries(r.inputs) as Array<[ItemId, number]>;
               const enough = inputs.every(([id, n]) => s.inventory[id] >= n);
-              const full = queue.length >= m.queue;
+              const full = queue.length >= places;
               return (
                 <div className="recipe" key={r.output}>
                   <div className="recipe-out" style={{ background: CROP_BG[r.output] }}>
@@ -149,7 +178,7 @@ export function WorkshopPopup({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Xưởng chế biến" icon={<WorkshopIcon size={34} />} tone="orange" onClose={onClose} wide>
       <div className="panel-scroll">
-        <p className="prog-note">Biến nông sản thành hàng bán giá cao. Mỗi máy xếp được 3 mẻ, làm lần lượt; xong thì bấm “Thu”.</p>
+        <p className="prog-note">Biến nông sản thành hàng bán giá cao. Máy mới có 1 ô làm; mở thêm ô khi đủ cấp và xu. Các mẻ làm lần lượt; xong thì bấm “Thu”.</p>
         {MACHINES.map((m) => (
           <Machine key={m.id} m={m} now={now} />
         ))}

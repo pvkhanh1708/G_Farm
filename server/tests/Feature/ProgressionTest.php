@@ -106,7 +106,14 @@ class ProgressionTest extends TestCase
         $hen = $eco->animal('chicken');
         [$h, $id] = $this->guest(['coins' => 10_000, 'level' => $hen['unlockLevel']]);
         $this->postJson('/farm/animals/buy', ['type' => 'cow'], $h)->assertStatus(422);
-        $this->postJson('/farm/animals/buy', ['type' => 'chicken'], $h)->assertOk()->assertJsonPath('state.coins', 10_000 - $hen['price']);
+        // a place in the pen first (level + coins), then the hen
+        $this->postJson('/farm/animals/buy', ['type' => 'chicken'], $h)->assertStatus(422)->assertJsonPath('message', 'Hãy mở chỗ trong chuồng Gà trước');
+        $this->postJson('/farm/pens/expand', ['type' => 'cow'], $h)->assertStatus(422)->assertJsonPath('message', 'Cần đạt cấp 15');
+        $place = $hen['slots'][0]['cost'];
+        $this->postJson('/farm/pens/expand', ['type' => 'chicken'], $h)->assertOk()->assertJsonPath('state.penSlots.chicken', 1)->assertJsonPath('state.coins', 10_000 - $place);
+        $this->postJson('/farm/pens/expand', ['type' => 'chicken'], $h)->assertStatus(422)->assertJsonPath('message', 'Cần đạt cấp '.$hen['slots'][1]['level']);
+        $this->postJson('/farm/animals/buy', ['type' => 'chicken'], $h)->assertOk()->assertJsonPath('state.coins', 10_000 - $place - $hen['price']);
+        $this->postJson('/farm/animals/buy', ['type' => 'chicken'], $h)->assertStatus(422)->assertJsonPath('message', 'Chuồng đã đủ 1 chỗ, hãy mở thêm chỗ');
         $this->postJson('/farm/animals/collect', [], $h)->assertStatus(422);
         $f = Farm::where('user_id', $id)->first();
         $f->animals = [['type' => 'chicken', 'fedAt' => 1000]];
@@ -132,11 +139,16 @@ class ProgressionTest extends TestCase
         $this->postJson('/farm/machines/buy', ['machine' => 'bakery'], $h)->assertStatus(422);
         $this->postJson('/farm/machines/buy', ['machine' => 'mill'], $h)->assertOk()->assertJsonPath('state.coins', 3800);
         $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertOk();
+        // one batch place to start with; the second needs level 6 and 800 coins
+        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertStatus(422);
+        $this->postJson('/farm/machines/expand', ['machine' => 'mill'], $h)->assertStatus(422)->assertJsonPath('message', 'Cần đạt cấp 6');
+        Farm::where('user_id', $id)->update(['level' => 6]);
+        $this->postJson('/farm/machines/expand', ['machine' => 'mill'], $h)->assertOk()->assertJsonPath('state.machines.mill.slots', 2)->assertJsonPath('state.coins', 3000);
         $res = $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertOk()->assertJsonPath('state.inventory.wheat', 1);
         // the second batch waits for the first
         $q = $res->json('state.machines.mill.queue');
         $this->assertSame(60_000, $q[1]['readyAt'] - $q[0]['readyAt']);
-        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertStatus(422)->assertJsonPath('message', 'Kho chưa đủ nguyên liệu');
+        $this->postJson('/farm/machines/start', ['machine' => 'mill', 'output' => 'flour'], $h)->assertStatus(422)->assertJsonPath('message', 'Cối xay đã xếp đủ 2 mẻ');
         $this->postJson('/farm/machines/collect', [], $h)->assertStatus(422);
 
         $f = Farm::where('user_id', $id)->first();

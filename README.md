@@ -20,6 +20,9 @@ chạm vào để mở; xưởng có bong bóng khi có mẻ hàng xong. *Nhiệ
 Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (xu / cấp / ô đất; số trận thắng / tiền thắng).
 **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
+**Mọi thứ mở bằng cấp độ + xu:** ô đất, hạt giống, nâng cấp, chó canh, máy chế biến; mỗi **chỗ nuôi** trong chuồng
+(gà: cấp 6/7/9/12/15/19, 300 → 8.000 xu; bò: cấp 15/18/22/27, 4.000 → 30.000 xu) phải mở trước khi mua con; mỗi máy
+có 1 ô làm, ô 2 và 3 mở thêm (cối xay cấp 6/9, lò bánh 10/14, xưởng sữa 18/24). Bảng số trong `shared/economy.json`.
 **Chăn nuôi:** gà ăn 3 lúa mì, bò ăn 2 ngô thì mới đẻ trứng / cho sữa (sau 5 / 15 phút); thu xong con vật đói lại.
 Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng nằm ở ổ rơm cạnh nhà gà, sữa ở bình sữa trong chuồng bò (chỉ hiện khi có sản phẩm); chạm vào đó để thu cả chuồng. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
@@ -156,6 +159,7 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | POST | `/farm/quests/claim` · `/farm/login-reward` | `{index}` nhận thưởng nhiệm vụ · nhận quà đăng nhập |
 | POST | `/farm/animals/buy` · `/farm/animals/collect` | `{type}` mua gà/bò · `{which?}` thu sản phẩm |
 | GET | `/leaderboard/{coins\|level\|tiles\|wins\|winnings}` | Top 50 + hạng của mình |
+| POST | `/farm/pens/expand` · `/farm/machines/expand` | `{type}` mở chỗ nuôi · `{machine}` mở ô làm |
 | POST | `/farm/animals/feed` · `/farm/animals/water` · `/farm/dog` | `{which?}` cho ăn · `{type}` đổ nước · mua chó canh |
 | POST | `/farm/machines/buy` · `/start` · `/collect` | `{machine}` xây máy · `{machine, output}` làm một mẻ · `{machine?}` thu hàng |
 | GET | `/farm/news` | Nhật ký hàng xóm (đánh dấu đã đọc) |

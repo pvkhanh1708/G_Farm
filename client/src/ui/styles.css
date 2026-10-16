@@ -805,3 +805,10 @@ img.ui-art { object-fit: contain; flex: none; vertical-align: middle; }
 .visit-tool small { font-size: 11px; font-weight: 800; opacity: .8; }
 .visit-tool.on { transform: translateY(-6px) scale(1.06); border-color: #f2a516; background: radial-gradient(circle at 50% 30%, #fffbe6, #ffd977);
   box-shadow: 0 0 0 5px rgba(255, 210, 80, .55), 0 5px 0 #6e4606, 0 10px 20px rgba(0,0,0,.28); }
+
+.pen-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
+.job.locked { border-style: dashed; background: #f3ead6; color: #8a6a42; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; }
+.job.locked:disabled { cursor: default; opacity: .7; }
+.job.locked span { display: inline-flex; align-items: center; gap: 2px; }
+.row-actions .btn { min-width: 0; white-space: normal; line-height: 1.15; font-size: 15px; padding: 6px 10px; }
+.pen-actions .btn { white-space: normal; line-height: 1.15; max-width: 132px; }

@@ -362,6 +362,9 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
             const a = ANIMALS[id];
             const mine = s.animals.filter((x) => x.type === id);
             const locked = s.level < a.unlockLevel;
+            /** places opened in this pen, and the next one to open */
+            const places = s.penSlots[id] ?? 0;
+            const nextPlace = a.slots[places];
             const nHungry = mine.filter(animalHungry).length;
             const nReady = mine.filter((x) => animalReady(x, now)).length;
             const growing = mine.filter((x) => x.fedAt !== null && !animalReady(x, now)).map((x) => x.fedAt! + a.period * 1000);
@@ -372,7 +375,7 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
                 </div>
                 <div className="prog-info">
                   <b>
-                    {a.name} <span className="pill">{mine.length}/{a.max}</span>
+                    {a.name} <span className="pill">{mine.length}/{places} con</span>
                   </b>
                   <small>
                     Ăn <ItemIcon item={a.feed.crop} size={16} /> {a.feed.qty} {CROPS[a.feed.crop].name.toLowerCase()} → <ItemIcon item={a.product} size={16} /> 1 {a.productName.toLowerCase()} sau {minutes(a.period)}
@@ -403,11 +406,33 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
                     </small>
                   )}
                 </div>
-                {locked ? (
-                  <span className="muted">Cấp {a.unlockLevel}</span>
-                ) : mine.length >= a.max ? (
-                  <span className="muted">Đầy chuồng</span>
-                ) : (
+                <div className="pen-actions">
+                {nextPlace && (
+                  <button
+                    className="btn btn-blue small"
+                    disabled={!!busy || s.level < nextPlace.level || s.coins < nextPlace.cost}
+                    onClick={async () => {
+                      setBusy(`place-${id}`);
+                      const res = await run(() => farmApi.expandPen(id));
+                      setBusy(null);
+                      if (res) {
+                        sfx.unlock();
+                        fxBus.toast(`Chuồng ${a.name.toLowerCase()} có ${res.slots} chỗ`, 'good');
+                      }
+                    }}
+                  >
+                    <Busy on={busy === `place-${id}`}>
+                      {s.level < nextPlace.level ? (
+                        <>Mở chỗ {places + 1} · cấp {nextPlace.level}</>
+                      ) : (
+                        <>
+                          Mở chỗ {places + 1} <CoinIcon size={14} /> {formatNum(nextPlace.cost)}
+                        </>
+                      )}
+                    </Busy>
+                  </button>
+                )}
+                {locked || mine.length >= places ? null : (
                   <button
                     className="btn btn-orange small"
                     disabled={!!busy || s.coins < a.price}
@@ -426,6 +451,7 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
                     </Busy>
                   </button>
                 )}
+                </div>
               </div>
             );
           })}

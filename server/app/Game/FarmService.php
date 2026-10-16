@@ -67,6 +67,7 @@ class FarmService
             'machines' => (object) ($farm->machines ?? []),
             'dog' => $farm->dog,
             'water' => (object) ($farm->water ?? []),
+            'penSlots' => (object) ($farm->pen_slots ?? []),
             'news' => FarmEvent::where('user_id', $farm->user_id)->where('seen', false)->count(),
         ];
     }
@@ -224,6 +225,7 @@ class FarmService
                 'machines' => null,
                 'dog' => false,
                 'water' => null,
+                'pen_slots' => null,
             ])->save();
         });
     }
@@ -499,8 +501,9 @@ class FarmService
                 throw new GameException("{$a['name']} mở ở cấp {$a['unlockLevel']}");
             }
             $animals = $farm->animals ?? [];
-            if (count(array_filter($animals, fn ($x) => $x['type'] === $type)) >= $a['max']) {
-                throw new GameException("Chuồng đã đủ {$a['max']} con");
+            $places = $farm->pen_slots[$type] ?? 0;
+            if (count(array_filter($animals, fn ($x) => $x['type'] === $type)) >= $places) {
+                throw new GameException($places ? "Chuồng đã đủ {$places} chỗ, hãy mở thêm chỗ" : "Hãy mở chỗ trong chuồng {$a['name']} trước");
             }
             if ($farm->coins < $a['price']) {
                 throw new GameException('Không đủ xu!');
@@ -622,6 +625,57 @@ class FarmService
         });
     }
 
+    /**
+     * Open the next place in a pen. Each place needs its own level and costs coins (economy: animals[].slots).
+     *
+     * @return array{slots: int}
+     */
+    public function expandPen(User $user, string $type): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($type) {
+            $a = $this->eco->animal($type) ?? throw new GameException('Chuồng không tồn tại');
+            $have = $farm->pen_slots[$type] ?? 0;
+            $next = $a['slots'][$have] ?? throw new GameException('Chuồng đã mở hết chỗ');
+            $this->pay($farm, $next['level'], $next['cost']);
+            $farm->pen_slots = [...($farm->pen_slots ?? []), $type => $have + 1];
+            $farm->save();
+
+            return ['slots' => $have + 1];
+        });
+    }
+
+    /** Open one more batch place on a machine (economy: machines[].slots, after the first). */
+    public function expandMachine(User $user, string $id): array
+    {
+        return $this->locked($user, function (Farm $farm) use ($id) {
+            $m = $this->eco->machine($id) ?? throw new GameException('Máy không tồn tại');
+            $machines = $farm->machines ?? [];
+            if (! isset($machines[$id])) {
+                throw new GameException("Chưa có {$m['name']}");
+            }
+            $have = $machines[$id]['slots'] ?? 1;
+            $next = $m['slots'][$have - 1] ?? throw new GameException("{$m['name']} đã mở hết ô");
+            $this->pay($farm, $next['level'], $next['cost']);
+            $machines[$id]['slots'] = $have + 1;
+            $farm->machines = $machines;
+            $farm->save();
+
+            return ['slots' => $have + 1];
+        });
+    }
+
+    /** Level check, then take the coins. */
+    private function pay(Farm $farm, int $level, int $cost): void
+    {
+        if ($farm->level < $level) {
+            throw new GameException("Cần đạt cấp {$level}");
+        }
+        if ($farm->coins < $cost) {
+            throw new GameException('Không đủ xu!');
+        }
+        $farm->coins -= $cost;
+    }
+
     public function buyDog(User $user): void
     {
         $this->locked($user, function (Farm $farm) {
@@ -658,7 +712,8 @@ class FarmService
                 throw new GameException('Không đủ xu!');
             }
             $farm->coins -= $m['price'];
-            $machines[$id] = ['queue' => []];
+            // a new machine has one batch place; more are opened with expandMachine
+            $machines[$id] = ['queue' => [], 'slots' => 1];
             $farm->machines = $machines;
             $farm->save();
         });
@@ -675,8 +730,9 @@ class FarmService
             }
             $recipe = $this->eco->recipe($m, $output) ?? throw new GameException('Công thức không tồn tại');
             $queue = $machines[$machineId]['queue'];
-            if (count($queue) >= $m['queue']) {
-                throw new GameException("{$m['name']} đã xếp đủ {$m['queue']} mẻ");
+            $places = $machines[$machineId]['slots'] ?? 1;
+            if (count($queue) >= $places) {
+                throw new GameException("{$m['name']} đã xếp đủ {$places} mẻ");
             }
             $inv = $farm->inventory;
             foreach ($recipe['inputs'] as $item => $qty) {
