@@ -236,3 +236,385 @@ sản phẩm (`ui/<sản phẩm>.png`), máng ăn / nước riêng nếu muốn 
 - Hình quá nhỏ trong khung: *"make the object fill about 85% of the square"*.
 - Giữ một cuộc trò chuyện cho cả bộ để công cụ nhớ phong cách; mở cuộc mới thì đính kèm lại ảnh mẫu.
 - Bản quyền: theo điều khoản của OpenAI, bạn sở hữu ảnh tạo ra. Không ghi tên game / thương hiệu khác vào prompt.
+
+## 7. Prompt sẵn cho danh sách cần vẽ
+
+Copy nguyên từng khối, đính kèm các hình mẫu ghi ở mỗi mục (trong `client/src/assets/sprites/`), lưu kết quả
+đúng tên file. Thứ tự: ưu tiên 1 → 3.
+
+### 1. Xưởng chế biến → `ui/workshop.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `ui/barn.png, ui/upgrade.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a small cozy wooden workshop building with a red tiled roof, a stone chimney puffing a little white smoke and a big golden cog wheel on its front wall as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 2. Hàng xóm → `ui/neighbors.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `ui/barn.png, ui/game-room.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw two small cute farmhouses side by side, one with a red roof and one with a green roof, a short wooden fence and a tiny path between them as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 3. Chó canh → `ui/dog.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `ui/chicken.png, ui/cow.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw the head of a friendly brown-and-cream farm guard dog with floppy ears, big shiny eyes, a happy open mouth and a red collar with a small golden tag as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+Same framing as the chicken and cow face icons attached: head only, facing the viewer.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 4. Hái trộm → `ui/steal.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `ui/harvest.png, ui/seeds.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a small burlap sack bulging with fresh vegetables (a carrot, a tomato and leafy greens poking out of the top) with a cartoon hand grabbing it as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 5. Tưới giúp → `ui/watering-can.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `ui/harvest.png, ui/plant.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a cute green metal watering can tilted forward, pouring a stream of blue water drops from its spout as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 6. Bát ăn (bong bóng "đói") → `ui/feed-bowl.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `props/chicken-feeder-empty.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a small empty round wooden feeding bowl with only a few golden grains left at the bottom as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+Very simple, few details, thick outline: it is shown about 40 pixels wide inside a speech bubble.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 7. Nhà chó (trong cảnh) → `props/doghouse.png` (ưu tiên 1)
+
+Hình mẫu đính kèm: `props/coop.png, props/hay.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a small wooden dog house with a red tiled roof and an arched doorway, a cute brown-and-cream dog peeking its head out of the door, a little food bowl beside it as a single game asset for a cozy casual mobile farming game.
+
+Isometric three-quarter top-down view (camera above and in front, about 30 degrees down), standing on the ground with its base at the bottom of the image, no ground tile under it.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 8. Bột mì → `ui/flour.png` (ưu tiên 2)
+
+Hình mẫu đính kèm: `ui/seeds.png, ui/milk.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a plump cloth sack of white flour tied with string at the top, a golden wheat ear printed on the front and a little flour dust around the opening as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 9. Bánh mì → `ui/bread.png` (ưu tiên 2)
+
+Hình mẫu đính kèm: `ui/egg.png, ui/milk.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a freshly baked golden-brown loaf of bread with a crispy crust and three diagonal score marks on top as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 10. Bánh dâu → `ui/cake.png` (ưu tiên 2)
+
+Hình mẫu đính kèm: `ui/egg.png, ui/milk.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a round strawberry cream cake with pink frosting, white cream swirls and a big glossy strawberry on top, on a small white plate as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 11. Phô mai → `ui/cheese.png` (ưu tiên 2)
+
+Hình mẫu đính kèm: `ui/egg.png, ui/milk.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a thick wedge of yellow cheese with round holes, a soft highlight on its top face as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 12. Sữa chua dâu → `ui/yogurt.png` (ưu tiên 2)
+
+Hình mẫu đính kèm: `ui/egg.png, ui/milk.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a small glass jar of pink strawberry yogurt with a red-and-white checkered cloth lid tied with a ribbon and a strawberry beside it as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 13. Quà đăng nhập → `ui/gift.png` (ưu tiên 3)
+
+Hình mẫu đính kèm: `ui/coin.png, ui/quests.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a red gift box with a big shiny golden ribbon bow on top, the lid slightly lifted with golden sparkles coming out as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 14. Máy tưới → `ui/sprinkler.png` (ưu tiên 3)
+
+Hình mẫu đính kèm: `ui/upgrade.png, ui/plant.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a garden water sprinkler on a small stand spraying arcs of sparkling blue water in a fan shape as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 15. Phân bón → `ui/fertilizer.png` (ưu tiên 3)
+
+Hình mẫu đính kèm: `ui/seeds.png, ui/plant.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a green bag of plant fertilizer with a white sprout leaf symbol on the front, the top folded open with dark rich granules showing as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 16. Khóa → `ui/lock.png` (ưu tiên 3)
+
+Hình mẫu đính kèm: `ui/coin.png, ui/settings.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a chunky golden padlock with a rounded shackle and a keyhole as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
+
+### 17. Đồng hồ → `ui/clock.png` (ưu tiên 3)
+
+Hình mẫu đính kèm: `ui/coin.png, ui/settings.png`
+
+```text
+Match the art style of the attached reference images exactly (if any are attached).
+
+Draw a round red alarm clock with two bells on top and a white face with simple hands as a single game asset for a cozy casual mobile farming game.
+
+Slightly angled three-quarter front view, like a shop icon.
+Very simple, few details: it is shown only about 16 pixels wide.
+
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow.
+Clean, bold shapes that stay readable when shown very small on a phone screen.
+
+Output: one object only, centred, filling about 85% of a square 1:1 canvas (1024x1024),
+TRANSPARENT background, no ground, no scenery, no text, no letters, no numbers, no watermark,
+no frame, no border.
+```
