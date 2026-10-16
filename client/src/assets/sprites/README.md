@@ -51,6 +51,17 @@ hàng 1: đứng · vui (nhắm mắt) · bước 1 · bước 2 · bước 3 ·
 hàng 2: cúi mổ/gặm cỏ · kêu · 3/4 hướng về người xem · quay lưng · (2 ô cuối chưa dùng).
 Script tự tách thành animals/<con>/frame-0..11.webp (bỏ chấm nhiễu quanh hình, cùng tỉ lệ, chân chạm đáy).
 
+## Tấm nhiều hình (sheets/)
+
+Vẽ nhiều món trên một tấm lưới (vd. 3 cột × 2 hàng, 1536×1024), lưu `sheets/<tên>.png` và tạo `sheets/<tên>.json`:
+
+```json
+{ "cols": 3, "rows": 2, "cells": ["ui/steal.png", "ui/watering-can.png", "ui/feed-bowl.png", "props/doghouse.png", "ui/flour.png", "ui/bread.png"] }
+```
+
+Thứ tự ô: trái sang phải, hàng trên rồi hàng dưới (`null` cho ô bỏ trống). Script tự tách từng hình, bỏ lớp hào quang
+quanh hình, cắt sát và lưu như thể từng file được vẽ riêng.
+
 ## Cách nhanh: mỗi cây một tấm ảnh
 
 Thay vì 5 file riêng, có thể đặt **một tấm** `crops/<mã>.png` (ví dụ `crops/carrot.png`), lưới **3 cột × 2 hàng** ô bằng nhau

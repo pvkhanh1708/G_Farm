@@ -27,8 +27,9 @@ const pngs = [];
 
 const relOf = (p) => path.relative(ROOT, p).split(path.sep).join('/');
 const isAnimalSheet = (p) => /^animals\/[a-z]+\.png$/.test(relOf(p));
+const isItemSheet = (p) => /^sheets\//.test(relOf(p));
 const todo = pngs.filter((p) => {
-  if (isAnimalSheet(p)) return false; // sliced into frames below
+  if (isAnimalSheet(p) || isItemSheet(p)) return false; // sliced below
   const out = p.replace(/\.png$/i, '.webp');
   return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
 });
@@ -48,7 +49,16 @@ const animalSheets = pngs.filter((p) => {
   const out = frameOut(p, ANIMAL_FRAMES - 1);
   return FORCE || !fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(p).mtimeMs;
 });
-if (!todo.length && !sheets.length && !animalSheets.length) {
+// an item sheet is redone when it or its .json changed after the first picture it makes
+const itemSheets = pngs.filter((p) => {
+  if (!isItemSheet(p)) return false;
+  const json = p.replace(/\.png$/, '.json');
+  if (!fs.existsSync(json)) return false;
+  const first = JSON.parse(fs.readFileSync(json, 'utf8')).cells.find(Boolean);
+  const out = first && path.join(ROOT, first.replace(/\.png$/, '.webp'));
+  return FORCE || !out || !fs.existsSync(out) || fs.statSync(out).mtimeMs < Math.max(fs.statSync(p).mtimeMs, fs.statSync(json).mtimeMs);
+});
+if (!todo.length && !sheets.length && !animalSheets.length && !itemSheets.length) {
   console.log(`[art] ${pngs.length} PNG, all WebP up to date`);
   process.exit(0);
 }
@@ -275,9 +285,14 @@ for (const file of sheets) {
  * pixels) are dropped. All frames share one scale and stand on the bottom edge of a 256 px square,
  * centred, so the animal keeps its size and footing from frame to frame.
  */
-for (const file of animalSheets) {
-  const rel = relOf(file);
-  const frames = await page.evaluate(async (data, C, R) => {
+/**
+ * Cut a grid sheet into one picture per cell. Each picture is the group of solid shapes whose centre lies in
+ * its cell; specks and the soft glow some generators paint around drawings are dropped. `ownScale` false: all
+ * cells share one scale (animal poses); true: each picture fills its own square (a sheet of different items).
+ * Every picture stands on the bottom edge of a 256 px square, centred. Returns base64 WebP per cell (null = empty).
+ */
+async function sliceGrid(file, cols, rows, ownScale) {
+  return page.evaluate(async (data, C, R, own) => {
     const N = C * R;
     const img = new Image();
     img.src = 'data:image/png;base64,' + data;
@@ -353,10 +368,15 @@ for (const file of animalSheets) {
       layers.push(layer);
       boxes.push({ x0, y0, x1, y1 });
     }
-    const side = Math.max(...boxes.map((b) => Math.max(b.x1 - b.x0, b.y1 - b.y0))) * 1.04;
+    const shared = Math.max(...boxes.map((b) => Math.max(b.x1 - b.x0, b.y1 - b.y0))) * 1.04;
     const out = [];
     for (let f = 0; f < N; f++) {
       const b = boxes[f];
+      if (b.x1 <= b.x0) {
+        out.push(null);
+        continue;
+      }
+      const side = own ? Math.max(b.x1 - b.x0, b.y1 - b.y0) * 1.04 : shared;
       const c = document.createElement('canvas');
       c.width = c.height = 256;
       const ctx = c.getContext('2d');
@@ -367,12 +387,34 @@ for (const file of animalSheets) {
       out.push(c.toDataURL('image/webp', 0.9).split(',')[1]);
     }
     return out;
-  }, fs.readFileSync(file).toString('base64'), ANIMAL_COLS, ANIMAL_ROWS);
+  }, fs.readFileSync(file).toString('base64'), cols, rows, ownScale);
+}
+
+for (const file of animalSheets) {
+  const rel = relOf(file);
+  const frames = await sliceGrid(file, ANIMAL_COLS, ANIMAL_ROWS, false);
   frames.forEach((b64, f) => {
+    if (!b64) return;
     fs.mkdirSync(path.dirname(frameOut(file, f)), { recursive: true });
     fs.writeFileSync(frameOut(file, f), Buffer.from(b64, 'base64'));
   });
   console.log(`[art] ${rel} -> ${rel.replace(/\.png$/, '')}/frame-0..${ANIMAL_FRAMES - 1}.webp`);
+}
+
+/**
+ * Item sheets: sheets/<name>.png with sheets/<name>.json = { "cols": 3, "rows": 2, "cells": ["ui/steal.png", …] }
+ * (null for an unused cell). Each cell becomes the .webp of that path, as if it had been drawn on its own.
+ */
+for (const file of itemSheets) {
+  const spec = JSON.parse(fs.readFileSync(file.replace(/\.png$/, '.json'), 'utf8'));
+  const parts = await sliceGrid(file, spec.cols, spec.rows, true);
+  spec.cells.forEach((target, i) => {
+    if (!target || !parts[i]) return;
+    const out = path.join(ROOT, target.replace(/\.png$/, '.webp'));
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, Buffer.from(parts[i], 'base64'));
+    console.log(`[art] ${relOf(file)} cell ${i + 1} -> ${target.replace(/\.png$/, '.webp')}`);
+  });
 }
 
 await browser.close();

@@ -46,6 +46,11 @@ Ví dụ vẽ cái giếng nước để trang trí: `[ITEM]` = `a small stone w
 
 Con vật (cần 12 tư thế) và cây trồng (5 giai đoạn) có khổ ảnh riêng: dùng mẫu C và E ở mục 3.
 
+**Vẽ nhiều món một lần:** công cụ chỉ trả một ảnh mỗi lần, nên xin một *tấm lưới 3×2* (1536×1024, mỗi ô 512×512,
+mỗi ô một món, ghi rõ góc nhìn từng ô) rồi lưu vào `sheets/` kèm file `.json` ghi ô nào thành file nào
+(xem README trong thư mục ảnh). Câu mở đầu nên dùng:
+`Draw a game asset sheet: a 3x2 grid of six equal square cells on a wide 1536x1024 canvas (each cell 512x512), TRANSPARENT background, no grid lines, no text. Each object is centred in its own cell, fills about 80% of the cell and never crosses into a neighbouring cell.`
+
 ---
 
 ## 1. Cách dùng
