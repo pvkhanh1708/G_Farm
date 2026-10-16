@@ -188,7 +188,7 @@ export class World {
     // the farm block (columns 0..cols-1, growing toward -x) stays clear of decor
     const half = TILE_PITCH / 2 + 0.25;
     // the animal pen on the right is kept clear too
-    const farm = { x0: -(cols - 1) * TILE_PITCH - half, x1: PENS_X1 + 0.6, z0: -(COLUMN_LENGTH - TILE_PITCH) - half, z1: half };
+    const farm = { x0: -(cols - 1) * TILE_PITCH - half, x1: PENS_X1 + 1.4, z0: -(COLUMN_LENGTH - TILE_PITCH) - half, z1: half };
     if (SHOW_PLOT_PAD) pads.push({ x: (farm.x0 + farm.x1) / 2, y: 0, z: (farm.z0 + farm.z1) / 2, s: 1, yaw: 0 });
     const M = DECOR_MARGIN;
     const cell = ISLAND_SIZE;

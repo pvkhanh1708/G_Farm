@@ -198,8 +198,10 @@ function floor(scene: Scene, id: AnimalId, pen: Rect) {
 type PropKind = 'coop' | 'hay' | 'feeder' | 'water' | 'product';
 const PROPS: Record<AnimalId, Array<[PropKind, number, number, number]>> = {
   // the product spot (egg nest, milk can) only shows while something is ready to collect
-  chicken: [['coop', 2.0, 0.8, 0.82], ['feeder', 1.1, 0.28, 0.42], ['water', 0.8, 0.62, 0.2], ['product', 0.75, 0.5, 0.72]],
-  cow: [['hay', 1.15, 0.82, 0.88], ['hay', 0.9, 0.15, 0.9], ['water', 1.6, 0.84, 0.32], ['feeder', 1.6, 0.4, 0.17], ['product', 0.8, 0.58, 0.78]],
+  // coop in the far corner with the nest at its door; feeder and water side by side along the right fence
+  chicken: [['coop', 2.1, 0.74, 0.82], ['product', 0.75, 0.4, 0.8], ['feeder', 1.1, 0.84, 0.42], ['water', 0.8, 0.84, 0.2]],
+  // hay stacked in the far corner, the milk can beside it; feeder and water along the right fence
+  cow: [['hay', 1.15, 0.8, 0.9], ['hay', 0.95, 0.55, 0.92], ['product', 0.8, 0.3, 0.88], ['feeder', 1.6, 0.82, 0.58], ['water', 1.6, 0.82, 0.3]],
 };
 const PRODUCT_KEY: Record<AnimalId, BillboardKey> = { chicken: 'egg-nest', cow: 'milk-can' };
 const PROP_KEY = (type: AnimalId, kind: PropKind, full: boolean): BillboardKey =>
@@ -311,8 +313,8 @@ export class AnimalPen {
     if (on && !this.dogHouse) {
       this.dogHouse = this.boards.quad('doghouse', 1.15, { bottom: true }).clone('dog-house');
       this.dogHouse.isVisible = true;
-      // in the gap between the chicken coop and the cow pen
-      this.dogHouse.position.set(PENS.chicken.x1 + 0.35, 0, (PENS.chicken.z0 + PENS.cow.z1) / 2);
+      // just outside the fence, between the two pens
+      this.dogHouse.position.set(PENS.chicken.x1 + 0.75, 0, (PENS.chicken.z0 + PENS.cow.z1) / 2);
     }
     if (this.dogHouse) this.dogHouse.setEnabled(on);
   }

@@ -224,9 +224,11 @@ export const LOGIN_REWARDS = economy.login;
  * Fenced pens on the right of the farm block (column 0 is at x = 0, columns grow toward -x),
  * one per animal kind: a small chicken coop, then a larger cow pen further along the column.
  */
+// on the tile grid: column 0's tiles span x -0.75..0.75 and z 0.75..-14.25 (TILE_PITCH 1.5);
+// both pens are 3 tiles wide half a tile right of it, the coop 4 tiles deep, the cow pen the rest
 export const PENS: Record<AnimalId, { x0: number; x1: number; z0: number; z1: number }> = {
-  chicken: { x0: 1.5, x1: 5.5, z0: -5.2, z1: -1.4 },
-  cow: { x0: 1.5, x1: 6.3, z0: -12.4, z1: -6.2 },
+  chicken: { x0: 1.5, x1: 6.0, z0: -5.25, z1: 0.75 },
+  cow: { x0: 1.5, x1: 6.0, z0: -14.25, z1: -6.0 },
 };
 /** Right edge of the pens (camera bounds, meadow decor). */
 export const PENS_X1 = Math.max(...Object.values(PENS).map((p) => p.x1));
