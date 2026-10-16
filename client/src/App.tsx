@@ -12,7 +12,7 @@ import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
 import { GameRoom } from './ui/GameRoom';
-import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup, useRaining, WeatherChip } from './ui/Progress';
+import { AnimalsPopup, animalReady, claimableCount, LeaderboardPopup, LoginRewardPopup, OrdersPopup, QuestsPopup, UpgradesPopup } from './ui/Progress';
 import { SideButtons } from './ui/SideButtons';
 import { SkyOverlay } from './ui/SkyOverlay';
 import { music } from './game/audio/music';
@@ -110,7 +110,6 @@ export function App() {
     const t = setTimeout(() => setPopup((p) => p ?? { type: 'login' }), 900);
     return () => clearTimeout(t);
   }, [netReady, game, s.daily, showcase]);
-  const raining = useRaining();
 
   useEffect(() => {
     sync.onReject = (msg) => fxBus.toast(msg, 'bad');
@@ -240,7 +239,7 @@ export function App() {
   return (
     <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
       <canvas ref={canvasRef} className="scene" />
-      {!showcase && <SkyOverlay raining={raining} />}
+      {!showcase && <SkyOverlay />}
       {game && !showcase && (
         <>
           <TileOverlays
@@ -288,7 +287,6 @@ export function App() {
             animals={s.animals.filter((a) => animalReady(a)).length}
             onOpen={(type) => (sfx.open(), setPopup({ type }))}
           />
-          <WeatherChip />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
           <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}

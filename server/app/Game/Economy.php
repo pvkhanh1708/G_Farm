@@ -117,21 +117,6 @@ class Economy
         return $crop['yield'] + (int) round($crop['yield'] * $this->data['upgrades']['soil']['yieldPerLevel'] * $soil);
     }
 
-    /** Rain falls in some fixed-length time blocks, the same for everyone. */
-    public function isRaining(int $ms): bool
-    {
-        $w = $this->data['weather'];
-        $block = intdiv($ms, $w['blockMinutes'] * 60_000);
-
-        // high bits of an LCG step: the low ones repeat with a short period
-        return intdiv(($block * 1103515245 + 12345) % 2147483648, 65536) % $w['rainOneIn'] === 0;
-    }
-
-    public function harvestXp(array $crop, int $ms): int
-    {
-        return (int) round($crop['xp'] * ($this->isRaining($ms) ? 1 + $this->data['weather']['rainXpBonus'] : 1));
-    }
-
     public function fertilizerCost(array $crop): int
     {
         return max(1, (int) round($crop['seedPrice'] * $this->data['fertilizer']['costShare']));

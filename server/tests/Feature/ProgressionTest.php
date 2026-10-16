@@ -107,16 +107,4 @@ class ProgressionTest extends TestCase
         $this->postJson('/farm/sell', ['crop' => 'egg', 'qty' => 1], $h)->assertOk()->assertJsonPath('result.earned', $hen['sellPrice']);
     }
 
-    public function test_rain_is_deterministic_and_sometimes_true(): void
-    {
-        $eco = app(Economy::class);
-        $block = 20 * 60_000;
-        $rains = 0;
-        for ($i = 0; $i < 500; $i++) {
-            $rains += $eco->isRaining(1_790_000_000_000 + $i * $block) ? 1 : 0;
-        }
-        $this->assertGreaterThan(50, $rains);
-        $this->assertLessThan(200, $rains);
-        $this->assertSame($eco->isRaining(1_790_000_000_000), $eco->isRaining(1_790_000_000_000 + 1000));
-    }
 }

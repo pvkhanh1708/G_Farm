@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Time of day from the player's clock, as a tint over the scene (multiply), plus
- * falling rain while the shared weather says so.
+ * Time of day from the player's clock, as a tint over the scene (multiply).
  */
 const KEYS: Array<[number, string, number]> = [
   // hour, colour, strength
@@ -34,7 +33,7 @@ function hourNow() {
   return d.getHours() + d.getMinutes() / 60;
 }
 
-export function SkyOverlay({ raining }: { raining: boolean }) {
+export function SkyOverlay() {
   const [hour, setHour] = useState(hourNow);
   useEffect(() => {
     const t = setInterval(() => setHour(hourNow()), 60_000);
@@ -44,9 +43,6 @@ export function SkyOverlay({ raining }: { raining: boolean }) {
   const forced = Number(new URLSearchParams(location.search).get('hour'));
   const { color, alpha } = tint(forced > 0 && forced < 24 ? forced : hour);
   return (
-    <>
-      <div className="sky-tint" style={{ background: color, opacity: Math.min(0.6, alpha + (raining ? 0.12 : 0)) }} />
-      {raining && <div className="rain" />}
-    </>
+    <div className="sky-tint" style={{ background: color, opacity: alpha }} />
   );
 }

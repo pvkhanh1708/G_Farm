@@ -179,24 +179,6 @@ export function harvestAmount(crop: CropId, soil: number): number {
   return y + Math.round(y * UPGRADES.soil.yieldPerLevel! * soil);
 }
 
-const RAIN_BLOCK_MS = economy.weather.blockMinutes * 60_000;
-
-/** Rain falls in fixed time blocks, the same for every player (and the server). */
-export function isRaining(ms: number): boolean {
-  const block = BigInt(Math.floor(ms / RAIN_BLOCK_MS));
-  // high bits of an LCG step: the low ones repeat with a short period
-  return (((block * 1103515245n + 12345n) % 2147483648n) / 65536n) % BigInt(economy.weather.rainOneIn) === 0n;
-}
-
-/** When the current weather block ends. */
-export function weatherBlockEnd(ms: number): number {
-  return (Math.floor(ms / RAIN_BLOCK_MS) + 1) * RAIN_BLOCK_MS;
-}
-
-export function harvestXp(crop: CropId, ms: number): number {
-  return Math.round(CROPS[crop].xp * (isRaining(ms) ? 1 + economy.weather.rainXpBonus : 1));
-}
-
 export function fertilizerCost(crop: CropId): number {
   return Math.max(1, Math.round(CROPS[crop].seedPrice * economy.fertilizer.costShare));
 }

@@ -124,7 +124,7 @@ class FarmService
                     continue;
                 }
                 $inventory[$p->crop] = ($inventory[$p->crop] ?? 0) + $this->eco->harvestAmount($crop, $farm->soil_level);
-                $xp += $this->eco->harvestXp($crop, $clock);
+                $xp += $crop['xp'];
                 $harvested[] = $p->tile;
                 $p->delete();
             }

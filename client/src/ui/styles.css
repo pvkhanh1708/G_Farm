@@ -704,25 +704,9 @@ button { font-family: inherit; cursor: pointer; border: 0; background: none; col
 .lb-value { font-size: 14px; white-space: nowrap; }
 .lb-mine { margin: 8px 0 0; }
 .center { text-align: center; }
-.weather-chip {
-  position: absolute; left: 50%; transform: translateX(-50%); top: calc(76px + var(--safe-top)); z-index: 4; pointer-events: none;
-  display: flex; align-items: center; gap: 6px; padding: 3px 12px 3px 6px; border-radius: 18px; font-weight: 800; font-size: 14px;
-  background: rgba(230, 244, 255, .95); border: 3px solid #4a8ac8; color: #1f4f7e; box-shadow: 0 3px 0 #2f6aa0;
-}
-.weather-chip small { opacity: .7; }
 
-/* ------------------------------------------------------------ time of day + rain */
+/* ------------------------------------------------------------ time of day */
 .sky-tint { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; transition: opacity 2s, background 2s; z-index: 0; }
-.rain {
-  position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .55;
-  background-image:
-    linear-gradient(105deg, transparent 0 48%, rgba(220, 235, 255, .8) 49% 51%, transparent 52%),
-    linear-gradient(105deg, transparent 0 48%, rgba(220, 235, 255, .6) 49% 51%, transparent 52%);
-  background-size: 23px 70px, 37px 110px;
-  animation: rain .45s linear infinite;
-}
-@keyframes rain { to { background-position: -14px 70px, -22px 110px; } }
-@media (prefers-reduced-motion: reduce) { .rain { animation-duration: 2s; } }
 
 /* hand-drawn UI icons (assets/sprites/ui) */
 img.ui-art { object-fit: contain; flex: none; vertical-align: middle; }

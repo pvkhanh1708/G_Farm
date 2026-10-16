@@ -408,10 +408,5 @@
       "sellPrice": 520,
       "xp": 18
     }
-  ],
-  "weather": {
-    "blockMinutes": 20,
-    "rainOneIn": 5,
-    "rainXpBonus": 0.2
-  }
+  ]
 }

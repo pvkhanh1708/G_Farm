@@ -18,8 +18,7 @@ cả dãy, hoặc khi đang “Gieo nhanh” thì kéo qua các ô trống để
 mỗi 5 phút, bò từ cấp 15 cho sữa mỗi 15 phút; chuồng gà và chuồng bò riêng, bên phải nông trại; chạm con vật để thu), *Nâng cấp* (Đất màu mỡ +10%
 sản lượng/cấp, Máy tưới −6% thời gian lớn/cấp), *Xếp hạng* (nông trại: xu / cấp / số ô đất; phòng game: số trận thắng / tiền thắng
 ròng) và *Phòng game*.
-**Thời tiết:** trời mưa theo từng khung 20 phút, giống nhau cho mọi người chơi (công thức chung client/server); khi mưa thu hoạch
-được +20% XP. **Ngày/đêm** theo giờ máy người chơi (xem thử: `?hour=20`). **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
+**Ngày/đêm** theo giờ máy người chơi (xem thử: `?hour=20`). **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:

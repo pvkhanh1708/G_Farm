@@ -1,4 +1,4 @@
-import { AnimalId, CROPS, CropId, growMs, harvestAmount, harvestXp, ITEM_ORDER, ItemId, itemDef, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
+import { AnimalId, CROPS, CropId, growMs, harvestAmount, ITEM_ORDER, ItemId, itemDef, levelForTiles, levelReward, START_UNLOCKED, STARTING_COINS, STAGE_COUNT, tileCap, TILES_PER_PARCEL, unlockCost, xpToNext } from '../config';
 import { serverNow } from '../net/clock';
 
 /**
@@ -228,7 +228,7 @@ class Store {
     const p = this.state.plantings[g];
     if (!p) return { ok: false, reason: 'Không có cây để thu hoạch' };
     if (growthProgress(p, now) < 1) return { ok: false, reason: 'Cây chưa chín' };
-    const amount = harvestAmount(p.crop, this.state.soil), xp = harvestXp(p.crop, now);
+    const amount = harvestAmount(p.crop, this.state.soil), xp = CROPS[p.crop].xp;
     const plantings = { ...this.state.plantings };
     delete plantings[g];
     const before = this.state.level;

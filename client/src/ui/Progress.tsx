@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ANIMAL_ORDER, ANIMALS, AnimalId, isRaining, ItemId, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind, weatherBlockEnd } from '../game/config';
+import { ANIMAL_ORDER, ANIMALS, AnimalId, ItemId, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind } from '../game/config';
 import { sfx } from '../game/audio/sfx';
 import { serverNow } from '../game/net/clock';
 import { Board, BoardRow, farmApi, FarmError, leaderboard } from '../game/net/farm';
@@ -505,21 +505,3 @@ export function LeaderboardPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ---------------------------------------------------------------- weather
-
-/** "Rain: +20% XP" chip while it rains (same schedule as the server). */
-export function WeatherChip() {
-  const now = useNow(5000);
-  if (!isRaining(now)) return null;
-  const left = Math.max(1, Math.round((weatherBlockEnd(now) - now) / 60000));
-  return (
-    <div className="weather-chip" title={`Còn khoảng ${left} phút`}>
-      <RainIcon size={26} /> Mưa: +20% XP <small>{left}′</small>
-    </div>
-  );
-}
-
-export function useRaining() {
-  const now = useNow(5000);
-  return isRaining(now);
-}
