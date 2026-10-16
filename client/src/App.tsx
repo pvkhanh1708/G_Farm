@@ -7,7 +7,7 @@ import { sync } from './game/net/sync';
 import { pwa } from './game/pwa';
 import { growthProgress, store, TileState } from './game/state/store';
 import { bump, FxLayer, fxBus } from './ui/FxLayer';
-import { BottomBar, FpsMeter, Hint, ToolBanner, TopBar, useGameState } from './ui/Hud';
+import { BottomBar, FpsMeter, ToolBanner, TopBar, useGameState } from './ui/Hud';
 import { SproutIcon } from './ui/icons';
 import { AccountPopup, InstallPopup, Inventory, LevelsPopup, LevelUpPopup, SeedShop, Settings, UnlockPopup } from './ui/Popups';
 import { NetBadge } from './ui/NetBadge';
@@ -46,17 +46,6 @@ function counts(tiles: TileState[]) {
     else growing++;
   }
   return { ready, empty, growing };
-}
-
-function hintFor(tiles: TileState[], coins: number, inv: number, tool: CropId | null): string | null {
-  const c = counts(tiles);
-  if (c.ready) return c.ready > 1 ? `${c.ready} ô đã chín — bấm “Thu tất cả” hoặc kéo ngón tay qua các cây.` : 'Cây đã chín! Chạm vào cây để thu hoạch.';
-  if (tool) return null;
-  if (!c.growing && store.canUnlockByLevel() && coins >= store.nextUnlockCost()) return 'Bạn đủ xu để mở ô đất mới — chạm vào ô có biển “Mở khóa”.';
-  if (c.empty && coins >= CROPS.carrot.seedPrice) return c.empty > 1 ? 'Chạm ô đất trống để gieo, hoặc bấm “Trồng tất cả”.' : 'Chạm vào ô đất trống để gieo hạt.';
-  if (inv > 0) return 'Mở Kho để bán nông sản lấy xu.';
-  if (c.growing) return 'Cây đang lớn… chờ một chút nhé!';
-  return null;
 }
 
 export function App() {
@@ -324,7 +313,6 @@ export function App() {
 
   const loading = progress.k < 1 || !game || !netReady;
   const c = counts(tiles);
-  const inv = Object.values(s.inventory).reduce((a, b) => a + b, 0);
 
   return (
     <div className="app" onPointerDown={() => (sfx.resume(), music.resume())}>
@@ -379,7 +367,6 @@ export function App() {
             onMore={() => (sfx.open(), setPopup({ type: 'more' }))}
           />
           {tool ? <ToolBanner seed={tool} onCancel={() => (sfx.tap(), setTool(null))} /> : null}
-          <Hint text={popup || levelUp !== null ? null : hintFor(tiles, s.coins, inv, tool)} />
           {prefs.fps && <FpsMeter game={game} />}
           <NetBadge />
         </>

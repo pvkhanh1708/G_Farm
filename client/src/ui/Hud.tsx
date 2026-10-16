@@ -130,23 +130,6 @@ export function ToolBanner({ seed, onCancel }: { seed: CropId; onCancel: () => v
   );
 }
 
-export function Hint({ text }: { text: string | null }) {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    const t = setTimeout(() => setShown(text), 250);
-    return () => clearTimeout(t);
-  }, [text]);
-  if (!shown) return null;
-  return (
-    <div className="hint" key={shown}>
-      <div className="hint-avatar">
-        <SproutIcon size={30} />
-      </div>
-      <span>{shown}</span>
-    </div>
-  );
-}
-
 export function FpsMeter({ game }: { game: Game }) {
   const [fps, setFps] = useState(0);
   useEffect(() => {

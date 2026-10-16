@@ -1,4 +1,3 @@
-import { NEIGHBORS } from '../game/config';
 import type { NeighbourFarm } from '../game/net/farm';
 import { DogIcon, HandIcon, WaterIcon } from './icons';
 
@@ -30,11 +29,6 @@ export function VisitBar({ farm, onHome }: { farm: NeighbourFarm; onHome: () => 
         </span>
         <span>
           <WaterIcon size={22} /> Tưới giúp: {farm.helpsLeft}
-        </span>
-      </div>
-      <div className="hint visit-hint">
-        <span>
-          Chạm cây chín để hái trộm ({Math.round(NEIGHBORS.stealShare * 100)}% sản lượng), chạm cây đang lớn để tưới giúp.
         </span>
       </div>
     </>
