@@ -169,7 +169,6 @@ export function App() {
     const farm = visitRef.current;
     if (!farm) return Promise.resolve();
     if (e.action === 'steal') {
-      if (farm.stealsLeft <= 0) return void fxBus.toast('Hôm nay đã hái trộm đủ lượt', 'info'), Promise.resolve();
       return farmApi.steal(farm.id, e.g).then(
         (res) => {
           setVisiting(res.farm);
@@ -187,7 +186,6 @@ export function App() {
         (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
       );
     }
-    if (farm.helpsLeft <= 0) return void fxBus.toast('Hôm nay đã tưới giúp đủ lượt', 'info'), Promise.resolve();
     return farmApi.help(farm.id, e.g).then(
       (res) => {
         setVisiting(res.farm);

@@ -171,20 +171,21 @@ class ProgressionTest extends TestCase
         Planting::whereIn('tile', [0, 1])->update(['planted_at' => 1000]);
 
         $this->getJson('/neighbors', $thief)->assertOk()->assertJsonPath('result.0.id', $ownerId)->assertJsonPath('result.0.ripe', 2);
-        $this->getJson("/neighbors/$ownerId", $thief)->assertOk()->assertJsonPath('result.plantings.0.steal', 1)->assertJsonPath('result.stealsLeft', 20);
+        $this->getJson("/neighbors/$ownerId", $thief)->assertOk()->assertJsonPath('result.plantings.0.steal', 1);
         $this->getJson("/neighbors/$thiefId", $thief)->assertStatus(422);
 
-        // carrots yield 4: a thief takes 25% (1), once per tile; a second thief too; then it is closed
+        // carrots yield 4: a thief takes 25% (1); each crop is stolen from once, whoever comes
         $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $thief)->assertOk()
             ->assertJsonPath('result.caught', false)->assertJsonPath('result.qty', 1)->assertJsonPath('state.inventory.carrot', 1)
-            ->assertJsonPath('result.farm.plantings.0.steal', 0)->assertJsonPath('result.farm.stealsLeft', 19);
+            ->assertJsonPath('result.farm.plantings.0.steal', 0);
         $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $thief)->assertStatus(422);
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $third)->assertStatus(422);
         $this->postJson("/neighbors/$ownerId/steal", ['tile' => 2], $thief)->assertStatus(422);
-        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 0], $third)->assertOk();
+        $this->postJson("/neighbors/$ownerId/steal", ['tile' => 1], $third)->assertOk();
 
         // the owner harvests what is left and reads who came
-        $this->getJson('/farm', $owner)->assertJsonPath('state.news', 2)->assertJsonPath('state.plantings.0.stolen', 2);
-        $this->postJson('/farm/harvest', ['tiles' => [0, 1]], $owner)->assertOk()->assertJsonPath('state.inventory.carrot', 2 + 4);
+        $this->getJson('/farm', $owner)->assertJsonPath('state.news', 2)->assertJsonPath('state.plantings.0.stolen', 1);
+        $this->postJson('/farm/harvest', ['tiles' => [0, 1]], $owner)->assertOk()->assertJsonPath('state.inventory.carrot', 3 + 3);
         $this->getJson('/farm/news', $owner)->assertOk()->assertJsonCount(2, 'result')->assertJsonPath('result.0.type', 'steal')->assertJsonPath('result.0.qty', 1);
         $this->getJson('/farm', $owner)->assertJsonPath('state.news', 0);
 
@@ -193,6 +194,7 @@ class ProgressionTest extends TestCase
         $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $thief)->assertOk()->assertJsonPath('result.coins', 5)->assertJsonPath('result.farm.plantings.0.helped', true);
         $this->assertGreaterThan(3000, $before - Planting::where('tile', 2)->value('planted_at'));
         $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $thief)->assertStatus(422);
+        $this->postJson("/neighbors/$ownerId/help", ['tile' => 2], $third)->assertStatus(422)->assertJsonPath('message', 'Cây này đã được tưới rồi');
 
         // a guard dog that always bites: no crops, a fine paid to the owner
         $this->postJson('/farm/plant', ['tiles' => [3], 'crop' => 'carrot'], $owner)->assertOk();

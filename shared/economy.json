@@ -587,9 +587,6 @@
   ],
   "neighbors": {
     "stealShare": 0.25,
-    "maxThieves": 2,
-    "stealsPerDay": 20,
-    "helpsPerDay": 10,
     "helpCut": 0.1,
     "helpCoins": 5,
     "helpXp": 2,

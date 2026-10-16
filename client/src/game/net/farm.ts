@@ -70,8 +70,6 @@ export interface NeighbourFarm {
   unlocked: number;
   dog: boolean;
   plantings: Array<{ tile: number; crop: CropId; plantedAt: number; growMs: number; steal: number; helped: boolean }>;
-  stealsLeft: number;
-  helpsLeft: number;
 }
 
 export interface NewsItem {

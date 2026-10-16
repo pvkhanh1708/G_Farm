@@ -28,8 +28,7 @@ Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; 
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
 sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
 **Hàng xóm:** đi thăm nông trại người khác (Thêm → Hàng xóm, hoặc chạm tên trong Xếp hạng): nông trại của họ hiện ra như nhà mình, chạm cây chín để hái trộm 25% sản lượng
-(tối đa 2 người mỗi ô, 20 lần/ngày, chủ luôn còn ít nhất 1), chạm cây đang lớn để tưới giúp (-10% thời gian còn lại, +5 xu +2 XP,
-10 lần/ngày). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
+(mỗi cây chỉ bị trộm 1 lần, chủ luôn còn ít nhất 1; không giới hạn lượt trong ngày), chạm cây đang lớn để tưới giúp (-10% thời gian còn lại, +5 xu +2 XP, mỗi cây được tưới 1 lần). Nhật ký cho chủ biết ai đã hái trộm / tưới giúp, chạm để ghé thăm lại.
 
 **Cấp độ:** mỗi lần thu hoạch cho XP (cây càng cao cấp càng nhiều XP). Mỗi cấp cho mở thêm **1 ô đất**
 (tối đa `4 + cấp` ô), thưởng `20 × cấp` xu và mở khóa hạt giống mới theo lịch. XP cần để lên cấp kế tiếp:

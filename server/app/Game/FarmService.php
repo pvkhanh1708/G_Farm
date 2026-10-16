@@ -423,7 +423,7 @@ class FarmService
                 'claimed' => false,
             ];
         }
-        $farm->daily = [...$daily, 'date' => $today, 'quests' => $quests, 'loginClaimed' => false, 'steals' => 0, 'helps' => 0];
+        $farm->daily = [...$daily, 'date' => $today, 'quests' => $quests, 'loginClaimed' => false];
     }
 
     private function questProgress(Farm $farm, string $type, int $amount): void
@@ -803,7 +803,8 @@ class FarmService
         $cfg = $this->eco->raw('neighbors');
         $thieves = $p->thieves ?? [];
         if (! $crop || $now < $p->planted_at + $this->eco->growMs($crop, $owner->sprinkler_level)
-            || in_array($thiefId, $thieves, true) || count($thieves) >= $cfg['maxThieves']) {
+            // each crop can be stolen from once, by one neighbour
+            || $thieves) {
             return 0;
         }
         $left = $this->eco->harvestAmount($crop, $owner->soil_level) - $p->stolen;
@@ -853,10 +854,9 @@ class FarmService
                 'plantedAt' => $p->planted_at,
                 'growMs' => $this->eco->growMs($this->eco->crop($p->crop), $owner->sprinkler_level),
                 'steal' => $this->stealable($owner, $p, $now, $viewer->id),
-                'helped' => in_array($viewer->id, $p->helpers ?? [], true),
+                // each crop can be watered once, by one neighbour
+                'helped' => ! empty($p->helpers),
             ]),
-            'stealsLeft' => max(0, $cfg['stealsPerDay'] - ($mine->daily['steals'] ?? 0)),
-            'helpsLeft' => max(0, $cfg['helpsPerDay'] - ($mine->daily['helps'] ?? 0)),
         ];
     }
 
@@ -883,17 +883,11 @@ class FarmService
     {
         return $this->lockedPair($thief, $ownerId, function (Farm $mine, Farm $owner) use ($thief, $tile) {
             $cfg = $this->eco->raw('neighbors');
-            if (($mine->daily['steals'] ?? 0) >= $cfg['stealsPerDay']) {
-                throw new GameException("Hôm nay đã hái trộm đủ {$cfg['stealsPerDay']} lần");
-            }
             $p = $owner->plantings()->where('tile', $tile)->lockForUpdate()->first() ?? throw new GameException('Ô này không có cây');
             $qty = $this->stealable($owner, $p, self::nowMs(), $thief->id);
             if ($qty <= 0) {
                 throw new GameException('Ô này không hái được nữa');
             }
-            $daily = $mine->daily;
-            $daily['steals'] = ($daily['steals'] ?? 0) + 1;
-            $mine->daily = $daily;
             $p->thieves = [...($p->thieves ?? []), $thief->id];
             $dog = $cfg['dog'];
             // tests pin the odds with config('game.dog_catch_chance')
@@ -927,12 +921,9 @@ class FarmService
     {
         return $this->lockedPair($helper, $ownerId, function (Farm $mine, Farm $owner) use ($helper, $tile) {
             $cfg = $this->eco->raw('neighbors');
-            if (($mine->daily['helps'] ?? 0) >= $cfg['helpsPerDay']) {
-                throw new GameException("Hôm nay đã giúp đủ {$cfg['helpsPerDay']} lần");
-            }
             $p = $owner->plantings()->where('tile', $tile)->lockForUpdate()->first() ?? throw new GameException('Ô này không có cây');
-            if (in_array($helper->id, $p->helpers ?? [], true)) {
-                throw new GameException('Bạn đã tưới ô này rồi');
+            if (! empty($p->helpers)) {
+                throw new GameException('Cây này đã được tưới rồi');
             }
             $left = $p->planted_at + $this->eco->growMs($this->eco->crop($p->crop), $owner->sprinkler_level) - self::nowMs();
             if ($left <= 1000) {
@@ -941,9 +932,6 @@ class FarmService
             $p->planted_at -= (int) round($left * $cfg['helpCut']);
             $p->helpers = [...($p->helpers ?? []), $helper->id];
             $p->save();
-            $daily = $mine->daily;
-            $daily['helps'] = ($daily['helps'] ?? 0) + 1;
-            $mine->daily = $daily;
             $mine->coins += $cfg['helpCoins'];
             $levelUps = $this->addXp($mine, $cfg['helpXp']);
             $mine->save();

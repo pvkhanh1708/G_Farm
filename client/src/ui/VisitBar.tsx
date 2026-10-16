@@ -28,12 +28,10 @@ export function VisitBar({ farm, tool, onTool, onHome }: { farm: NeighbourFarm; 
         <button className={`visit-tool ${tool === 'steal' ? 'on' : ''}`} onClick={() => onTool('steal')}>
           <HandIcon size={40} />
           <b>Trộm</b>
-          <small>còn {farm.stealsLeft}</small>
         </button>
         <button className={`visit-tool ${tool === 'help' ? 'on' : ''}`} onClick={() => onTool('help')}>
           <WaterIcon size={40} />
           <b>Tưới</b>
-          <small>còn {farm.helpsLeft}</small>
         </button>
       </div>
     </>
