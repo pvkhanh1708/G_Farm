@@ -41,7 +41,7 @@ const cellX = (i: number) => (i % COLS) * CELL;
 const cellY = (i: number) => Math.floor(i / COLS) * CELL;
 const OUT = '#5a3214';
 /** Bubbles whose picture comes from the hand-drawn UI art when it is provided. */
-const BUBBLE_ART: Partial<Record<string, string>> = { ripe: 'ui/harvest.png', egg: 'ui/egg.png', milk: 'ui/milk.png' };
+const BUBBLE_ART: Partial<Record<string, string>> = { ripe: 'ui/harvest.png', egg: 'ui/egg.png', milk: 'ui/milk.png', hungry: 'ui/feed-bowl.png' };
 
 type Ctx = CanvasRenderingContext2D;
 

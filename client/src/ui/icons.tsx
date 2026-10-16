@@ -622,7 +622,7 @@ function BarnSvg(p: P) {
   );
 }
 
-export function LockIcon(p: P) {
+function LockSvg(p: P) {
   const id = useId();
   return (
     <Svg {...p}>
@@ -666,7 +666,7 @@ function SickleSvg(p: P) {
   );
 }
 
-export function ClockIcon(p: P) {
+function ClockSvg(p: P) {
   return (
     <Svg {...p}>
       <circle cx="32" cy="34" r="22" fill="#fff" stroke={OUT} strokeWidth="4" />
@@ -868,7 +868,7 @@ function TrophySvg(p: P) {
   );
 }
 
-export function GiftIcon(p: P) {
+function GiftSvg(p: P) {
   return (
     <Svg {...p}>
       <rect x="10" y="26" width="44" height="30" rx="4" fill="#ff6f7d" stroke={OUT} strokeWidth="3" />
@@ -879,7 +879,7 @@ export function GiftIcon(p: P) {
   );
 }
 
-export function RainIcon(p: P) {
+function RainSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M18 38a10 10 0 0 1 2-20 13 13 0 0 1 25 2 9 9 0 0 1 1 18z" fill="#eaf4ff" stroke={OUT} strokeWidth="3" />
@@ -888,7 +888,7 @@ export function RainIcon(p: P) {
   );
 }
 
-export function FertilizerIcon(p: P) {
+function FertilizerSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M16 18h32l-3 36a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4z" fill="#8fd16a" stroke={OUT} strokeWidth="3" />
@@ -921,8 +921,9 @@ export function ItemIcon({ item, ...p }: P & { item: ItemId }) {
     const Icon = item === 'egg' ? EggIcon : MilkIcon;
     return <Icon {...p} />;
   }
-  const good = { flour: FlourIcon, bread: BreadIcon, cake: CakeIcon, cheese: CheeseIcon, yogurt: YogurtIcon }[item as string];
-  if (good) return good(p);
+  const goods: Record<string, (p: P) => React.JSX.Element> = { flour: FlourIcon, bread: BreadIcon, cake: CakeIcon, cheese: CheeseIcon, yogurt: YogurtIcon };
+  const Good = goods[item as string];
+  if (Good) return <Good {...p} />;
   return <CropIcon crop={item as CropId} {...p} />;
 }
 
@@ -947,7 +948,7 @@ export const OrderIcon = withArt('orders', OrderSvg);
 
 // ------------------------------------------------------------------ workshop goods, neighbours
 
-export function DogIcon(p: P) {
+function DogSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M14 20c-6 2-8 14-2 18l6-4zM50 20c6 2 8 14 2 18l-6-4z" fill="#8a5a32" stroke={OUT} strokeWidth="3" />
@@ -963,7 +964,7 @@ export function DogIcon(p: P) {
   );
 }
 
-export function FlourIcon(p: P) {
+function FlourSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M18 20c0-6 28-6 28 0l4 30c0 6-36 6-36 0z" fill="#fbf4e4" stroke={OUT} strokeWidth="3" />
@@ -974,7 +975,7 @@ export function FlourIcon(p: P) {
   );
 }
 
-export function BreadIcon(p: P) {
+function BreadSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M8 40c0-16 12-24 24-24s24 8 24 24c0 6-4 8-8 8H16c-4 0-8-2-8-8z" fill="#e0a050" stroke={OUT} strokeWidth="3" />
@@ -984,7 +985,7 @@ export function BreadIcon(p: P) {
   );
 }
 
-export function CakeIcon(p: P) {
+function CakeSvg(p: P) {
   return (
     <Svg {...p}>
       <rect x="12" y="30" width="40" height="22" rx="5" fill="#fbe2c2" stroke={OUT} strokeWidth="3" />
@@ -996,7 +997,7 @@ export function CakeIcon(p: P) {
   );
 }
 
-export function CheeseIcon(p: P) {
+function CheeseSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M8 40l40-20 8 6v20c0 2-2 4-4 4H12c-2 0-4-2-4-4z" fill="#ffd23f" stroke={OUT} strokeWidth="3" />
@@ -1008,7 +1009,7 @@ export function CheeseIcon(p: P) {
   );
 }
 
-export function YogurtIcon(p: P) {
+function YogurtSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M16 22h32l-4 30c0 3-3 5-6 5H26c-3 0-6-2-6-5z" fill="#fff6f8" stroke={OUT} strokeWidth="3" />
@@ -1019,7 +1020,7 @@ export function YogurtIcon(p: P) {
   );
 }
 
-export function WorkshopIcon(p: P) {
+function WorkshopSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M8 28l24-16 24 16v26H8z" fill="#c8553a" stroke={OUT} strokeWidth="3" />
@@ -1032,7 +1033,7 @@ export function WorkshopIcon(p: P) {
   );
 }
 
-export function NeighborIcon(p: P) {
+function NeighborSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M4 34l14-12 14 12v20H4z" fill="#ffd27a" stroke={OUT} strokeWidth="3" />
@@ -1044,7 +1045,7 @@ export function NeighborIcon(p: P) {
   );
 }
 
-export function WaterIcon(p: P) {
+function WaterSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M12 26h30v22c0 4-3 6-6 6H18c-3 0-6-2-6-6z" fill="#6fb6ff" stroke={OUT} strokeWidth="3" />
@@ -1056,10 +1057,25 @@ export function WaterIcon(p: P) {
   );
 }
 
-export function HandIcon(p: P) {
+function HandSvg(p: P) {
   return (
     <Svg {...p}>
       <path d="M20 54c-6-6-10-14-10-20 0-3 4-4 6-1l4 6V14c0-3 5-3 5 0v16-20c0-3 5-3 5 0v20-18c0-3 5-3 5 0v18-14c0-3 5-3 5 0v26c0 8-4 14-10 16z" fill="#ffd9b8" stroke={OUT} strokeWidth="3" />
     </Svg>
   );
 }
+export const GiftIcon = withArt('gift', GiftSvg);
+export const RainIcon = withArt('sprinkler', RainSvg);
+export const FertilizerIcon = withArt('fertilizer', FertilizerSvg);
+export const LockIcon = withArt('lock', LockSvg);
+export const ClockIcon = withArt('clock', ClockSvg);
+export const DogIcon = withArt('dog', DogSvg);
+export const WorkshopIcon = withArt('workshop', WorkshopSvg);
+export const NeighborIcon = withArt('neighbors', NeighborSvg);
+export const WaterIcon = withArt('watering-can', WaterSvg);
+export const HandIcon = withArt('steal', HandSvg);
+export const FlourIcon = withArt('flour', FlourSvg);
+export const BreadIcon = withArt('bread', BreadSvg);
+export const CakeIcon = withArt('cake', CakeSvg);
+export const CheeseIcon = withArt('cheese', CheeseSvg);
+export const YogurtIcon = withArt('yogurt', YogurtSvg);

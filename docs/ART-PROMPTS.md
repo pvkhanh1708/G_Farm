@@ -1,147 +1,167 @@
-# Vẽ hình nông trại bằng ChatGPT
+# Vẽ hình cho Nông Trại Vui Vẻ
 
-Tài liệu này dùng để nhờ ChatGPT (công cụ tạo ảnh) vẽ ô đất, nền và 25 loại cây, rồi đưa vào game.
-Tên file và thư mục: xem [client/src/assets/sprites/README.md](../client/src/assets/sprites/README.md).
+Tài liệu này dùng để nhờ công cụ tạo ảnh (ChatGPT…) vẽ bất kỳ hình nào cho game, cùng một phong cách với bộ
+hình đang dùng: icon nút, đồ vật trong chuồng, con vật, nền đất, cây trồng.
 
 Prompt viết bằng tiếng Anh vì mô hình vẽ hiểu tiếng Anh chính xác hơn. Phần giải thích bằng tiếng Việt.
 
 ---
 
-## 0. Cách nhanh nhất: mỗi cây một tấm ảnh (31 lần vẽ)
+## 1. Cách dùng
 
-ChatGPT chỉ vẽ một ảnh mỗi lần trả lời. Vì vậy mỗi lần vẽ **trọn một cây** trên một tấm 3×2 (5 giai đoạn + icon),
-lưu thành `client/src/assets/sprites/crops/<mã>.png`; game tự cắt. Tổng cộng 25 tấm cây + 6 hình ô đất / nền (mục 4).
+1. Chọn đúng **mẫu prompt** theo loại hình (mục 3): icon, đồ vật, con vật, nền, cây.
+2. Dán **khối phong cách chung** (mục 2) lên đầu, rồi đến mẫu prompt, thay phần `[TRONG NGOẶC]`.
+3. Nếu có, **đính kèm 1–2 hình đã có trong game làm mẫu** (ví dụ `ui/coin.png`, `props/coop.png`) và mở đầu bằng
+   *“Match the art style of the attached reference exactly.”* Đây là cách giữ cả bộ đồng đều.
+4. Lưu PNG **nền trong suốt** (nền đen trong ảnh xem trước thường là trong suốt; nếu ra nền trắng thì xóa nền bằng
+   remove.bg / Photopea).
+5. Đặt **đúng tên, đúng thư mục** ở danh sách (mục 4) trong `client/src/assets/sprites/`. Không cần sửa code: game
+   tự dùng ảnh nếu có, chưa có thì dùng hình vẽ tạm.
+6. `cd client && npm run build` (script tự chuyển PNG sang WebP nhỏ), rồi commit + push.
 
-Prompt cho một cây (thay phần trong ngoặc vuông bằng một dòng ở bảng mục 5):
-
-```text
-Draw a game sprite sheet: a 3x2 grid of six equal square cells on a wide 1536x1024 canvas (each cell 512x512),
-TRANSPARENT background, no grid lines, no borders, no text, no labels. Every item is centred inside its own cell
-with empty space around it and never crosses into a neighbouring cell.
-
-Subject: a [TÊN CÂY TIẾNG ANH] plant for a casual mobile farming game, seen STRAIGHT FROM ABOVE (top-down
-orthographic, like a map; not isometric, no perspective). No soil tile and no ground under the plants.
-Cells, left to right, top row then bottom row:
-1. stage 0: two or three small dark-brown seed mounds with tiny [MÀU HẠT] seeds (small, ~30% of the cell)
-2. stage 1: a tiny fresh green sprout with two round seed leaves (~30%)
-3. stage 2: [GĐ 2] (~50%)
-4. stage 3: [GĐ 3] (~65%)
-5. stage 4, ripe: [GĐ 4] (~75%)
-6. shop icon: the ripe [QUẢ / HOA] shown slightly from the side, glossy, ~85% of the cell
-
-Style: polished casual mobile game art, hand-painted 2D cartoon, bright saturated colours, soft cel shading,
-thin dark-brown outline, light from the top-left, soft contact shadow under each plant, bold shapes readable when small.
-Keep exactly the same style as the previous sheets in this chat.
-```
-
-Cây đầu tiên ưng ý thì giữ cùng cuộc trò chuyện cho các cây sau (hoặc đính kèm tấm đó làm mẫu khi mở cuộc mới).
-
-## 1. Quy trình
-
-1. **Tạo bảng phong cách trước** (mục 3). Chọn ra 1 bảng ưng ý nhất và lưu lại: đây là “ảnh mẫu” cho mọi lần sau.
-2. **Mỗi hình một lần yêu cầu, trong cùng một cuộc trò chuyện**, lần nào cũng **đính kèm ảnh mẫu** và mở đầu bằng
-   *“Match the art style of the attached reference exactly.”* Đây là cách giữ cho 170 hình đồng đều.
-3. Nếu ảnh trả về có nền trắng thay vì trong suốt: xóa nền bằng remove.bg (hoặc Photoshop / Photopea).
-4. Thu về **512×512**, đặt tên đúng quy tắc, thả vào `client/src/assets/sprites/…`.
-5. `cd client && npm run build`, commit, push. Mở game xem trên điện thoại.
-
-**Nên làm thử trước:** 1 cây đủ 5 giai đoạn (ví dụ cà rốt) + `soil.png` + `grass-1.png` + 2 nền. Gắn vào game xem thực tế
-rồi mới làm 24 cây còn lại.
-
-**Bản quyền:** theo điều khoản của OpenAI, bạn sở hữu ảnh tạo ra và được dùng thương mại.
-Không ghi tên game, studio hay thương hiệu nào vào prompt (ví dụ không viết “giống Liên Quân”).
+Kích thước nên vẽ: **1024×1024** cho icon và đồ vật (ChatGPT vẽ khổ vuông này), **1536×1024** cho tấm cây,
+khổ ngang cho tấm con vật. Không cần đúng tuyệt đối: script tự cắt sát hình và thu nhỏ.
 
 ---
 
 ## 2. Phong cách chung (dán vào đầu mọi prompt)
 
+Rút ra từ các hình đã dùng (đồng xu, kho, nhà gà, máng ăn, ổ trứng, bò, gà…):
+
 ```text
-Art style: polished casual mobile farming game, hand-painted 2D cartoon, bright saturated colours,
-soft cel shading, thin dark-brown outline, gentle highlight on the top-left, soft contact shadow under objects.
-Camera: straight top-down orthographic view (looking directly down from above), no perspective, no isometric angle.
-Lighting from the top-left. Clean shapes that stay readable at small size. No text, no watermark, no border.
+Art style: polished casual mobile farming game asset, hand-painted 2D cartoon with a soft 3D feel,
+bright warm saturated colours, soft cel shading with smooth gradients, glossy highlights on the top-left,
+thick dark-brown outline (#5a3214) around the whole silhouette and main shapes, chunky rounded friendly
+proportions, warm sunny lighting from the top-left, subtle soft shadow. Clean, bold shapes that stay readable
+when shown very small on a phone. Single object only, centred, transparent background, no ground, no scenery,
+no text, no letters, no numbers, no watermark, no frame, no border.
 ```
 
 ---
 
-## 3. Bảng phong cách (làm 1 lần, chọn bản đẹp nhất)
+## 3. Mẫu prompt theo loại hình
+
+### A. Icon nút / vật phẩm (thư mục `ui/`)
+
+Dùng cho nút bên phải, nút dưới, xu, sao cấp, hàng chế biến… Hình nghiêng 3/4 nhẹ, đầy khung.
 
 ```text
-[Phong cách chung ở mục 2]
+[Phong cách chung]
 
-Create a style reference sheet on a plain light background, arranged in a neat grid, all seen straight from above:
-- one square tilled soil farm plot (dark brown earth with a few small pebbles, rounded corners)
-- one square wild grass plot (light green grass with a tiny flower)
-- a carrot plant at 5 growth stages left to right: seed mound, tiny sprout, young leafy plant,
-  bushy plant, ripe plant with orange carrot tops showing
-- a ripe tomato plant, a ripe cabbage, a ripe sunflower head
-Keep every element the same scale and style.
+A single game icon of [MÔ TẢ VẬT, VD: a wooden bakery oven with a loaf of bread], slightly angled
+three-quarter view, the object fills about 85% of a square 1:1 canvas (1024x1024), centred,
+transparent background.
 ```
+
+### B. Đồ vật đặt trong cảnh (thư mục `props/`)
+
+Nhà gà, máng ăn, máng nước, rơm, nhà chó… Nhìn **chéo từ trên xuống kiểu isometric** như cảnh game, đứng trên mặt đất.
+
+```text
+[Phong cách chung]
+
+A single [MÔ TẢ VẬT, VD: small wooden dog house with a red roof] for a farm scene, seen from an isometric
+three-quarter top-down angle (camera above and in front, about 30 degrees down), the object stands on
+the ground with its base at the bottom of the image, fills about 85% of a square 1:1 canvas (1024x1024),
+transparent background, no ground tile under it.
+```
+
+Đồ có **2 trạng thái** (đầy / cạn): vẽ lần lượt cùng một cuộc trò chuyện, lần 2 viết thêm
+*“Exactly the same object, same angle and size, but [empty / without water].”*
+
+### C. Con vật – tấm 12 tư thế (thư mục `animals/`)
+
+```text
+[Phong cách chung]
+
+A sprite sheet of one cute [CON VẬT, VD: farm pig] for a farming game: a grid of 6 columns x 2 rows of
+equal cells on a wide transparent canvas (2172x724), no grid lines. The same animal in every cell, same
+size, all facing RIGHT, side view, standing on the bottom of its cell:
+row 1: standing; happy with eyes closed; walking step 1; step 2; step 3; step 4 (a smooth walk cycle);
+row 2: head down eating; calling with mouth open; three-quarter view turned toward the viewer;
+seen from behind; (two extra poses of your choice).
+```
+
+### D. Nền lặp liền (thư mục `ground/`)
+
+```text
+[Phong cách chung, bỏ câu "Single object only…"]
+
+A seamless tileable ground texture of [MÔ TẢ, VD: packed farmyard earth with scattered straw and small
+pebbles], seen from above, even lighting, no large objects, no shadows of objects, must tile with no
+visible seams. Square 1:1 (1024x1024).
+```
+
+### E. Cây trồng – tấm 3×2 (thư mục `crops/`)
+
+Một tấm cho trọn một cây: 5 giai đoạn + icon cửa hàng. Mô tả từng giai đoạn: bảng ở mục 5.
+
+```text
+[Phong cách chung, bỏ câu "Single object only…"]
+
+A game sprite sheet: a 3x2 grid of six equal square cells on a wide 1536x1024 transparent canvas (each cell
+512x512), no grid lines. Every item centred in its own cell with empty space around it, never crossing into a
+neighbouring cell. Subject: a [TÊN CÂY] plant, front three-quarter view, standing on a small soil mound.
+1. stage 0: [MÀU HẠT] seeds in a small soil mound (~30% of the cell)
+2. stage 1: a tiny green sprout with two round leaves (~30%)
+3. stage 2: [GĐ 2] (~50%)
+4. stage 3: [GĐ 3] (~65%)
+5. stage 4, ripe: [GĐ 4] (~75%)
+6. shop icon: the ripe [QUẢ / HOA], glossy, ~85% of the cell, no soil
+```
+
+### F. Bong bóng nhỏ trên đầu (thư mục `ui/`)
+
+Hình đặt trong bong bóng tròn trắng; vẽ **đơn giản, ít chi tiết** vì hiện rất nhỏ. Dùng mẫu A, thêm
+*“very simple, few details, readable at 40 pixels”*.
 
 ---
 
-## 4. Mẫu prompt từng loại hình
+## 4. Danh sách cần vẽ
 
-Mở đầu mọi lần bằng: `Match the art style of the attached reference exactly.` rồi dán **phong cách chung** (mục 2), sau đó:
+Các hình dưới đây **game đang dùng hình vẽ tạm bằng code**. Thả file đúng tên vào đúng thư mục là game tự thay.
+“Cỡ vẽ” là khổ nên tạo; “Trong game” là cỡ hình hiện ra (để biết mức chi tiết cần có).
 
-### Ô đất – `tiles/soil.png`
+### 4.1 Icon giao diện – `ui/` (mẫu A, vẽ 1024×1024)
 
-```text
-A single square tilled soil farm plot seen straight from above, filling the whole square image edge to edge,
-slightly rounded corners. Rich dark-brown earth, subtle furrows, a few small grey pebbles, a soft lighter rim on the
-top-left edge and a darker rim on the bottom-right. Square 1:1, 512x512, transparent background outside the rounded corners.
-```
+| Ưu tiên | File | Vẽ gì | Dùng ở đâu | Trong game |
+|---|---|---|---|---|
+| 1 | `ui/workshop.png` | xưởng chế biến nhỏ: nhà gỗ có ống khói, bánh răng | nút “Xưởng”, cửa sổ Xưởng | 30–34 px |
+| 1 | `ui/neighbors.png` | hai ngôi nhà nông trại cạnh nhau | nút “Hàng xóm” | 30–34 px |
+| 1 | `ui/dog.png` | mặt chú chó canh dễ thương, vòng cổ đỏ | Chó canh (Chuồng trại), nông trại có chó | 16–46 px |
+| 1 | `ui/steal.png` | bàn tay đang hái / túi vải nhỏ đựng rau | nút hái trộm | 16–18 px |
+| 1 | `ui/watering-can.png` | bình tưới cây đang tưới | nút tưới giúp | 16–18 px |
+| 1 | `ui/feed-bowl.png` | bát gỗ trống có vài hạt thóc (đơn giản, mẫu F) | bong bóng “đói” trên đầu con vật | 40 px |
+| 2 | `ui/flour.png` | bao bột mì vải có hình bông lúa | hàng chế biến, kho, đơn hàng | 18–44 px |
+| 2 | `ui/bread.png` | ổ bánh mì vàng giòn | như trên | 18–44 px |
+| 2 | `ui/cake.png` | bánh kem dâu có quả dâu trên đỉnh | như trên | 18–44 px |
+| 2 | `ui/cheese.png` | miếng phô mai vàng có lỗ | như trên | 18–44 px |
+| 2 | `ui/yogurt.png` | hũ sữa chua dâu màu hồng | như trên | 18–44 px |
+| 3 | `ui/gift.png` | hộp quà đỏ nơ vàng | quà đăng nhập | 24–34 px |
+| 3 | `ui/sprinkler.png` | máy tưới nước phun tia | nâng cấp Máy tưới | 44 px |
+| 3 | `ui/fertilizer.png` | bao phân bón xanh có lá mầm | phân bón, nâng cấp Đất màu mỡ | 16–44 px |
+| 3 | `ui/lock.png` | ổ khóa vàng | ô đất chưa mở, mục chưa đủ cấp | 16–64 px |
+| 3 | `ui/clock.png` | đồng hồ báo thức tròn | thời gian chờ | 13–16 px |
 
-### Ô cỏ chưa mở – `tiles/grass-1.png`, `grass-2.png`, `grass-3.png`
+### 4.2 Đồ vật trong cảnh – `props/` (mẫu B, vẽ 1024×1024)
 
-```text
-A single square patch of wild grass seen straight from above, filling the whole square image edge to edge,
-slightly rounded corners. Fresh light-green grass with short blades. [Biến thể 1: no flowers | 2: one tiny white
-flower | 3: one tiny yellow flower]. Square 1:1, 512x512, transparent background outside the rounded corners.
-```
+| Ưu tiên | File | Vẽ gì | Trong game |
+|---|---|---|---|
+| 1 | `props/doghouse.png` | nhà chó gỗ mái đỏ, chú chó thò đầu ra cửa | ~110 px |
 
-### Nền đồng cỏ – `ground/meadow.png`
+### 4.3 Đã có ảnh (không cần vẽ lại)
 
-```text
-Seamless tileable texture of a lush green meadow lawn seen straight from above, short grass with subtle variation,
-a few tiny scattered flowers. Must tile perfectly with no visible seams when repeated. Even lighting, no shadows of
-large objects. Square 1:1, 512x512.
-```
+Kho, hạt giống, trồng, thu hoạch, xu, sao cấp, cúp, phòng game, cài đặt, nhiệm vụ, đơn hàng, nâng cấp, gà, bò,
+trứng, sữa (icon); nhà gà, máng ăn / máng nước gà và bò (đầy + cạn), rơm, ổ trứng, bình sữa; gà, bò (12 tư thế);
+nền đồng cỏ, nền đất, nền chuồng gà, chuồng bò; ô đất, 3 ô cỏ; 25 loại cây.
 
-### Nền đất của mảnh đã mở – `ground/plot.png`
-
-```text
-Seamless tileable texture of light sandy-beige tilled farm earth seen straight from above, fine speckles and a few
-tiny pebbles, lighter than normal soil. Must tile perfectly with no visible seams. Even lighting. Square 1:1, 512x512.
-```
-
-### Cây trồng – `crops/<mã>/<mã>-<giai đoạn>.png`
-
-```text
-A single [TÊN CÂY TIẾNG ANH] plant at growth stage [SỐ]/4, seen straight from above, centred in a square image.
-[MÔ TẢ GIAI ĐOẠN — lấy ở bảng mục 5].
-No soil tile, no ground, only the plant with its soft contact shadow.
-Square 1:1, 512x512, transparent background.
-```
-
-Hai giai đoạn đầu giống nhau cho mọi cây, có thể dùng mô tả chung:
-
-- **Giai đoạn 0:** `two or three small dark-brown seed mounds with tiny [MÀU HẠT] seeds, very small, centred`
-- **Giai đoạn 1:** `a tiny fresh green sprout with two round seed leaves, small, centred`
-
-### Icon cây – `icons/<mã>.png`
-
-```text
-A single icon of a ripe [TÊN CÂY / QUẢ TIẾNG ANH] for a mobile game shop, slightly angled three-quarter view,
-bold dark-brown outline, glossy highlight, centred and filling about 85% of the square.
-Square 1:1, 512x512, transparent background.
-```
-
-(Icon không cần nhìn từ trên xuống; nếu không vẽ icon, game dùng icon vector sẵn có.)
+Nếu sau này thêm con vật mới (lợn, cừu…), cần: tấm 12 tư thế `animals/<con>.png` (mẫu C), icon `ui/<con>.png`,
+sản phẩm (`ui/<sản phẩm>.png`), máng ăn / nước riêng nếu muốn (`props/<con>-feeder.png`, `-empty`,
+`props/<con>-water.png`, `-empty`), nền chuồng `ground/pen-<con>.png` (mẫu D).
 
 ---
 
-## 5. Mô tả từng cây (giai đoạn 2 → 4, nhìn từ trên xuống)
+## 5. Mô tả từng cây (giai đoạn 2 → 4)
 
 | Mã | Tên tiếng Anh | Màu hạt (gđ 0) | Gđ 2 – cây non | Gđ 3 – trưởng thành | Gđ 4 – chín |
 |---|---|---|---|---|---|
@@ -171,27 +191,10 @@ Square 1:1, 512x512, transparent background.
 | `saffron` | saffron crocus | tan | five small tufts of thin grass-like leaves | thin leaves with closed purple buds | thin leaves with open purple crocus flowers showing red stigmas |
 | `cantaloupe` | cantaloupe melon | cream | young vines with a few round leaves | vines with yellow flowers and a small green melon | vines with two big netted beige cantaloupe melons |
 
-### Ví dụ hoàn chỉnh (cà rốt chín – `crops/carrot/carrot-4.png`)
-
-```text
-Match the art style of the attached reference exactly.
-
-Art style: polished casual mobile farming game, hand-painted 2D cartoon, bright saturated colours,
-soft cel shading, thin dark-brown outline, gentle highlight on the top-left, soft contact shadow under objects.
-Camera: straight top-down orthographic view (looking directly down from above), no perspective, no isometric angle.
-Lighting from the top-left. Clean shapes that stay readable at small size. No text, no watermark, no border.
-
-A single carrot plant at growth stage 4/4, seen straight from above, centred in a square image.
-Three feathery leaf tufts with bright orange carrot shoulders peeking out of the ground.
-No soil tile, no ground, only the plant with its soft contact shadow.
-Square 1:1, 512x512, transparent background.
-```
-
----
-
 ## 6. Mẹo
 
-- Hình lệch phong cách: yêu cầu *“Redraw this to match the reference: same outline thickness, same colours, same shading.”*
-- Vẽ nghiêng (isometric) thay vì từ trên xuống: nhấn mạnh *“camera looking straight down, flat top view, like a map”*.
-- Cây quá to / quá nhỏ: *“make the plant fill about 70% of the square”* (giai đoạn 4) hoặc *“about 30%”* (giai đoạn 0–1).
-- Giữ nguyên một cuộc trò chuyện cho cả bộ để ChatGPT nhớ phong cách; nếu bắt đầu cuộc mới, đính kèm lại ảnh mẫu.
+- Hình lệch phong cách: *"Redraw this to match the reference: same outline thickness, same colours, same shading."*
+- Đồ vật bị vẽ thẳng mặt: nhấn mạnh *"isometric three-quarter top-down angle, like a farm building in a mobile farming game"*.
+- Hình quá nhỏ trong khung: *"make the object fill about 85% of the square"*.
+- Giữ một cuộc trò chuyện cho cả bộ để công cụ nhớ phong cách; mở cuộc mới thì đính kèm lại ảnh mẫu.
+- Bản quyền: theo điều khoản của OpenAI, bạn sở hữu ảnh tạo ra. Không ghi tên game / thương hiệu khác vào prompt.
