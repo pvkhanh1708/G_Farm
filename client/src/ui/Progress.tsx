@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ANIMAL_ORDER, ANIMALS, CROPS, ItemId, NEIGHBORS, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind } from '../game/config';
+import { ANIMAL_ORDER, ANIMALS, CROPS, ECONOMY, ItemId, NEIGHBORS, itemDef, LOGIN_REWARDS, ORDERS_UNLOCK, UPGRADES, upgradeCost, UpgradeKind } from '../game/config';
 import { sfx } from '../game/audio/sfx';
 import { serverNow } from '../game/net/clock';
 import { Board, BoardRow, farmApi, FarmError, leaderboard } from '../game/net/farm';
@@ -322,6 +322,11 @@ export function animalReady(a: Animal, now = serverNow()) {
   return a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
 }
 
+/** Milliseconds of water left in a pen (0 = dry). */
+export function waterLeft(filledAt: number | undefined, now = serverNow()) {
+  return Math.max(0, (filledAt ?? 0) + ECONOMY.water.minutes * 60_000 - now);
+}
+
 export function animalHungry(a: Animal) {
   return a.fedAt === null;
 }
@@ -375,6 +380,23 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
                   <small>
                     Bán <CoinIcon size={14} /> {formatNum(a.sellPrice)} · trong kho có {formatNum(s.inventory[a.feed.crop])} {CROPS[a.feed.crop].name.toLowerCase()}
                   </small>
+                  {mine.length > 0 && (
+                    <small className={waterLeft(s.water[id], now) > 0 ? '' : 'short'}>
+                      {waterLeft(s.water[id], now) > 0 ? `Nước còn ${mmss(Math.ceil(waterLeft(s.water[id], now) / 1000))}` : 'Máng nước cạn!'}{' '}
+                      <button
+                        className="link-btn"
+                        disabled={!!busy}
+                        onClick={async () => {
+                          setBusy(`water-${id}`);
+                          const res = await run(() => farmApi.water(id));
+                          setBusy(null);
+                          if (res !== null) sfx.plant();
+                        }}
+                      >
+                        Đổ nước
+                      </button>
+                    </small>
+                  )}
                   {mine.length > 0 && (
                     <small className="next">
                       {[nReady && `${nReady} con có sản phẩm`, nHungry && `${nHungry} con đang đói`, growing.length && `lần thu tới ${mmss(Math.max(0, Math.ceil((Math.min(...growing) - now) / 1000)))}`].filter(Boolean).join(' · ')}
@@ -475,7 +497,7 @@ export function AnimalsPopup({ onClose }: { onClose: () => void }) {
           <Busy on={busy === 'collect'}>{ready ? `Thu (${ready})` : 'Chưa có sản phẩm'}</Busy>
         </button>
       </div>
-      <p className="prog-note">Con vật phải được cho ăn mới đẻ trứng, cho sữa. Chạm vào con vật trong chuồng: con đói thì cho ăn, con có sản phẩm thì thu.</p>
+      <p className="prog-note">Con vật cần máng nước còn đầy và được cho ăn mới đẻ trứng, cho sữa. Trong chuồng: chạm máng nước để đổ nước, chạm máng ăn hoặc con đói để cho ăn, chạm trứng / bình sữa để thu.</p>
     </Modal>
   );
 }

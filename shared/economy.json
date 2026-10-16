@@ -532,5 +532,8 @@
       "fineBase": 20,
       "finePerLevel": 10
     }
+  },
+  "water": {
+    "minutes": 120
   }
 }

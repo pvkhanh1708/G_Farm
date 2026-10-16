@@ -755,3 +755,6 @@ img.ui-art { object-fit: contain; flex: none; vertical-align: middle; }
 .visit-tile small { color: #fff3dc !important; font-size: 11px; }
 .visit-tile .btn.small { min-height: 30px; font-size: 13px; padding: 0 8px; border-radius: 10px; }
 .visit-tile .job-bar { width: 70%; background: rgba(0,0,0,.25); }
+
+.link-btn { border: 0; background: none; padding: 0; color: #2f7fc8; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
+.prog-info small.short { color: #c52a1c; }

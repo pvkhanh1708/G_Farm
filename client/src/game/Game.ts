@@ -17,7 +17,7 @@ import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { Scene } from '@babylonjs/core/scene.js';
 import { sfx } from './audio/sfx';
 import { preloadAssets } from './assets/registry';
-import { CROP_ORDER, CropId, ISLAND_SIZE, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
+import { AnimalId, CROP_ORDER, CropId, ISLAND_SIZE, PENS_X1, TILE_PITCH, parcelCenter, Quality, QUALITY_PRESETS, SOIL_TOP, STAGE_COUNT, TILE_SIZE, TILES_PER_PARCEL, tileWorldPos } from './config';
 import { CameraRig } from './render/camera';
 import { SpriteLibrary } from './render/sprites';
 import { Fx } from './render/fx';
@@ -42,6 +42,8 @@ export type GameEvent =
   | { type: 'ready'; g: number }
   /** An animal in the pen was tapped (index into state.animals; x/y on screen). */
   | { type: 'animalTap'; index: number; x: number; y: number }
+  /** A pen's feeder or water was tapped. */
+  | { type: 'stationTap'; pen: AnimalId; kind: 'feeder' | 'water'; x: number; y: number }
   /** The camera crossed between the close farm view and the zoomed-out overview. */
   | { type: 'view'; overview: boolean };
 
@@ -326,7 +328,7 @@ export class Game {
         this.tiles.delete(g);
       }
     const now = serverNow();
-    this.pen?.sync(store.getState().animals, now);
+    this.pen?.sync(store.getState().animals, store.getState().water, now);
     this.pen?.setDog(store.getState().dog);
     for (const t of tiles) {
       let v = this.tiles.get(t.g);
@@ -430,6 +432,8 @@ export class Game {
     }
     const a = this.animalAt(x, y);
     if (a) return this.emit({ type: 'animalTap', index: a.index, x: a.x, y: a.y });
+    const station = this.stationAt(x, y);
+    if (station) return this.emit({ type: 'stationTap', pen: station.type, kind: station.kind, x: station.x, y: station.y });
     const g = this.tileAt(x, y);
     if (g === null) return;
     const view = this.tiles.get(g)!;
@@ -458,6 +462,17 @@ export class Game {
       if (d < size * 0.55 * ppu && (!best || d < best.d)) best = { index, x: p.x, y: p.y, d };
     });
     return best;
+  }
+
+  /** Feeder or water trough under a screen point. */
+  private stationAt(x: number, y: number) {
+    if (!this.pen) return null;
+    const ppu = this.rig.pixelsPerUnit;
+    for (const s of this.pen.pickable) {
+      const p = this.project(s.at.add(new Vector3(0, s.size * 0.3, 0)));
+      if (Math.abs(p.x - x) < s.size * 0.5 * ppu && Math.abs(p.y - y) < s.size * 0.4 * ppu) return { ...s, x: p.x, y: p.y };
+    }
+    return null;
   }
 
   /** Drag starting on a ripe crop harvests along the way; with the sow tool, on an empty tile it sows. */

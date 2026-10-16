@@ -17,11 +17,22 @@ import { CameraRig } from './camera';
 
 /** Animal pictures come in 12 poses (see animals.ts): `chicken:0` … `cow:11`. */
 export const ANIMAL_FRAMES = 12;
-/** Pen furniture, painted here: a hen house and feeder, hay bales and a water trough. */
-type Prop = 'coop' | 'feeder' | 'hay' | 'trough' | 'doghouse';
-type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | 'hungry' | Prop;
+/**
+ * Pen furniture and products lying on the ground. Drawn from assets/sprites/props/<key>.png
+ * when provided (feeders and water in a full and an "-empty" state); a few have a painted
+ * stand-in until then.
+ */
+export type Prop =
+  | 'coop' | 'hay' | 'doghouse'
+  | 'chicken-feeder' | 'chicken-feeder-empty' | 'chicken-water' | 'chicken-water-empty'
+  | 'cow-feeder' | 'cow-feeder-empty' | 'cow-water' | 'cow-water-empty'
+  | 'egg-nest' | 'milk-can';
+const PROPS: Prop[] = ['coop', 'hay', 'doghouse', 'chicken-feeder', 'chicken-feeder-empty', 'chicken-water', 'chicken-water-empty', 'cow-feeder', 'cow-feeder-empty', 'cow-water', 'cow-water-empty', 'egg-nest', 'milk-can'];
+/** Ground products fall back to the UI icons until their own picture is provided. */
+const PROP_FALLBACK: Partial<Record<Prop, string>> = { 'egg-nest': 'ui/egg.png', 'milk-can': 'ui/milk.png' };
+type Picture = 'ripe' | 'chicken' | 'cow' | 'egg' | 'milk' | 'hungry' | 'coop' | 'hay' | 'doghouse' | 'feeder' | 'trough';
 export type BillboardKey = 'ripe' | 'egg' | 'milk' | 'hungry' | Prop | `${'chicken' | 'cow'}:${number}`;
-const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', 'coop', 'feeder', 'hay', 'trough', 'doghouse', ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
+const KEYS: BillboardKey[] = ['ripe', 'egg', 'milk', 'hungry', ...PROPS, ...(['chicken', 'cow'] as const).flatMap((a) => [...Array(ANIMAL_FRAMES).keys()].map((f) => `${a}:${f}` as const))];
 const CELL = 256;
 /** Cells per row of the texture (2048 px wide: fine for any mobile GPU). */
 const COLS = 8;
@@ -76,6 +87,29 @@ function outlined(c: Ctx, fill: string, path: () => void, width = 7) {
   c.strokeStyle = OUT;
   c.lineJoin = 'round';
   c.stroke();
+}
+
+/** Draw a picture cropped to its visible pixels, as large as fits, standing on the cell's bottom edge. */
+function standOnBottom(c: Ctx, img: HTMLImageElement) {
+  const w = img.width, h = img.height;
+  const probe = document.createElement('canvas');
+  probe.width = w;
+  probe.height = h;
+  const pc = probe.getContext('2d')!;
+  pc.drawImage(img, 0, 0);
+  const d = pc.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++)
+      if (d[(y * w + x) * 4 + 3] > 40) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+  if (x1 <= x0) return;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, k = 256 / Math.max(bw, bh);
+  c.drawImage(img, x0, y0, bw, bh, (256 - bw * k) / 2, 256 - bh * k, bw * k, bh * k);
 }
 
 const PAINT: Record<Picture, (c: Ctx) => void> = {
@@ -498,17 +532,31 @@ export class Billboards {
       draw();
       c.restore();
     };
-    KEYS.forEach((k, i) => inCell(i, () => PAINT[k.split(':')[0] as Picture](c)));
+    // painted stand-ins: props without one stay blank until their picture loads
+    const STAND_IN: Partial<Record<string, Picture>> = { 'chicken-feeder': 'feeder', 'chicken-feeder-empty': 'feeder', 'cow-water': 'trough', 'cow-water-empty': 'trough', 'egg-nest': 'egg', 'milk-can': 'milk' };
+    KEYS.forEach((k, i) => {
+      const pic = (STAND_IN[k] ?? k.split(':')[0]) as Picture;
+      if (PAINT[pic]) inCell(i, () => PAINT[pic](c));
+    });
     this.tex.update(true);
     // hand-drawn pictures replace the painted ones as they load: bubbles keep their frame,
     // animal poses fill the cell (animals/<id>/frame-<n>, made by scripts/art.mjs)
     KEYS.forEach((k, i) => {
       const [name, frame] = k.split(':');
-      const url = frame !== undefined ? artUrl(`animals/${name}/frame-${frame}.png`) : BUBBLE_ART[k] && artUrl(BUBBLE_ART[k]!);
+      const prop = PROPS.includes(k as Prop);
+      const url = frame !== undefined
+        ? artUrl(`animals/${name}/frame-${frame}.png`)
+        : prop
+          ? artUrl(`props/${k}.png`) ?? (PROP_FALLBACK[k as Prop] && artUrl(PROP_FALLBACK[k as Prop]!))
+          : BUBBLE_ART[k] && artUrl(BUBBLE_ART[k]!);
       if (!url) return;
       void loadImage(url).then((img) => {
         if (!img) return;
-        inCell(i, () => (frame !== undefined ? c.drawImage(img, 0, 0, CELL, CELL) : bubble(c, (c) => c.drawImage(img, 128 - 66, 108 - 66, 132, 132))));
+        inCell(i, () => {
+          if (frame !== undefined) c.drawImage(img, 0, 0, CELL, CELL);
+          else if (prop) standOnBottom(c, img);
+          else bubble(c, (c) => c.drawImage(img, 128 - 66, 108 - 66, 132, 132));
+        });
         this.tex.update(true);
       });
     });

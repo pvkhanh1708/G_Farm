@@ -74,6 +74,8 @@ export interface GameState {
   dog: boolean;
   /** Unread news from neighbours (thefts, help). */
   news: number;
+  /** When each pen's water was last filled (ms); it runs dry after ECONOMY.water.minutes. */
+  water: Partial<Record<AnimalId, number>>;
 }
 
 /** View of one tile, derived from GameState. */
@@ -104,7 +106,7 @@ function emptyInventory() {
   return Object.fromEntries(ITEM_ORDER.map((c) => [c, 0])) as Record<ItemId, number>;
 }
 
-const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [], machines: {}, dog: false, news: 0 };
+const EXTRA = { soil: 0, sprinkler: 0, orders: [], daily: null, animals: [], machines: {}, dog: false, news: 0, water: {} };
 
 function initialState(): GameState {
   return { coins: STARTING_COINS, level: 1, xp: 0, inventory: emptyInventory(), unlocked: START_UNLOCKED, plantings: {}, ...EXTRA };

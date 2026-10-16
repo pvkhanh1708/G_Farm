@@ -66,6 +66,7 @@ class FarmService
             'animals' => $farm->animals ?? [],
             'machines' => (object) ($farm->machines ?? []),
             'dog' => $farm->dog,
+            'water' => (object) ($farm->water ?? []),
             'news' => FarmEvent::where('user_id', $farm->user_id)->where('seen', false)->count(),
         ];
     }
@@ -222,6 +223,7 @@ class FarmService
                 'animals' => null,
                 'machines' => null,
                 'dog' => false,
+                'water' => null,
             ])->save();
         });
     }
@@ -507,6 +509,7 @@ class FarmService
             // a new animal arrives fed: its first product is on the house
             $animals[] = ['type' => $type, 'fedAt' => self::nowMs()];
             $farm->animals = $animals;
+            $farm->water = [...($farm->water ?? []), $type => self::nowMs()];
             $farm->save();
 
             return count($animals);
@@ -527,8 +530,13 @@ class FarmService
             $inv = $farm->inventory;
             $fed = 0;
             $short = null;
+            $dry = null;
             foreach ($animals as $i => $x) {
                 if (($which !== null && ! in_array($i, $which, true)) || ($x['fedAt'] ?? null) !== null) {
+                    continue;
+                }
+                if (! $this->hasWater($farm, $x['type'])) {
+                    $dry ??= $x['type'];
                     continue;
                 }
                 $feed = $this->eco->animal($x['type'])['feed'];
@@ -539,6 +547,10 @@ class FarmService
                 $inv[$feed['crop']] -= $feed['qty'];
                 $animals[$i]['fedAt'] = self::nowMs();
                 $fed++;
+            }
+            if (! $fed && $dry && ! $short) {
+                $name = $dry === 'cow' ? 'chuồng bò' : 'chuồng gà';
+                throw new GameException("Máng nước {$name} cạn rồi, hãy đổ nước trước");
             }
             if (! $fed) {
                 throw new GameException($short
@@ -590,6 +602,23 @@ class FarmService
             $farm->save();
 
             return ['collected' => $n, 'xp' => $xp, 'levelUps' => $levelUps];
+        });
+    }
+
+    private function hasWater(Farm $farm, string $type): bool
+    {
+        $at = $farm->water[$type] ?? null;
+
+        return $at !== null && self::nowMs() < $at + $this->eco->raw('water')['minutes'] * 60_000;
+    }
+
+    /** Fill a pen's water (free); animals only eat while there is water. */
+    public function water(User $user, string $type): void
+    {
+        $this->locked($user, function (Farm $farm) use ($type) {
+            $this->eco->animal($type) ?? throw new GameException('Chuồng không tồn tại');
+            $farm->water = [...($farm->water ?? []), $type => self::nowMs()];
+            $farm->save();
         });
     }
 

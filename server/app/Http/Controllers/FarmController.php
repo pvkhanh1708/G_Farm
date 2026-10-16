@@ -132,6 +132,13 @@ class FarmController extends Controller
         return $this->respond($request, fn () => $this->farms->feedAnimals($request->user(), $which));
     }
 
+    public function water(Request $request): JsonResponse
+    {
+        $type = $request->validate(['type' => ['required', 'string', 'max:16']])['type'];
+
+        return $this->respond($request, fn () => $this->farms->water($request->user(), $type));
+    }
+
     public function buyDog(Request $request): JsonResponse
     {
         return $this->respond($request, fn () => $this->farms->buyDog($request->user()));

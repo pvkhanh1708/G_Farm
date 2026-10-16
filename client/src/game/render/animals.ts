@@ -7,7 +7,9 @@ import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder.js';
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
 import { Scene } from '@babylonjs/core/scene.js';
-import { AnimalId, ANIMALS, PENS } from '../config';
+import { AnimalId, ANIMALS, ECONOMY, PENS } from '../config';
+
+const WATER_MS = ECONOMY.water.minutes * 60_000;
 import type { Animal } from '../state/store';
 import { BillboardKey, Billboards } from './billboards';
 import { mulberry } from './geometry';
@@ -38,6 +40,7 @@ interface Walker {
   /** Floats above the animal: its product when ready, a feed bowl when hungry. */
   bubble: Mesh;
   hungry: Mesh;
+  product: Mesh;
   /** What it does while standing still. */
   idle: Idle;
   type: Animal['type'];
@@ -190,12 +193,28 @@ function floor(scene: Scene, id: AnimalId, pen: Rect) {
   return g;
 }
 
-/** Props standing in each pen: [picture, size, x, z] as fractions of the pen (0 = x0/z0). */
-const PROPS: Record<AnimalId, Array<[BillboardKey, number, number, number]>> = {
-  // the far corner is at (x1, z1): it is the top of the screen
-  chicken: [['coop', 1.7, 0.78, 0.8], ['feeder', 1.0, 0.3, 0.35]],
-  cow: [['hay', 1.3, 0.8, 0.86], ['trough', 1.5, 0.84, 0.3], ['hay', 1.0, 0.18, 0.88]],
+/**
+ * Furniture in each pen: [kind, size, x, z] with x/z as fractions of the pen (0 = x0/z0; the
+ * far corner (x1, z1) is the top of the screen). The feeder and the water show full or empty.
+ */
+type PropKind = 'coop' | 'hay' | 'feeder' | 'water';
+const PROPS: Record<AnimalId, Array<[PropKind, number, number, number]>> = {
+  chicken: [['coop', 2.0, 0.8, 0.82], ['feeder', 1.1, 0.28, 0.42], ['water', 0.8, 0.62, 0.2]],
+  cow: [['hay', 1.15, 0.82, 0.88], ['hay', 0.9, 0.15, 0.9], ['water', 1.6, 0.84, 0.32], ['feeder', 1.6, 0.4, 0.17]],
 };
+const PROP_KEY = (type: AnimalId, kind: PropKind, full: boolean): BillboardKey =>
+  kind === 'coop' || kind === 'hay' ? kind : (`${type}-${kind}${full ? '' : '-empty'}` as BillboardKey);
+/** Products lying next to an animal while ready to collect. */
+const PRODUCT_KEY: Record<AnimalId, BillboardKey> = { chicken: 'egg-nest', cow: 'milk-can' };
+const PRODUCT_SIZE: Record<AnimalId, number> = { chicken: 0.5, cow: 0.6 };
+
+/** A feeder or water the player can tap. */
+export interface Station {
+  type: AnimalId;
+  kind: 'feeder' | 'water';
+  at: Vector3;
+  size: number;
+}
 
 export class AnimalPen {
   private walkers: Walker[] = [];
@@ -211,18 +230,40 @@ export class AnimalPen {
       const pen = PENS[id];
       fence(scene, wood, id, pen);
       floor(scene, id, pen);
-      for (const [key, size, fx, fz] of PROPS[id]) {
+      PROPS[id].forEach(([kind, size, fx, fz], n) => {
         const at = new Vector3(pen.x0 + fx * (pen.x1 - pen.x0), 0, pen.z0 + fz * (pen.z1 - pen.z0));
-        const m = boards.quad(key, size, { bottom: true }).clone(`pen-${id}-${key}`);
-        m.isVisible = true;
-        m.position.copyFrom(at);
+        const make = (full: boolean) => {
+          const m = boards.quad(PROP_KEY(id, kind, full), size, { bottom: true }).clone(`pen-${id}-${kind}-${n}-${full}`);
+          m.position.copyFrom(at);
+          m.isVisible = full;
+          return m;
+        };
+        const full = make(true);
+        if (kind === 'feeder' || kind === 'water') {
+          this.stations.push({ type: id, kind, at, size, full, empty: make(false) });
+        }
         this.obstacles.push({ type: id, at, radius: size * 0.42 });
-      }
+      });
     }
   }
 
   /** Footprints of the props, kept clear when animals pick where to walk. */
   private obstacles: Array<{ type: AnimalId; at: Vector3; radius: number }> = [];
+  private stations: Array<Station & { full: Mesh; empty: Mesh }> = [];
+
+  /** Feeders and water troughs, for picking taps. */
+  get pickable(): Station[] {
+    return this.stations;
+  }
+
+  /** Feeder full while any animal of the pen has eaten; water full until it runs dry. */
+  private showStations(animals: Animal[], water: Partial<Record<AnimalId, number>>, now: number) {
+    for (const s of this.stations) {
+      const full = s.kind === 'water' ? (water[s.type] ?? 0) + WATER_MS > now : animals.some((a) => a.type === s.type && a.fedAt !== null);
+      s.full.isVisible = full;
+      s.empty.isVisible = !full;
+    }
+  }
 
   /** A random point inside the pen of this kind of animal, off the props. */
   private spot(type: AnimalId) {
@@ -236,8 +277,9 @@ export class AnimalPen {
   }
 
   /** Match the walkers to the owned animals (same order as the state). */
-  sync(animals: Animal[], now: number) {
-    const drop = (w: Walker) => [...w.poses.values(), w.bubble, w.hungry].forEach((m) => m.dispose());
+  sync(animals: Animal[], water: Partial<Record<AnimalId, number>>, now: number) {
+    this.showStations(animals, water, now);
+    const drop = (w: Walker) => [...w.poses.values(), w.bubble, w.hungry, w.product].forEach((m) => m.dispose());
     while (this.walkers.length > animals.length) drop(this.walkers.pop()!);
     animals.forEach((a, i) => {
       let w = this.walkers[i];
@@ -248,11 +290,15 @@ export class AnimalPen {
       if (!w) {
         const bubble = this.boards.quad(ANIMALS[a.type].product, BUBBLE, { onTop: true }).clone(`animal-bubble-${i}`);
         const hungry = this.boards.quad('hungry', BUBBLE, { onTop: true }).clone(`animal-hungry-${i}`);
+        const product = this.boards.quad(PRODUCT_KEY[a.type], PRODUCT_SIZE[a.type], { bottom: true }).clone(`animal-product-${i}`);
         const pos = this.spot(a.type);
-        w = { poses: new Map(), shown: null, idle: 'stand', bubble, hungry, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
+        w = { poses: new Map(), shown: null, idle: 'stand', bubble, hungry, product, type: a.type, pos, goal: pos.clone(), wait: this.rand() * 2, phase: this.rand() * 6, facing: 1 };
         this.walkers[i] = w;
       }
-      w.bubble.isVisible = a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
+      // the product lies on the ground beside the animal; the bubble says "tap me" above it
+      const ready = a.fedAt !== null && now >= a.fedAt + ANIMALS[a.type].period * 1000;
+      w.bubble.isVisible = ready;
+      w.product.isVisible = ready;
       w.hungry.isVisible = a.fedAt === null;
     });
   }
@@ -322,6 +368,8 @@ export class AnimalPen {
       const hop = walking && (frame === POSE.back || frame === POSE.front) ? Math.abs(Math.sin(this.time * STEP_RATE[w.type] * 1.6 + w.phase)) * 0.04 : 0;
       this.show(w, frame).position.set(w.pos.x, hop, w.pos.z);
       if (w.hungry.isVisible) w.hungry.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
+      // in front of the animal (toward the viewer: -x, -z), a little to the side it faces
+      if (w.product.isVisible) w.product.position.set(w.pos.x - 0.3 + w.facing * 0.2, 0, w.pos.z - 0.3 - w.facing * 0.2);
       if (w.bubble.isVisible) w.bubble.position.set(w.pos.x, SIZE[w.type] * 0.95 + 0.35 + Math.abs(Math.sin(this.time * 2.6 + w.phase)) * 0.14, w.pos.z);
     }
   }

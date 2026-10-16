@@ -21,7 +21,7 @@ ròng) và *Phòng game*.
 **Nhạc nền** nhẹ tự sinh bằng WebAudio, bật/tắt trong Cài đặt.
 
 **Chăn nuôi:** gà ăn 3 lúa mì, bò ăn 2 ngô thì mới đẻ trứng / cho sữa (sau 5 / 15 phút); thu xong con vật đói lại.
-Chạm con đói trong chuồng để cho ăn, con có sản phẩm để thu. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
+Mỗi chuồng có máng nước (cạn sau 2 giờ, chạm để đổ đầy; cạn thì con vật không ăn) và máng ăn (đầy khi có con đã ăn). Chạm máng ăn hoặc con đói để cho ăn; trứng / bình sữa nằm cạnh con vật khi có sản phẩm, chạm để thu. Ảnh đồ trong chuồng: `client/src/assets/sprites/props/`. **Chó canh** (cấp 8) bắt quả tang 40% kẻ hái trộm, tiền phạt về chủ.
 **Xưởng chế biến:** Cối xay (cấp 4: 3 lúa mì → bột mì), Lò bánh (cấp 7: bánh mì, bánh dâu), Xưởng sữa (cấp 15: phô mai,
 sữa chua dâu); mỗi máy xếp 3 mẻ làm lần lượt. Hàng chế biến bán giá cao và có thể xuất hiện trong đơn hàng.
 **Hàng xóm:** đi thăm nông trại người khác (nút Hàng xóm, hoặc chạm tên trong Xếp hạng): hái trộm 25% sản lượng một ô chín
@@ -156,7 +156,7 @@ Server kiểm tra ID token của Google bằng khóa công khai của Google (`a
 | POST | `/farm/quests/claim` · `/farm/login-reward` | `{index}` nhận thưởng nhiệm vụ · nhận quà đăng nhập |
 | POST | `/farm/animals/buy` · `/farm/animals/collect` | `{type}` mua gà/bò · `{which?}` thu sản phẩm |
 | GET | `/leaderboard/{coins\|level\|tiles\|wins\|winnings}` | Top 50 + hạng của mình |
-| POST | `/farm/animals/feed` · `/farm/dog` | `{which?}` cho ăn · mua chó canh |
+| POST | `/farm/animals/feed` · `/farm/animals/water` · `/farm/dog` | `{which?}` cho ăn · `{type}` đổ nước · mua chó canh |
 | POST | `/farm/machines/buy` · `/start` · `/collect` | `{machine}` xây máy · `{machine, output}` làm một mẻ · `{machine?}` thu hàng |
 | GET | `/farm/news` | Nhật ký hàng xóm (đánh dấu đã đọc) |
 | GET | `/neighbors` · `/neighbors/{id}` | Danh sách hàng xóm · nông trại của một người |

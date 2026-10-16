@@ -117,7 +117,10 @@ class ProgressionTest extends TestCase
         // hungry now: no product until it is fed with wheat from the barn
         $this->postJson('/farm/animals/collect', [], $h)->assertStatus(422);
         $this->postJson('/farm/animals/feed', [], $h)->assertStatus(422)->assertJsonPath('message', 'Cần 3 Lúa mì trong kho để cho ăn');
-        Farm::where('user_id', $id)->update(['inventory' => ['wheat' => 5]]);
+        Farm::where('user_id', $id)->update(['inventory' => ['wheat' => 5], 'water' => ['chicken' => 1000]]);
+        // the trough ran dry: no eating until it is refilled
+        $this->postJson('/farm/animals/feed', [], $h)->assertStatus(422)->assertJsonPath('message', 'Máng nước chuồng gà cạn rồi, hãy đổ nước trước');
+        $this->postJson('/farm/animals/water', ['type' => 'chicken'], $h)->assertOk();
         $this->postJson('/farm/animals/feed', [], $h)->assertOk()->assertJsonPath('result.fed', 1)->assertJsonPath('state.inventory.wheat', 2);
         $this->postJson('/farm/animals/feed', [], $h)->assertStatus(422)->assertJsonPath('message', 'Không có con nào đói');
     }

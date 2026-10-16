@@ -35,6 +35,7 @@ Route::middleware(['auth:sanctum', 'throttle:game'])->group(function () {
     Route::post('/farm/animals/buy', [FarmController::class, 'buyAnimal']);
     Route::post('/farm/animals/collect', [FarmController::class, 'collect']);
     Route::post('/farm/animals/feed', [FarmController::class, 'feed']);
+    Route::post('/farm/animals/water', [FarmController::class, 'water']);
     Route::post('/farm/dog', [FarmController::class, 'buyDog']);
     Route::post('/farm/machines/buy', [FarmController::class, 'buyMachine']);
     Route::post('/farm/machines/start', [FarmController::class, 'startJob']);

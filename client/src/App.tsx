@@ -187,6 +187,26 @@ export function App() {
           setRevealed((r) => (r === e.g ? null : e.g));
           return;
         }
+      } else if (e.type === 'stationTap') {
+        if (e.kind === 'water') {
+          farmApi.water(e.pen).then(
+            () => {
+              sfx.plant();
+              fxBus.float(e.x, e.y - 20, 'Đầy nước!', { type: 'xp' });
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+        } else {
+          const which = store.getState().animals.flatMap((a, i) => (a.type === e.pen && animalHungry(a) ? [i] : []));
+          if (!which.length) return fxBus.toast('Không con nào đói', 'info');
+          farmApi.feed(which).then(
+            (res) => {
+              sfx.plant();
+              fxBus.float(e.x, e.y - 20, `Cho ${res.fed} con ăn`, { type: 'xp' });
+            },
+            (err) => fxBus.toast(err instanceof FarmError ? err.message : 'Có lỗi xảy ra', 'bad'),
+          );
+        }
       } else if (e.type === 'animalTap') {
         const a = store.getState().animals[e.index];
         if (a && animalHungry(a)) {

@@ -37,6 +37,7 @@ export const farmApi = {
   claimLogin: () => call<{ coins: number; streak: number }>('/farm/login-reward'),
   buyAnimal: (type: AnimalId) => call<{ count: number }>('/farm/animals/buy', { type }),
   collect: (which?: number[]) => call<{ collected: number; xp: number; levelUps: number[] }>('/farm/animals/collect', which ? { which } : {}),
+  water: (type: AnimalId) => call<null>('/farm/animals/water', { type }),
   feed: (which?: number[]) => call<{ fed: number }>('/farm/animals/feed', which ? { which } : {}),
   buyDog: () => call<null>('/farm/dog'),
   buyMachine: (machine: MachineId) => call<null>('/farm/machines/buy', { machine }),
