@@ -120,6 +120,34 @@ export class Fx {
   }
 
   /** Slow drifting pollen motes around the farm. */
+  /**
+   * A sprinkler head spraying all round: blue drops fly out in an arc, fall and fade, with a few
+   * sparkles. `power` (1 = base) widens the spray, e.g. with the sprinkler upgrade.
+   */
+  sprinklerSpray(head: Vector3, power = 1) {
+    const ps = new ParticleSystem('spray', Math.max(20, Math.round(140 * this.scale)), this.scene);
+    ps.particleTexture = this.dot;
+    ps.emitter = head.clone();
+    ps.createCylinderEmitter(0.08, 0.02, 0, 1);
+    ps.direction1 = new Vector3(-1, 1.1, -1);
+    ps.direction2 = new Vector3(1, 1.6, 1);
+    ps.emitRate = 90 * Math.max(0.3, this.scale);
+    ps.minEmitPower = 1.6 * power;
+    ps.maxEmitPower = 2.6 * power;
+    ps.gravity = new Vector3(0, -4.5, 0);
+    ps.minLifeTime = 0.45;
+    ps.maxLifeTime = 0.8;
+    ps.addSizeGradient(0, 0.1, 0.15);
+    ps.addSizeGradient(1, 0.14, 0.22);
+    ps.addColorGradient(0, new Color4(0.9, 0.98, 1, 1));
+    ps.addColorGradient(0.6, new Color4(0.35, 0.72, 1, 1));
+    ps.addColorGradient(1, new Color4(0.45, 0.78, 1, 0));
+    ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
+    ps.renderingGroupId = 1;
+    ps.start();
+    return ps;
+  }
+
   ambientMotes(center: Vector3) {
     const ps = new ParticleSystem('motes', Math.max(10, Math.round(60 * this.scale)), this.scene);
     ps.particleTexture = this.dot;

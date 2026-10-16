@@ -16,6 +16,7 @@ import { Color3, Color4 } from '@babylonjs/core/Maths/math.color.js';
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 import { Scene } from '@babylonjs/core/scene.js';
 import { Mesh } from '@babylonjs/core/Meshes/mesh.js';
+import type { ParticleSystem } from '@babylonjs/core/Particles/particleSystem.js';
 import { sfx } from './audio/sfx';
 import { artUrl } from './art';
 import { preloadAssets } from './assets/registry';
@@ -114,6 +115,7 @@ export class Game {
   private visit: { tiles: TileState[]; unlocked: number; plantings: VisitFarm['plantings'] } | null = null;
   private buildings: Building[] = [];
   private goodsBubble: Mesh | null = null;
+  private spray: ParticleSystem | null = null;
   private painted = new Set<number>();
   quality: Quality;
 
@@ -517,11 +519,13 @@ export class Game {
         mesh.isVisible = true;
         mesh.position.set(x, 0, z);
       }
+      // the sprinkler sprays for real; the head is at about 60% of the picture's height
+      if (key === 'sprinkler') this.spray = this.fx.sprinklerSpray(new Vector3(x, size * 0.6, z), 1 + store.getState().sprinkler * 0.08);
       this.buildings.push({ kind, at: new Vector3(x, 0, z), size, mesh });
     };
     // the workshop beside the chicken coop, the sprinkler (upgrades) in front of the first field
     spot('workshop', 'workshop', PENS_X1 + 2.1, -1.9, 2.6);
-    spot('upgrades', 'sprinkler', 0, 1.9, 1.1);
+    spot('upgrades', 'sprinkler', 0.2, 2.0, 1.5);
     // the coop itself opens the pens window (it is drawn by the pen)
     spot('pens', null, PENS.chicken.x0 + 0.74 * (PENS.chicken.x1 - PENS.chicken.x0), PENS.chicken.z0 + 0.82 * (PENS.chicken.z1 - PENS.chicken.z0), 2.1);
     if (!this.buildings.some((b) => b.kind === 'workshop')) return;
@@ -532,6 +536,13 @@ export class Game {
   /** Buildings hide while visiting; the workshop shows a bubble when batches are done. */
   private syncBuildings(now: number) {
     for (const b of this.buildings) b.mesh?.setEnabled(!this.visit);
+    if (this.spray) {
+      if (this.visit && this.spray.isStarted()) this.spray.stop();
+      else if (!this.visit && !this.spray.isStarted()) this.spray.start();
+      const power = 1 + store.getState().sprinkler * 0.08;
+      this.spray.minEmitPower = 1.6 * power;
+      this.spray.maxEmitPower = 2.6 * power;
+    }
     if (!this.goodsBubble) return;
     const machines = store.getState().machines;
     const done = Object.values(machines).some((m) => m?.queue.some((j) => j.readyAt <= now));
