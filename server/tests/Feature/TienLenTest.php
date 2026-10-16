@@ -161,13 +161,6 @@ class TienLenTest extends TestCase
         }
     }
 
-    public function test_stake_with_bots_is_capped_by_level(): void
-    {
-        [$a] = $this->player(100_000);
-        $id = $this->postJson('/games/tienlen', ['stake' => 5000], $a)->json('result.id');
-        $this->postJson("/games/tienlen/$id/start", [], $a)->assertStatus(422)->assertJsonPath('message', 'Có ghế máy chơi thì cược tối đa 1.000 xu');
-    }
-
     public function test_leave_refunds_and_timeout_auto_plays(): void
     {
         [$a, $aid] = $this->player(5000);

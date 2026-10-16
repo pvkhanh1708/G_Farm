@@ -4,10 +4,8 @@ import { serverNow } from '../game/net/clock';
 import { ApiError } from '../game/net/api';
 import { games, Lobby, MIN_STAKE, TableView } from '../game/net/games';
 
-/** Mirrors GameRoomService::botStakeCap: the house bot only takes small bets, scaled by level. */
 export const botStakeCap = (level: number) => Math.max(MIN_STAKE, 100 * level);
 import { sync } from '../game/net/sync';
-import { store } from '../game/state/store';
 import { sfx } from '../game/audio/sfx';
 import { formatNum } from './format';
 import { useGameState } from './Hud';
@@ -261,7 +259,7 @@ function CaroTable({ table: t, busy, run, onLeave }: { table: TableView; busy: b
           <br />
           Cược <b>{formatNum(t.stake)}</b> xu
           <br />
-          <small>Chơi với máy: cược tối đa {formatNum(botStakeCap(store.getState().level))} xu, thắng nhận 1,5 lần tiền cược (trừ 5% phí)</small>
+          <small>Chơi với máy: thắng nhận 1,5 lần tiền cược (trừ 5% phí)</small>
         </p>
         <div className="row-center">
           <button className="btn btn-ghost" disabled={busy} onClick={() => run(async () => (await games.cancel(t.id), onLeave()))}>

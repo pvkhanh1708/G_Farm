@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { serverNow } from '../game/net/clock';
 import { tienlen, tlBeats, tlCombo, TLLobby, TLView } from '../game/net/games';
-import { store } from '../game/state/store';
 import { sfx } from '../game/audio/sfx';
 import { formatNum } from './format';
 import { useGameState } from './Hud';
 import { CoinIcon } from './icons';
 import { fxBus } from './FxLayer';
-import { botStakeCap, errText, Shell, StakePicker, usePoll } from './GameRoom';
+import { errText, Shell, StakePicker, usePoll } from './GameRoom';
 
 const RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
 const SUITS = ['♠', '♣', '♦', '♥'];
@@ -196,7 +195,7 @@ function TLTable({ t, busy, run, onLeave }: { t: TLView; busy: boolean; run: (fn
           ))}
         </ul>
         <p className="tl-note">
-          <small>Ghế trống do máy chơi: cược tối đa {formatNum(botStakeCap(store.getState().level))} xu; mỗi ghế máy chỉ góp nửa tiền cược.</small>
+          <small>Ghế trống do máy chơi; mỗi ghế máy chỉ góp nửa tiền cược.</small>
         </p>
         <div className="row-center">
           <button className="btn btn-ghost" disabled={busy} onClick={() => void run(async () => (await tienlen.leave(t.id), onLeave()))}>

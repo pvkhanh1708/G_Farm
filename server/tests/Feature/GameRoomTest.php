@@ -126,12 +126,10 @@ class GameRoomTest extends TestCase
         $this->assertSame(1090, $this->coins($bid));
     }
 
-    public function test_bot_stake_is_capped_and_pays_half(): void
+    public function test_bot_pays_half_a_stake(): void
     {
-        [$a, $aid] = $this->player(100_000);
+        [$a] = $this->player(100_000);
         $id = $this->postJson('/games/tables', ['game' => 'caro', 'stake' => 5000], $a)->json('result.id');
-        $this->postJson("/games/tables/$id/bot", [], $a)->assertStatus(422)->assertJsonPath('message', 'Chơi với máy cược tối đa 100 xu');
-        Farm::where('user_id', $aid)->update(['level' => 50]);
         $this->postJson("/games/tables/$id/bot", [], $a)->assertOk()->assertJsonPath('result.payout', (int) floor(5000 * 1.5 * 0.95));
     }
 

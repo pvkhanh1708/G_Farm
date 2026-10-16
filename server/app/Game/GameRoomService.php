@@ -23,18 +23,8 @@ class GameRoomService
     /** Share of the pot the house keeps from the winner. */
     public const FEE = 0.05;
 
-    /**
-     * The house bot does not bring real money: it matches only half the stake, and the stake against it
-     * is capped by the player's level. Without this, a big bet won against the bot printed millions.
-     */
+    /** The house bot does not bring real money: it matches only half the stake (bets are not capped). */
     public const BOT_SHARE = 0.5;
-
-    public const BOT_STAKE_PER_LEVEL = 100;
-
-    public static function botStakeCap(int $level): int
-    {
-        return max(self::MIN_STAKE, self::BOT_STAKE_PER_LEVEL * $level);
-    }
 
     public const TURN_MS = 60_000;
 
@@ -110,10 +100,6 @@ class GameRoomService
         return $this->locked($id, function (GameTable $t) use ($user) {
             if ($t->status !== 'waiting' || $t->host_id !== $user->id) {
                 throw new GameException('Không thể chơi với máy ở bàn này');
-            }
-            $cap = self::botStakeCap($this->farms->farmFor($user)->level);
-            if ($t->stake > $cap) {
-                throw new GameException('Chơi với máy cược tối đa '.number_format($cap, 0, ',', '.').' xu');
             }
             $t->fill(['vs_bot' => true, 'status' => 'playing', 'turn' => 1, 'turn_deadline' => FarmService::nowMs() + self::TURN_MS]);
             $t->version++;

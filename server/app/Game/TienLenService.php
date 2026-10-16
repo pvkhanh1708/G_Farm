@@ -211,14 +211,6 @@ class TienLenService
     private function start(TienLenTable $t): void
     {
         $seats = $t->seats;
-        // bots fill the empty seats: they only bring part of a stake, and the stake is capped by level
-        if (collect($seats)->contains(fn ($s) => ! $s['user'])) {
-            $levels = Farm::whereIn('user_id', collect($seats)->pluck('user')->filter())->pluck('level');
-            $cap = GameRoomService::botStakeCap((int) $levels->min());
-            if ($t->stake > $cap) {
-                throw new GameException('Có ghế máy chơi thì cược tối đa '.number_format($cap, 0, ',', '.').' xu');
-            }
-        }
         foreach ($seats as $i => $s) {
             if (! $s['user']) {
                 $seats[$i] = ['user' => null, 'bot' => true, 'name' => null];
